@@ -1,0 +1,949 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+CAUTION: Do not modify this file unless you know what you are doing.
+ Unexpected results may occur if the code is changed deliberately.
+-->
+<dbmodel pgmodeler-ver="1.0.6" use-changelog="false" last-position="0,0" last-zoom="0.85" max-obj-count="21"
+	 default-owner="postgres"
+	 layers="Default layer"
+	 active-layers="0"
+	 layer-name-colors="#000000"
+	 layer-rect-colors="#db634a"
+	 show-layer-names="false" show-layer-rects="false">
+<database name="fullon" is-template="false" allow-conns="true">
+</database>
+
+<schema name="public" layers="0" fill-color="#e1e1e1" sql-disabled="true" faded-out="true">
+</schema>
+
+<table name="cat_exchanges" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="860" y="380"/>
+	<column name="cat_ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="30"/>
+	</column>
+	<column name="ohlcv_view">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="cat_exchange_pk" type="pk-constr" table="public.cat_exchanges">
+		<columns names="cat_ex_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="unique_ex" type="uq-constr" table="public.cat_exchanges">
+		<columns names="name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="exchanges" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="620" y="720"/>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="cat_ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="50"/>
+	</column>
+	<column name="test" not-null="true" default-value="false">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="active" not-null="true" default-value="True">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<constraint name="exchange_pk" type="pk-constr" table="public.exchanges">
+		<columns names="ex_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="unique_user_exchange" type="uq-constr" table="public.exchanges">
+		<columns names="uid,cat_ex_id,name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="users" layers="0" collapse-mode="2" max-obj-count="15" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1060" y="1800"/>
+	<column name="uid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="mail" not-null="true">
+		<type name="varchar" length="80"/>
+	</column>
+	<column name="password" not-null="true">
+		<type name="char" length="64"/>
+	</column>
+	<column name="f2a" not-null="true">
+		<type name="varchar" length="16"/>
+	</column>
+	<column name="role" not-null="true">
+		<type name="varchar" length="10"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="50"/>
+	</column>
+	<column name="lastname" not-null="true">
+		<type name="varchar" length="50"/>
+	</column>
+	<column name="phone" not-null="true">
+		<type name="varchar" length="12"/>
+	</column>
+	<column name="id_num" not-null="true">
+		<type name="varchar" length="15"/>
+	</column>
+	<column name="note">
+		<type name="text" length="0"/>
+	</column>
+	<column name="manager">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="active" not-null="true" default-value="True">
+		<type name="bool" length="0"/>
+	</column>
+	<constraint name="users_pk" type="pk-constr" table="public.users">
+		<columns names="uid" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="unique_mail" type="uq-constr" table="public.users">
+		<columns names="mail" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="cat_strategies" layers="0" collapse-mode="2" max-obj-count="9" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2640" y="540"/>
+	<column name="cat_str_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="50"/>
+	</column>
+	<column name="take_profit">
+		<type name="varchar" length="5"/>
+	</column>
+	<column name="stop_loss">
+		<type name="varchar" length="5"/>
+	</column>
+	<column name="trailing_stop">
+		<type name="varchar" length="5"/>
+	</column>
+	<column name="timeout">
+		<type name="varchar" length="8"/>
+	</column>
+	<column name="pre_load_bars" not-null="true" default-value="200">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="feeds" not-null="true" default-value="2">
+		<type name="smallint" length="0"/>
+	</column>
+	<constraint name="cat_strategies_pk" type="pk-constr" table="public.cat_strategies">
+		<columns names="cat_str_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="unique name" type="uq-constr" table="public.cat_strategies">
+		<columns names="name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="strategies" layers="0" collapse-mode="2" max-obj-count="13" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2660" y="940"/>
+	<column name="bot_id">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="cat_str_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="take_profit">
+		<type name="varchar" length="5" precision="2"/>
+	</column>
+	<column name="stop_loss">
+		<type name="varchar" length="5" precision="2"/>
+	</column>
+	<column name="trailing_stop">
+		<type name="varchar" length="5" precision="2"/>
+	</column>
+	<column name="timeout">
+		<type name="varchar" length="8" precision="2"/>
+	</column>
+	<column name="leverage" not-null="true" default-value="1">
+		<type name="float" length="0"/>
+	</column>
+	<column name="size_pct">
+		<type name="float" length="0"/>
+	</column>
+	<column name="size">
+		<type name="float" length="0"/>
+	</column>
+	<column name="size_currency">
+		<type name="varchar" length="5"/>
+	</column>
+	<column name="pre_load_bars">
+		<type name="smallint" length="0"/>
+	</column>
+	<constraint name="unique_bot_id" type="uq-constr" table="public.strategies">
+		<columns names="bot_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="bots" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1960" y="1140"/>
+	<column name="bot_id" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="uid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="50"/>
+	</column>
+	<column name="dry_run" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="active" not-null="true" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<constraint name="bot_pk" type="pk-constr" table="public.bots">
+		<columns names="bot_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="bot_id_name_unique" type="uq-constr" table="public.bots">
+		<columns names="bot_id,name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="symbols" layers="0" collapse-mode="2" max-obj-count="12" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1460" y="480"/>
+	<column name="symbol_id" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="symbol" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<column name="cat_ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="updateframe" not-null="true" default-value="'1h'">
+		<type name="varchar" length="2"/>
+	</column>
+	<column name="backtest" not-null="true" default-value="30">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="decimals" not-null="true" default-value="8">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="base" not-null="true">
+		<type name="varchar" length="6"/>
+	</column>
+	<column name="ex_base">
+		<type name="varchar" length="6"/>
+	</column>
+	<column name="futures" not-null="true" default-value="false">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="only_ticker" not-null="true" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<constraint name="symbol_pk" type="pk-constr" table="public.symbols">
+		<columns names="symbol_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="symbol_Exchange" type="uq-constr" table="public.symbols">
+		<columns names="symbol,cat_ex_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="cat_exchanges_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="340" y="380"/>
+	<column name="cat_ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<column name="value" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<constraint name="unique_param_symbol" type="uq-constr" table="public.cat_exchanges_params">
+		<columns names="cat_ex_id,name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="cat_strategies_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="3380" y="640"/>
+	<column name="cat_str_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="25"/>
+	</column>
+	<column name="value" not-null="true">
+		<type name="varchar" length="25"/>
+	</column>
+	<constraint name="unique_param_symbol1" type="uq-constr" table="public.cat_strategies_params">
+		<columns names="cat_str_id,name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="strategies_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="3360" y="1000"/>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="25"/>
+	</column>
+	<column name="value" not-null="true">
+		<type name="varchar" length="75"/>
+	</column>
+	<constraint name="unique_param_symbol2" type="uq-constr" table="public.strategies_params">
+		<columns names="bot_id,name" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="bot_log" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1480" y="880"/>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="feed_num" not-null="true">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="symbol" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="position" not-null="true">
+		<type name="numeric" length="0"/>
+	</column>
+	<column name="message" not-null="true">
+		<type name="text" length="60"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="current_timestamp">
+		<type name="timestamp with time zone" length="0" with-timezone="true"/>
+	</column>
+</table>
+
+<table name="orders" layers="0" collapse-mode="2" max-obj-count="24" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2640" y="1440"/>
+	<column name="order_id" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="uid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="ex_order_id">
+		<type name="varchar" length="64"/>
+	</column>
+	<column name="cat_ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="exchange" not-null="true">
+		<type name="varchar" length="50"/>
+	</column>
+	<column name="symbol" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<column name="order_type" not-null="true">
+		<type name="varchar" length="15"/>
+	</column>
+	<column name="side" not-null="true">
+		<type name="varchar" length="4"/>
+	</column>
+	<column name="volume" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="final_volume">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="price">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="plimit">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="tick">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="futures" not-null="true" default-value="false">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="status" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<column name="command">
+		<type name="varchar" length="64"/>
+	</column>
+	<column name="reason" not-null="true">
+		<type name="varchar" length="35"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<constraint name="orders_pk" type="pk-constr" table="public.orders">
+		<columns names="order_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="uid_ex_id" table="public.orders"
+	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="uid"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="ex_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="status"/>
+		</idxelement>
+</index>
+
+<index name="bot_symbol_index" table="public.orders"
+	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="bot_id"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="status"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="symbol"/>
+		</idxelement>
+</index>
+
+<table name="trades" layers="0" collapse-mode="2" max-obj-count="25" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="3100" y="1440"/>
+	<column name="trade_id" not-null="true">
+		<type name="serial" length="64"/>
+	</column>
+	<column name="ex_trade_id" not-null="true">
+		<type name="varchar" length="64"/>
+	</column>
+	<column name="ex_order_id" not-null="true">
+		<type name="varchar" length="64"/>
+	</column>
+	<column name="uid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="symbol" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<column name="order_type" not-null="true">
+		<type name="varchar" length="15"/>
+	</column>
+	<column name="side" not-null="true">
+		<type name="varchar" length="4"/>
+	</column>
+	<column name="volume" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="price" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="cost" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="fee" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="cur_volume">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="cur_avg_price">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="cur_avg_cost">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="cur_fee">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="roi">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="roi_pct">
+		<type name="double precision" length="10" precision="2"/>
+	</column>
+	<column name="total_fee">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="leverage">
+		<type name="float" length="0"/>
+	</column>
+	<column name="time" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<constraint name="trades_pk" type="pk-constr" table="public.trades">
+		<columns names="trade_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="unique_order_id" type="uq-constr" table="public.trades">
+		<columns names="ex_trade_id,ex_order_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="one oid" table="public.trades"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="trade_id"/>
+		</idxelement>
+</index>
+
+<index name="uid_ex_id_trades" table="public.trades"
+	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="uid"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="ex_id"/>
+		</idxelement>
+</index>
+
+<table name="bot_exchanges" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1220" y="1220"/>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="unique_record" type="uq-constr" table="public.bot_exchanges">
+		<columns names="bot_id,ex_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="exchange_history" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="180" y="1220"/>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="user_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="currency" not-null="true">
+		<type name="varchar" length="15"/>
+	</column>
+	<column name="balance" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="comment">
+		<type name="text" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true">
+		<type name="timestamp" length="0"/>
+	</column>
+</table>
+
+<genericsql name="loadossp">
+	<definition> <![CDATA[CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+]]> </definition>
+</genericsql>
+
+<table name="dry_trades" layers="0" collapse-mode="2" max-obj-count="18" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="3580" y="1440"/>
+	<column name="trade_id" not-null="true">
+		<type name="serial" length="64"/>
+	</column>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="uid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="ex_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="symbol" not-null="true">
+		<type name="varchar" length="20"/>
+	</column>
+	<column name="side" not-null="true">
+		<type name="varchar" length="4"/>
+	</column>
+	<column name="volume" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="price" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="cost" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="fee" not-null="true">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="roi">
+		<type name="double precision" length="20" precision="8"/>
+	</column>
+	<column name="roi_pct">
+		<type name="double precision" length="10" precision="2"/>
+	</column>
+	<column name="reason">
+		<type name="varchar" length="35"/>
+	</column>
+	<column name="closingtrade" not-null="true" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<constraint name="trades_simul_pk" type="pk-constr" table="public.dry_trades">
+		<columns names="trade_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="one oid_cp" table="public.dry_trades"
+	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="trade_id"/>
+		</idxelement>
+</index>
+
+<index name="uid_ex_id_trades_cp" table="public.dry_trades"
+	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="uid"/>
+		</idxelement>
+		<idxelement use-sorting="false">
+			<column name="ex_id"/>
+		</idxelement>
+</index>
+
+<genericsql name="add_aggregates">
+	<definition> <![CDATA[CREATE OR REPLACE FUNCTION public.first_agg ( anyelement, anyelement )
+RETURNS anyelement LANGUAGE SQL IMMUTABLE STRICT AS $$
+        SELECT $1;
+$$;
+ 
+-- And then wrap an aggregate around it
+CREATE AGGREGATE public.FIRST (
+        sfunc    = public.first_agg,
+        basetype = anyelement,
+        stype    = anyelement
+);
+ 
+-- Create a function that always returns the last non-NULL item
+CREATE OR REPLACE FUNCTION public.last_agg ( anyelement, anyelement )
+RETURNS anyelement LANGUAGE SQL IMMUTABLE STRICT AS $$
+        SELECT $2;
+$$;
+ 
+-- And then wrap an aggregate around it
+CREATE AGGREGATE public.LAST (
+        sfunc    = public.last_agg,
+        basetype = anyelement,
+        stype    = anyelement
+);]]> </definition>
+</genericsql>
+
+<table name="feeds" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2100" y="600"/>
+	<column name="feed_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="symbol_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="period" not-null="true">
+		<type name="varchar" length="10"/>
+	</column>
+	<column name="compression" not-null="true">
+		<type name="smallint" length="10"/>
+	</column>
+	<column name="order" not-null="true">
+		<type name="smallint" length="0"/>
+	</column>
+	<constraint name="feed_pk" type="pk-constr" table="public.feeds">
+		<columns names="feed_id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="simulations" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2160" y="1760"/>
+	<column name="num" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="bot_id" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="varchar" length="35"/>
+	</column>
+	<column name="json">
+		<type name="json" length="0"/>
+	</column>
+	<constraint name="bot_name" type="uq-constr" table="public.simulations">
+		<columns names="bot_id,name" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="serial_primary" type="pk-constr" table="public.simulations">
+		<columns names="num" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<constraint name="user_id" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="RESTRICT" del-action="RESTRICT" ref-table="public.users" table="public.exchanges">
+	<columns names="uid" ref-type="src-columns"/>
+	<columns names="uid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="exchange_cat_exchange" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="RESTRICT" del-action="RESTRICT" ref-table="public.cat_exchanges" table="public.exchanges">
+	<columns names="cat_ex_id" ref-type="src-columns"/>
+	<columns names="cat_ex_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="client_manager" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="RESTRICT" del-action="RESTRICT" ref-table="public.users" table="public.users">
+	<columns names="manager" ref-type="src-columns"/>
+	<columns names="uid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="cat_str_id" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.cat_strategies" table="public.strategies">
+	<columns names="cat_str_id" ref-type="src-columns"/>
+	<columns names="cat_str_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="bot_id" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.bots" table="public.strategies">
+	<columns names="bot_id" ref-type="src-columns"/>
+	<columns names="bot_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="bot_user" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="NO ACTION" ref-table="public.users" table="public.bots">
+	<columns names="uid" ref-type="src-columns"/>
+	<columns names="uid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="cat_ex_id" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="RESTRICT" del-action="RESTRICT" ref-table="public.cat_exchanges" table="public.symbols">
+	<columns names="cat_ex_id" ref-type="src-columns"/>
+	<columns names="cat_ex_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="cat_ex_id" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.cat_exchanges" table="public.cat_exchanges_params">
+	<columns names="cat_ex_id" ref-type="src-columns"/>
+	<columns names="cat_ex_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="cat_str_id" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.cat_strategies" table="public.cat_strategies_params">
+	<columns names="cat_str_id" ref-type="src-columns"/>
+	<columns names="cat_str_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="cat_id" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.strategies" table="public.strategies_params">
+	<columns names="bot_id" ref-type="src-columns"/>
+	<columns names="bot_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="bot_uid" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.bots" table="public.bot_log">
+	<columns names="bot_id" ref-type="src-columns"/>
+	<columns names="bot_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="ex_to_bots" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.bots" table="public.bot_exchanges">
+	<columns names="bot_id" ref-type="src-columns"/>
+	<columns names="bot_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="bots_to_ex" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.exchanges" table="public.bot_exchanges">
+	<columns names="ex_id" ref-type="src-columns"/>
+	<columns names="ex_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="one_exchange_one_history" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.exchanges" table="public.exchange_history">
+	<columns names="ex_id" ref-type="src-columns"/>
+	<columns names="ex_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="users_account_exchange" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.users" table="public.exchange_history">
+	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="uid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="feed_symbol" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.symbols" table="public.feeds">
+	<columns names="symbol_id" ref-type="src-columns"/>
+	<columns names="symbol_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="feed_bots" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.bots" table="public.feeds">
+	<columns names="bot_id" ref-type="src-columns"/>
+	<columns names="bot_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="bot_id_bot_id" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.bots" table="public.simulations">
+	<columns names="bot_id" ref-type="src-columns"/>
+	<columns names="bot_id" ref-type="dst-columns"/>
+</constraint>
+
+<relationship name="rel_exchanges_users" type="relfk" layers="0"
+	 src-table="public.exchanges"
+	 dst-table="public.users" reference-fk="user_id"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_exchanges_cat_exchanges" type="relfk" layers="0"
+	 src-table="public.exchanges"
+	 dst-table="public.cat_exchanges" reference-fk="exchange_cat_exchange"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_users_users" type="relfk" layers="0"
+	 src-table="public.users"
+	 dst-table="public.users" reference-fk="client_manager"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="1390.4" y="1921.84"/>
+	<position x="1390.4" y="1767"/>
+	<position x="1258.27" y="1767"/>
+	</line>
+</relationship>
+
+<relationship name="rel_bots_users" type="relfk" layers="0"
+	 src-table="public.bots"
+	 dst-table="public.users" reference-fk="bot_user"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_symbols_cat_exchanges" type="relfk" layers="0"
+	 src-table="public.symbols"
+	 dst-table="public.cat_exchanges" reference-fk="cat_ex_id"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_cat_exchanges_params_cat_exchanges" type="relfk" layers="0"
+	 src-table="public.cat_exchanges_params"
+	 dst-table="public.cat_exchanges" reference-fk="cat_ex_id"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_cat_strategies_params_cat_strategies" type="relfk" layers="0"
+	 src-table="public.cat_strategies_params"
+	 dst-table="public.cat_strategies" reference-fk="cat_str_id"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_strategies_params_strategies" type="relfk" layers="0"
+	 src-table="public.strategies_params"
+	 dst-table="public.strategies" reference-fk="cat_id"
+	 src-required="false" dst-required="true">
+	<label ref-type="name-label">
+		<position x="215.449" y="-36.8258"/>
+	</label>
+</relationship>
+
+<relationship name="rel_bot_log_bots" type="relfk" layers="0"
+	 src-table="public.bot_log"
+	 dst-table="public.bots" reference-fk="bot_uid"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_bot_exchanges_bots" type="relfk" layers="0"
+	 src-table="public.bot_exchanges"
+	 dst-table="public.bots" reference-fk="ex_to_bots"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_bot_exchanges_exchanges" type="relfk" layers="0"
+	 src-table="public.bot_exchanges"
+	 dst-table="public.exchanges" reference-fk="bots_to_ex"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_exchange_history_exchanges" type="relfk" layers="0"
+	 src-table="public.exchange_history"
+	 dst-table="public.exchanges" reference-fk="one_exchange_one_history"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_exchange_history_users" type="relfk" layers="0"
+	 src-table="public.exchange_history"
+	 dst-table="public.users" reference-fk="users_account_exchange"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_feeds_symbols" type="relfk" layers="0"
+	 src-table="public.feeds"
+	 dst-table="public.symbols" reference-fk="feed_symbol"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_feeds_bots" type="relfk" layers="0"
+	 src-table="public.feeds"
+	 dst-table="public.bots" reference-fk="feed_bots"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_simulations_bots" type="relfk" layers="0"
+	 src-table="public.simulations"
+	 dst-table="public.bots" reference-fk="bot_id_bot_id"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_strategies_cat_strategies" type="relfk" layers="0"
+	 src-table="public.strategies"
+	 dst-table="public.cat_strategies" reference-fk="cat_str_id"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_strategies_bots" type="relfk" layers="0"
+	 src-table="public.strategies"
+	 dst-table="public.bots" reference-fk="bot_id"
+	 src-required="false" dst-required="false"/>
+
+</dbmodel>
