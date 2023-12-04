@@ -1,0 +1,66 @@
+[tool.poetry]
+name = "fullon"
+version = "0.6.0"
+description = ""
+authors = ["ingmar <ingmar@avocadoblock.com>"]
+license = "GPL"
+
+[tool.poetry.dependencies]
+python = "<3.13,>=3.11.5"
+kraken-wsclient-py = { git = "https://github.com/ingmarAvocado/kraken-wsclient-py.git"}
+pandas-ta = "^0.3.14b0"
+ccxt = "^3.0.30"
+pyfiglet = "^0.8.post1"
+munch = "^2.5.0"
+prompt-toolkit = "^3.0.38"
+arrow = "^1.2.3"
+utils = "^1.0.1"
+pause = "^0.3"
+multiprocess = "^0.70.14"
+joblib = "^1.2.0"
+cherrypy = "^18.8.0"
+clint = "^0.5.1"
+setproctitle = "^1.3.2"
+pillow = "^9.4.0"
+click = "^8.1.3"
+psutil = "^5.9.4"
+mako = "^1.2.4"
+psycopg2 = "^2.9.5"
+termcolor = "^2.3.0"
+redis = "^4.5.3"
+backtrader = "^1.9.76.123"
+pytest = ">7.0"
+pylint = "^2.17.1"
+autopep8 = "^2.0.2"
+setuptools = "^67.6.0"
+websockets = "^10.4"
+requests = "^2.28.2"
+kucoin-futures-python = "^1.0.6"
+websocket-client = "^1.5.1"
+pytest-mock = "^3.10.0"
+pytest-timeout = "^2.1.0"
+rq = "^1.13.0"
+openpyxl = "^3.1.2"
+tabulate = "^0.9.0"
+google-auth = "^2.17.3"
+google-auth-httplib2 = "^0.1.0"
+google-auth-oauthlib = "^1.0.0"
+google-api-python-client = "^2.86.0"
+google-cloud-secret-manager = "^2.16.1"
+bunch = "1.0.0"
+ipdb = "^0.13.13"
+tqdm = "^4.65.0"
+tqdm-joblib = "^0.0.3"
+prettytable = "^3.8.0"
+scipy = "^1.11.3"
+ta-lib = "^0.4.28"
+invoke = "^2.2.0"
+
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
