@@ -75,6 +75,12 @@ def test_list_cat_exchanges(install_manager):
     assert len(res) > 0
 
 
+def test_list_strategy_bots(install_manager):
+    name = 'trading101'
+    res = install_manager.list_strategy_bots(cat_str_name=name)
+    assert isinstance(res[0].name, str)
+
+
 def test_list_symbols_exchange(install_manager):
     res = install_manager.list_symbols_exchange(exchange='krak')
     assert 'Error' in res[0]

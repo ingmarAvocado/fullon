@@ -45,8 +45,12 @@ def daemon_startup():
     if find_another_daemon():
         logger.warning("Another daemon is running, can't run until its off")
         sys.exit()
-    install = system_manager.InstallManager()
     handler['install'].install_exchanges()
+    try:
+        handler['install'].install_strategies()
+    except (EOFError, SyntaxError) as error:
+        logger.error("Can't install strategies: %s", str(error))
+        return False
     handler['install'].install_cache()
     logger.info("Cache component ready")
     return True
@@ -350,7 +354,6 @@ def strategies(cmd, params: dict = {}):
         KeyError: An error occurred accessing the command.
     """
     results = f"Error: could not execute {cmd} with params {params}"
-    print(f"------------------{cmd}----------------")
     match cmd:
         case 'list':
             page = params.get('page')
@@ -366,7 +369,7 @@ def strategies(cmd, params: dict = {}):
                 results = "Error: Missing 'uid' parameter"
             else:
                 results = handler['install'].list_user_strategies(uid=uid)
-        case 'add':
+        case 'reload':
             results = handler['install'].install_strategies()
         case 'add_user':
             strat = params.get('strat')
@@ -375,8 +378,17 @@ def strategies(cmd, params: dict = {}):
             else:
                 return "Error: Parameter strat is missing"
         case 'get_bots':
-            print(params)
-            results = ['hola']
+            if params.get('cat_str_name') is None:
+                results = f"Error: Missing 'cat_str_name' parameter for '{cmd}' command."
+            else:
+                results = handler['install'].list_strategy_bots(
+                    cat_str_name=params['cat_str_name'])
+        case 'del_cat_str':
+            if params.get('cat_str_name') is None:
+                results = f"Error: Missing 'cat_str_name' parameter for '{cmd}' command."
+            else:
+                results = handler['install'].del_cat_str(
+                    cat_str_name=params['cat_str_name'])
     return results
 
 
@@ -534,7 +546,7 @@ def bots(cmd, params: dict = {}):
                     results = f"Can't launch bots, services not started"
         case 'stop':
             if params.get('bot_id') is None:
-                result = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
+                results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
             else:
                 results = handler['bot'].stop_bot(bot_id=params['bot_id'])
         case 'delete':
@@ -577,7 +589,7 @@ def bots(cmd, params: dict = {}):
             results = handler['bot'].add_feeds(bot_id=bot_id, feeds=feeds)
         case 'dry_reset':
             if params.get('bot_id') is None:
-                result = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
+                results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
             else:
                 results = dry_reset(bot_id=params['bot_id'])
     return results

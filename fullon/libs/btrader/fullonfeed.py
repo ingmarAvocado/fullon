@@ -6,13 +6,13 @@ from __future__ import (
     division,
     print_function,
     unicode_literals)
-from typing import List, Union, Any
+from typing import List, Union, Any, Literal
 from collections import deque
 from backtrader.feed import DataBase
 import backtrader as bt
 import arrow
 from libs.database_ohlcv import Database as DataBase_ohclv
-from libs import cache, settings
+from libs import cache
 import time
 
 
@@ -74,9 +74,11 @@ class FullonFeed(DataBase):
     _ST_LIVE: int = 0
     _ST_HISTORY: int = 1
     _ST_OVER: int = 2
-    _state: int = None
+    _state: int = 0
     _table: str = ""
     _last_id: str = ""
+    symbol: str = ""
+    helper: object = None
     last_moments: bool = False
     bar_size_minutes: int = 0
     ismainfeed = False
@@ -121,7 +123,7 @@ class FullonFeed(DataBase):
         self._state = self._ST_HISTORY
         self._table = self._get_table()
 
-    def _load(self) -> bool:
+    def _load(self) -> Literal[False]:
         """
         Loads data from the database.
         """
@@ -138,10 +140,10 @@ class FullonFeed(DataBase):
         """
         Sets the bar size in minutes based on the feed period and compression.
 
-        The feed period can be 'minutes', 'hours', 'days', or 'weeks',
+        The feed period can be 'minutes', 'days', or 'weeks',
         and the bar size is calculated accordingly.
 
-        :attribute self.feed.period: Feed period, must be one of 'minutes', 'hours', 'days', or 'weeks'
+        :attribute self.feed.period: Feed period, must be one of 'minutes', 'days', or 'weeks'
         :type self.feed.period: str
         :attribute self.compression: Compression factor to multiply with the base period
         :type self.compression: int
@@ -151,8 +153,6 @@ class FullonFeed(DataBase):
         match self.feed.period.lower():
             case 'minutes':
                 self.bar_size_minutes = self.compression
-            case 'hours':
-                self.bar_size_minutes = self.compression*60
             case 'days':
                 self.bar_size_minutes = self.compression*24*60
             case 'weeks':
@@ -242,7 +242,6 @@ class FullonFeed(DataBase):
         period_map = {
             "ticks": 1,
             "minutes": 60,
-            "hours": 3600,
             "days": 86400,
             "weeks": 604800,
             "months": 2629746  # assuming 30.44 days per month
@@ -256,7 +255,7 @@ class FullonFeed(DataBase):
         """
         if self._state == self._ST_LIVE:
             self.result = []
-            self._last_id = None
+            self._last_id = ''
 
     def _fetch_ohlcv(self) -> None:
         """

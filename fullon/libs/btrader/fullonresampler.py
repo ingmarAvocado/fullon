@@ -13,6 +13,7 @@ class FullonFeedResampler:
 
     _data: DataBase
     _period: str
+    feed: object
     delta_time: int
     bars: int
     bar_size_minutes: int = 0
@@ -23,8 +24,7 @@ class FullonFeedResampler:
                 timeframe: Any,
                 compression: int,
                 fromdate: str,
-                exchange: str,
-                symbol: str) -> DataBase:
+                feed: str) -> DataBase:
         """
         Prepares the data feed by adding necessary attributes and methods.
 
@@ -33,7 +33,6 @@ class FullonFeedResampler:
         """
         self._data = data
         self._bars = bars
-
         # Define the DataFrame columns
         columns = {0: "date", 1: "open", 2: "high", 3: "low", 4: "close", 5: "volume"}
         dataframe = pd.DataFrame(columns=columns.values())
@@ -44,9 +43,10 @@ class FullonFeedResampler:
         # set time frame and period in case is needed
         setattr(data, 'timeframe', timeframe)
         setattr(data, 'compression', compression)
-        setattr(data, 'exchange', exchange)
-        setattr(data, 'symbol', symbol)
-        setattr(data, 'table', self._get_table(exchange=exchange, symbol=symbol))
+        setattr(data, 'exchange', feed.exchange_name)
+        setattr(data, 'symbol', feed.symbol)
+        setattr(data, '_table', self._get_table(exchange=data.exchange,
+                                                symbol=data.symbol))
 
         # Set the dataframe and append_row method as attributes of the data feed
         setattr(data, 'dataframe', dataframe)
@@ -59,6 +59,7 @@ class FullonFeedResampler:
         setattr(data, 'bar_size_minutes', bar_size)
         self._period = self._get_timeframe(self._data.timeframe)
         self.fill_starting_dataframe(fromdate=fromdate)
+        setattr(data, 'feed', feed)
         return data
 
     def _set_bar_size(self, timeframe: int, compression: int) -> int:
@@ -66,8 +67,6 @@ class FullonFeedResampler:
         match timeframe:
             case bt.TimeFrame.Minutes:
                 bar_size_minutes = compression
-            case bt.TimeFrame.Hours:
-                bar_size_minutes = compression*60
             case bt.TimeFrame.Days:
                 bar_size_minutes = compression*24*60
             case bt.TimeFrame.Weeks:
@@ -81,7 +80,7 @@ class FullonFeedResampler:
         to_date = arrow.utcnow()
         with DataBase_ohclv(exchange=self._data.exchange,
                             symbol=self._data.symbol) as dbase:
-            rows = dbase.fetch_ohlcv(table=self._data.table,
+            rows = dbase.fetch_ohlcv(table=self._data._table,
                                      compression=self._data.compression,
                                      period=self._period,
                                      fromdate=arrow.get(fromdate).datetime,  # Convert fromdate string to datetime
@@ -104,7 +103,7 @@ class FullonFeedResampler:
         to_date = to_date + pd.Timedelta(microseconds=-1)
         with DataBase_ohclv(exchange=self._data.exchange,
                             symbol=self._data.symbol) as dbase:
-            rows = dbase.fetch_ohlcv(table=self._data.table,
+            rows = dbase.fetch_ohlcv(table=self._data._table,
                                      compression=self._data.compression,
                                      period=self._period,
                                      fromdate=from_date,

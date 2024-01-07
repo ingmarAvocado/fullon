@@ -81,22 +81,27 @@ class simul:
         columns_to_drop = [col for col in drop if col in res_df.columns]
         res_df = res_df.drop(columns_to_drop, axis=1)
         red_df = res_df.sort_values(by='Profit', ascending=False)
+        res_df = res_df.loc[:, res_df.iloc[0].notna()]
         symbol = _results[0][1]['Symbol']
+        compression = _results[0][1]['Compression']
+        period = _results[0][1]['Period']
         strategy = _results[0][1]['Strategy']
         start_date = _results[0][1]['Start Date']
         end_date = _results[0][1]['End Date']
-
+        title = f"Strategy: {colored(strategy, 'green')} - "
+        title += f"Symbol: {colored(symbol, 'green')} - "
+        title += f"Periods: ({colored(period, 'green')}) - "
+        title += f"Compressions: ({colored(compression, 'green')}) - "
+        title += f"From: {colored(start_date, 'green')} to {colored(end_date, 'green')}"
         # Styling the print statement
         cprint('-' * 80, 'cyan')
-        cprint(f"* Strategy: {colored(strategy, 'green')} - "
-               f"Symbol: {colored(symbol, 'green')} - "
-               f"From: {colored(start_date, 'green')} to {colored(end_date, 'green')} *", 'cyan')
+        cprint(title, 'cyan')
         cprint('-' * 80, 'cyan')
         print(tabulate(res_df, headers='keys', tablefmt='pretty', showindex=True))
         if montecarlo:
             montecarlo_df = self._montecarlo(res_df=res_df)
             cprint('-' * 80, 'cyan')
-            cprint(f"* {colored('Montecarlo sim results:', 'green')} - ")
+            cprint(f"{colored('Multiple sim results:', 'cyan')} - {title}")
             print(tabulate(montecarlo_df, headers='keys', tablefmt='pretty'))
             cprint('-' * 80, 'cyan')
 
@@ -108,10 +113,10 @@ class simul:
         Returns:
             pd.DataFrame: A DataFrame containing aggregated statistics for Monte Carlo simulations.
         """
-
         # Identifying the parameter columns (excluding the performance metrics columns)
         param_cols = [col for col in res_df.columns if col not in ['TTrades', 'Win rate %', 'Fees', 'Profit', 'ROI', 'AvgReturn', 'Duration', 'MedReturn', 'NegStdDev', 'PosStdDev', 'SharpeRatio']]
         # Grouping by the unique combinations of simulation parameters
+        params_len = len(param_cols)
         grouped = res_df.groupby(param_cols)
         # Calculating the required statistics
         monte_stats = grouped.agg({
@@ -126,7 +131,7 @@ class simul:
                    'Profit_max': 'Profit_max',
                    'Profit_min': 'Profit_min',
                    'Profit_std': 'Profit_std',
-                   'Profit_count': 'Simulation_count'}
+                   'Profit_count': 'Count'}
 
         monte_stats.rename(columns=columns, inplace=True)
         monte_stats['Profit_range'] = monte_stats['Profit_max'] - monte_stats['Profit_min']
@@ -135,9 +140,10 @@ class simul:
         monte_stats['Risk_Score'] = monte_stats['Profit_std'] / monte_stats['Profit_mean']
         # Ensure that the risk score is a positive number
         monte_stats['Risk_Score'] = monte_stats['Risk_Score'].abs()
-        dynamic_cols = res_df.columns.tolist()[:res_df.columns.get_loc('TO') + 1]
+        #dynamic_cols = res_df.columns.tolist()[:res_df.columns.get_loc('TO')+1]
+        dynamic_cols = res_df.iloc[:, :params_len].columns.tolist()
         # Constructing the new column order
-        columns_order = dynamic_cols + ['Simulation_count', 'Profit_mean', 'Profit_median', 'Profit_max', 'Profit_min', 'Profit_std', 'Risk_Score']  # Adjusted 'Simulation Count' to 'Simulation_count' and 'Risk Score' to 'Risk_Score'
+        columns_order = dynamic_cols + ['Count', 'Profit_mean', 'Profit_median', 'Profit_max', 'Profit_min', 'Profit_std', 'Risk_Score']  # Adjusted 'Simulation Count' to 'Simulation_count' and 'Risk Score' to 'Risk_Score'
         monte_stats = monte_stats[columns_order]
         # Rounding profit columns and Risk Score to two decimal places
         stats_cols = ['Profit_mean', 'Profit_median', 'Profit_max', 'Profit_min', 'Profit_std', 'Risk_Score']  # Adjusted 'Risk Score' to 'Risk_Score'
@@ -194,15 +200,33 @@ class simul:
             return results[0]
 
         summaries = {}
-
+        compressions = ""
+        periods = ""
+        _results = []
         for n in range(0, len(results)):
-            simulresults = results[n]
+            try:
+                simulresults = results[n]
+                if isinstance(simulresults, str):
+                    print(simulresults)
+                if not simulresults:
+                    continue
+                detail = simulresults.pop()
+                _results.append({"simulresults": simulresults, 'detail': detail})
+                compressions += f"{detail['feed'].compression}, "
+                #if detail['feed'].compression != 1 and detail:
+                period = detail['feed'].period.lower()[:3]+detail['feed'].period[-1]
+                periods += f"{period}, "
 
-            if isinstance(simulresults, str):
-                print(simulresults)
-                continue
+            except (KeyError, IndexError):
+                pass
+        compressions = compressions.rstrip(", ")
+        periods = periods.rstrip(", ")
 
-            if not simulresults:
+        for n in range(0, len(_results)):
+            try:
+                simulresults = _results[n]['simulresults']
+                detail = _results[n]['detail']
+            except KeyError:
                 print(f"Empty simulation results for feed({n})")
                 continue
 
@@ -210,7 +234,6 @@ class simul:
                 if p not in bot.keys():
                     bot[p] = 0
 
-            detail = simulresults.pop()
             df = pd.DataFrame.from_dict(simulresults)
 
             if df.shape[0] <= 1:
@@ -226,7 +249,7 @@ class simul:
             durations = []
 
             # Iterate over grouped_df and add roi_pct of closing trade to the lists and calculate durations
-            for name, group in grouped_df:
+            for _, group in grouped_df:
                 try:
                     closing_trade_roi_pct = group.iloc[1]['roi_pct']
                     duration = group.iloc[1]['timestamp'] - group.iloc[0]['timestamp']
@@ -238,7 +261,7 @@ class simul:
                         loss_roi_pct.append(closing_trade_roi_pct)
                 except IndexError:
                     logger.error("IndexError evaluating simul results, try removing pickle/* and try again")
-                    raise
+                    exit()
 
             # Calculating metrics
             total_fees = round(df['fee'].sum(),2)
@@ -279,7 +302,9 @@ class simul:
             # Create summary dictionary
             summary = {
                 'Strategy': detail['strategy'],
-                'Symbol': detail['symbol'],
+                'Symbol': detail['feed'].symbol,
+                'Period': periods,
+                'Compression': compressions,
                 'Start Date': start_date,
                 'End Date': end_date
             }
@@ -360,7 +385,8 @@ class simul:
         # Date stuff
         final_summary['Start Date'] = summaries[0]['Start Date']
         final_summary['End Date'] = summaries[0]['End Date']
-
+        final_summary['Compression'] = summaries[0]['Compression']
+        final_summary['Period'] = summaries[0]['Period']
         final_summary = self.round_floats_in_dict(final_summary)
 
         return final_summary

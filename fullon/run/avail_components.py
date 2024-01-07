@@ -9,7 +9,7 @@ def get_components():
                   'bots': ['prev', 'next', 'start', 'stop', 'live', 'add', 'test', 'edit', 'exit', 'delete', "dry_reset"],
                   'exchange': ['list'],
                   'services': ['accounts', 'tickers', 'ohlcv', 'bots', 'services', 'full'],
-                  'strategies': ['add', 'delete'],
+                  'strategies': ['reload', 'delete'],
                   'symbols': ['list', 'add', 'delete', 'list_exchange'],
                   'tickers': ['list'],
                   'top': [],

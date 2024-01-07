@@ -101,6 +101,7 @@ class Bot:
                     tradeable[feed.exchange_name] = {}
                 tradeable[feed.exchange_name][feed.symbol] = True
             setattr(feed, 'user_ex_name', exch_dict[feed.exchange_name])
+            setattr(feed, 'strategy_name', self.strategy)
             ret_feeds.append(feed)
         return ret_feeds
 
@@ -171,7 +172,6 @@ class Bot:
         period_map = {
             "ticks": "minutes",
             "minutes": "minutes",
-            "hours": "hours",
             "days": "days",
             "weeks": "weeks",
             "months": "months"
@@ -185,9 +185,10 @@ class Bot:
         shift_args = {time_unit: -feed.compression * bars}
         # shift the current time by the specified amount and set the time to midnight
         if timeframe >= 5:
-            return arrow.utcnow().shift(**shift_args).floor('day')
+            target = arrow.utcnow().shift(**shift_args).floor('day')
         else:
-            return arrow.utcnow().shift(**shift_args).floor('minute')
+            target = arrow.utcnow().shift(**shift_args).floor('minute')
+        return target
 
     def _pair_feeds(self, cerebro: bt.Cerebro) -> bool:
         """
@@ -373,6 +374,7 @@ class Bot:
             if not self._sim_feeds_can_start(feed=feed, fromdate=fromdate):
                 logger.error("Feeds can't start, exiting bot startup")
                 return False
+
             # Choose the feed class based on the event parameter
             feed_name = "FullonEventFeed" if event else "FullonSimFeed"
             # Get the feed class object dynamically
@@ -466,7 +468,7 @@ class Bot:
         for num in range(0, len(self.simulresults)):
             self.simulresults[num].append({"strategy": self.strategy,
                                            "params": self.str_params,
-                                           "symbol": self.str_feeds[num].symbol,
+                                           "feed": self.str_feeds[num],
                                            "imgtitle": imgtitle})
         del cerebro
         return self.simulresults
@@ -481,8 +483,8 @@ class Bot:
         - None
         """
         # Initialize the first feed as None
-        feed0 = None
         fromdate = self.backload_from(bars=bars)
+        #fromdate = arrow.get('2023-09-04 00:00:00')
         feed_map = {}
         for num, feed in enumerate(self.str_feeds):
             compression = int(feed.compression)
@@ -522,9 +524,8 @@ class Bot:
                                 bars=bars,
                                 timeframe=timeframe,
                                 compression=compression,
-                                exchange=feed.exchange_name,
-                                fromdate=fromdate,
-                                symbol=feed.symbol)
+                                feed=feed,
+                                fromdate=fromdate.format("YYYY-MM-DD HH:mm:ss"))
 
     def get_broker(self, dry=False) -> bt.brokers.BackBroker:
         """
@@ -537,7 +538,7 @@ class Bot:
             broker = BaseBroker()
             broker.setcash(10000)
             broker.setcommission(
-                commission=0.0002,
+                commission=0.0015,
                 margin=None,
                 mult=1,
                 interest=.001

@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 import arrow
-import psutil
-from typing import List, Optional, Any
+import sys
+from typing import List, Optional
 import importlib
 from libs.structs.symbol_struct import SymbolStruct
 from libs import settings, cache, log
@@ -122,17 +122,19 @@ class InstallManager:
                             'size_pct', 'size_currency', 'leverage', 'pre_load_bars', 'feeds']
         pathworks = False
         strats = []
-        with Database() as dbase:
-            for (dirpath, dirnames, filenames) in os.walk(f'{prefix}strategies/'):
+        with Database() as dbase:  # Replace 'Database' with your actual database class
+            for (_, dirnames, _) in os.walk(f'{prefix}strategies/'):
                 for dirname in dirnames:
                     pathworks = True
                     if dirname != "__pycache__":
                         strats.append(dirname)
-                        #so here i need to instantiate dirname
-                        # then i need to get variable dirname.params
-                        module = importlib.import_module(
-                            'strategies.' + dirname + '.strategy',
-                            package='Strategy')
+                        module_name = f'strategies.{dirname}.strategy'
+                        if module_name in sys.modules:
+                            # If module is already imported, reload it
+                            module = importlib.reload(sys.modules[module_name])
+                        else:
+                            # Import the module for the first time
+                            module = importlib.import_module(module_name, package='Strategy')
                         params = {}
                         base_params = {}
                         for key, value in vars(module.Strategy.params).items():
@@ -142,14 +144,12 @@ class InstallManager:
                                 base_params[key] = value
                         dbase.install_strategy(
                             name=dirname, base_params=base_params, params=params)
-
             _strats = dbase.get_cat_strategies()
         for s in _strats:
-            if s.name not in _strats:
+            if s.name not in strats:
                 return False
         if not pathworks and prefix == '':
             return self.install_strategies(prefix='fullon/')
-
         return True
 
     def install_exchanges(self) -> None:
@@ -323,8 +323,22 @@ class InstallManager:
             List: A  list of dicts containing the bots
         """
         with Database() as dbase:
-            bots = dbase.get_strategies_bot(cat_str_name=cat_str_name)
+            bots = dbase.get_strategies_bots(cat_str_name=cat_str_name)
         return bots
+
+    def del_cat_str(self, cat_str_name: str) -> bool:
+        """
+        Delete cat_strategy
+
+        Args:
+            cat_str_name (str): the name of the strategy
+
+        Returns:
+            bool: True if success
+        """
+        with Database() as dbase:
+            result = dbase.del_cat_strategy(cat_str_name=cat_str_name)
+        return result
 
     def install_cache(self) -> bool:
         """

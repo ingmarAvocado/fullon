@@ -4,6 +4,7 @@ __pycache__/
 *.pyd
 
 fullon/pickle/
+fullon/predictors/
 fullon/tmp/
 fullon/fullon_history.txt
 fullon/conf/fullon_hush.json

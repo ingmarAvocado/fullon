@@ -19,7 +19,7 @@ class CTL(CTL):
     such as listing symbols.
     """
 
-    def get_user_list(self, page: int = 1, page_size: int = 10, all=False, minimal=False) -> list:
+    def get_user_list(self, page: int = 1, page_size: int = 30, all=False, minimal=False) -> list:
         """
         Retrieves a paginated list of strategies.
 

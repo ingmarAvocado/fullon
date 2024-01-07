@@ -6,8 +6,6 @@ import backtrader as bt
 import arrow
 from typing import Optional
 from libs.strategy import loader
-import numpy as np
-import talib
 import pandas
 import pandas_ta as ta
 

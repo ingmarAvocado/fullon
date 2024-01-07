@@ -380,6 +380,7 @@ class Interface(Ccxt_Interface):
         Returns:
         list: A list of trade dictionaries, each containing trade information such as price, volume, timestamp, and more.
         """
+        since = since+1
         symbol = self.replace_symbol(symbol=symbol)
         if len(str(since)) == 10:
             since = int(str(since) + "000000000")
@@ -406,7 +407,7 @@ class Interface(Ccxt_Interface):
             trade_structs.append(TradeStruct.from_dict(trade))
         return trade_structs
 
-    def replace_symbol(self, symbol: str) -> str:
+    def replace_symbol(self, symbol: str) -> Optional[str]:
         try:
             return self.ws.markets[symbol]['id']
         except KeyError as error:

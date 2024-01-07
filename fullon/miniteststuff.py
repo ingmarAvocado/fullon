@@ -39,14 +39,17 @@ logger = log.fullon_logger(__name__)
 dbase = Database()
 store = cache.Cache()
 
-manager = InstallManager()
-manager.install_strategies()
+#manager = InstallManager()
+#manager.install_strategies()
 
 
 #UID = ''
 user = user_manager.UserManager()
 UID = user.get_user_id(mail='admin@fullon')
-details = user.user_details(uid=UID)
+if UID:
+    details = user.user_details(uid=UID)
+else:
+    raise ValueError("No user id")
 exch = dbase.get_exchange(user_id=UID)[0]
 
 orderBuy = {"ex_id": exch.ex_id,
@@ -98,7 +101,7 @@ orderStopLoss = {"ex_id": exch.ex_id,
                  "bot_id": "00000000-0000-0000-0000-000000000002"}
 orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 
-
+# 2020-09-18 01:19:14.832102
 #exch = exchange_methods.ExchangeMethods(exchange='kraken', params=exch)
 #exch.create_order(order=orderBuy)
 #exit()
@@ -121,9 +124,9 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 #print(exch.cancel_order(oid=oid))
 #time.sleep(1)
 #del exch
-#ohlcv = OhlcvManager()
-#ohlcv.run_ohlcv_loop(symbol='ETH/BTC', exchange='kraken')
-#ohlcv.run_loop()
+ohlcv = OhlcvManager()
+ohlcv.run_ohlcv_loop(symbol='ETH/BTC', exchange='kraken')
+ohlcv.run_loop()
 #exch.get_positions()
 #exch.connect_websocket()
 #exch.socket_con0nected()

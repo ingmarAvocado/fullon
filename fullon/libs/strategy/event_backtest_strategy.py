@@ -11,12 +11,10 @@ from __future__ import (
     print_function,
     unicode_literals)
 
-from numpy import take
-from libs import settings, log
+from libs import log
 from libs.strategy import backtest_strategy as strategy
 from backtrader import TimeFrame
-import arrow
-import backtrader as bt
+import pandas
 
 
 logger = log.fullon_logger(__name__)
@@ -69,8 +67,10 @@ class Strategy(strategy.Strategy):
             if not self.order_placed:
                 self.next_event_no_pos()
         else:
-            if not self._check_end_simul():
-                self.risk_management()
+            filter_date = pandas.to_datetime(self.curtime[0].format('YYYY-MM-DD HH:mm:ss'))
+            self.indicators_df = self.indicators_df[self.indicators_df.index > filter_date]
+            self.risk_management()
+            self._check_end_simul()
             self._end_next()
 
     def update_trade_vars(self, feed: int = 0) -> None:
@@ -159,8 +159,6 @@ class Strategy(strategy.Strategy):
         # Define a time list with the last date
 
         #if self.curtime[0].timestamp() >= arrow.get('2023-06-23T19:37:00+00:00').timestamp():
-        #    import ipdb
-        #    ipdb.set_trace()
         times = [self.datas[0].last_date]
 
         # Define a dictionary to store the events with their dates

@@ -155,8 +155,8 @@ def strategies():
                 else:
                     print("You are already on the first page.")
                     continue
-            case 'add':
-                res = _ctl.add_strategies()
+            case 'reload':
+                res = _ctl.reload_strategies()
             case 'delete':
                 strats = []
                 for s in _strats:

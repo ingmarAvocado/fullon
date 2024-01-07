@@ -469,7 +469,7 @@ class CTL(CTL):
         # If the current feed period is not 'ticks', prompt the user for period and compression
         if 'ticks' not in feed['period'].lower():
             while True:
-                periods = ['Minutes', 'Hours', 'Days', 'Weeks', 'Months']
+                periods = ['Minutes', 'Days', 'Weeks', 'Months']
                 completer = WordCompleter(periods, ignore_case=True)
                 period = session.prompt(f"(Bots Shell Feed) Pick feed period > ", completer=completer)
                 if period in periods:
@@ -503,7 +503,7 @@ class CTL(CTL):
         Returns:
             list: A list of dictionaries, each containing a bot's status information.
         """
-        page_size = 20
+        page_size = 30
         bots: list = self.RPC.bots("list", {'page': page, 'page_size': page_size})
         for num, bot in enumerate(bots, start=(page-1)*page_size+1):
             # Drop the 'timestamp' field

@@ -44,7 +44,11 @@ def handler(signal_received: int, frame) -> None:
 
 def kill_processes(name):
     # Get list of all running processes
-    pids = subprocess.check_output(["pgrep", "-f", name])
+    try:
+        pids = subprocess.check_output(["pgrep", "-f", name])
+    except subprocess.CalledProcessError:
+        print("No processes to kill")
+        return
     if not pids:
         return
     pids = pids.splitlines()
@@ -169,7 +173,6 @@ def main(cli_args: argparse.Namespace) -> None:
                         args=(cli_args.full, cli_args.services, stop_event))
         thread.start()
         logger.warning("Console detached")
-        quit = False
         while thread.is_alive():
             time.sleep(2)
     except KeyboardInterrupt:

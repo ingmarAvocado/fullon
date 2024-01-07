@@ -19,7 +19,7 @@ class CTL(CTL):
     such as listing symbols.
     """
 
-    def get_symbol_list(self, page: int = 1, page_size: int = 10, all=False, minimal=False) -> list:
+    def get_symbol_list(self, page: int = 1, page_size: int = 30, all=False, minimal=False) -> list:
         """
         Retrieves a paginated list of strategies.
 
@@ -186,7 +186,7 @@ class CTL(CTL):
 
         for feed in range(0, feeds):
             while True:
-                periods = ['Minutes', 'Hours', 'Days', 'Weeks', 'Months']
+                periods = ['Minutes', 'Days', 'Weeks', 'Months']
                 if feed == 0:
                     periods = ['Ticks']
                 completer = WordCompleter(periods, ignore_case=True)

@@ -1,0 +1,62 @@
+Process Process-10:
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/ingmar/code/trading/fullon/libs/database.py", line 51, in process_requests
+    result = method(**method_params)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ingmar/code/trading/fullon/libs/models/bot_model.py", line 187, in get_last_actions
+    cur.execute(sql, (ex_id, symbol))
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+Process Process-12:
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/ingmar/code/trading/fullon/libs/database.py", line 51, in process_requests
+    result = method(**method_params)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ingmar/code/trading/fullon/libs/models/trades_model.py", line 255, in get_trades
+    cur.execute(base_sql, params)
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+Exception in thread Thread-10 (start):
+Traceback (most recent call last):
+  File "/home/ingmar/code/trading/fullon/libs/models/ohlcv_model.py", line 329, in save_symbol_trades
+    cur.executemany(sql, ([AsIs(table), *row] for row in prepared_data))
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.11/threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/ingmar/code/trading/fullon/run/ohlcv_manager.py", line 105, in start
+    return self.run_ohlcv_loop(symbol=symbol, exchange=exchange)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ingmar/code/trading/fullon/run/ohlcv_manager.py", line 258, in run_ohlcv_loop
+    self.fetch_individual_trades_ws(symbol=symbol_struct)
+  File "/home/ingmar/code/trading/fullon/run/ohlcv_manager.py", line 176, in fetch_individual_trades_ws
+    dbase.save_symbol_trades(trades)
+  File "/home/ingmar/code/trading/fullon/libs/models/ohlcv_model.py", line 333, in save_symbol_trades
+    self.con.rollback()
+psycopg2.InterfaceError: connection already closed
+
+
+2023-12-11 06:43:20,642 - ERROR - trades_model (L: 152) - Error can't save_trade, postgres says: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+

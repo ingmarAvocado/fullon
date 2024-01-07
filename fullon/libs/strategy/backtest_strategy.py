@@ -29,9 +29,10 @@ class Strategy(strategy.Strategy):
     def nextstart(self):
         """prepare the startegy"""
         super().nextstart()
-        self.set_indicators_df()
         if not self.indicators_df.empty:
             self.indicators_df.dropna(inplace=True)
+        else:
+            self.set_indicators_df()
         self._state_variables()
         self.local_nextstart()
         self.last_trading_date = arrow.get(
@@ -42,20 +43,13 @@ class Strategy(strategy.Strategy):
         """ description """
         self.status = "looping"
         self._set_indicators()
-        '''
-        if self.curtime[0] > arrow.get("2023-06-29 17:04:00"):
-            import ipdb
-            ipdb.set_trace()
-        '''
-        # if self.verbose:
-        #    self._print_position_variables(0)
         if self.anypos == 0:
             self.local_next()
         else:
             if not self._check_end_simul():
                 self.risk_management()
             self._end_next()
-        return True
+        return
 
     def _set_indicators(self):
         self._state_variables()

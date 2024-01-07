@@ -30,6 +30,7 @@ class BotStatusManager:
     """ main account class"""
 
     started: bool = False
+    _bot_blocked: dict = {}
 
     def __init__(self):
         """ description """
@@ -99,8 +100,7 @@ class BotStatusManager:
             self._find_and_block_position(position=position)
         self._unblock_unnecessary(positions=positions)
 
-    @staticmethod
-    def _unblock_unnecessary(positions: List[PositionStruct]) -> None:
+    def _unblock_unnecessary(self, positions: List[PositionStruct]) -> None:
         """
         Unblocks exchanges and symbols that are not currently in active positions.
 
@@ -131,9 +131,10 @@ class BotStatusManager:
                                                      symbol=block['symbol']):
                         store.unblock_exchange(ex_id=block['ex_id'],
                                                symbol=block['symbol'])
+                        key = f"{block['ex_id']}:{block['symbol']}"
+                        self._bot_blocked[key] = False
 
-    @staticmethod
-    def _find_and_block_position(position: PositionStruct) -> None:
+    def _find_and_block_position(self, position: PositionStruct) -> None:
         """
         Checks and blocks an exchange and symbol pair based on a given position.
 
@@ -147,7 +148,7 @@ class BotStatusManager:
         Returns:
             None
         """
-
+        key = f"{position.ex_id}:{position.symbol}"
         with Database() as dbase:
             logs = dbase.get_last_actions(symbol=position.symbol, ex_id=position.ex_id)
 
@@ -161,11 +162,12 @@ class BotStatusManager:
                         logger.warning("Blocking exchange '%s' symbol '%s' due to matching log.", position.ex_id, position.symbol)
                         store.block_exchange(ex_id=position.ex_id, symbol=position.symbol, bot_id=log.bot_id)
                         break
-
         if not blocked:
-            # If no corresponding log found, block with a default bot ID
-            logger.warning("Position detected without a corresponding bot log. Blocking with default bot ID.")
+            if not self._bot_blocked.get(key, False):
+                logger.warning("Position detected without a corresponding bot log. Blocking with default bot ID.")
+            #  If no corresponding log found, block with a default bot ID                
             with Cache() as store:
+                self._bot_blocked[key] = True
                 store.block_exchange(ex_id=position.ex_id, symbol=position.symbol, bot_id=0)
 
     def relaunch(self):

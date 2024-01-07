@@ -12,26 +12,14 @@ startohlcv()
 startdb()
 exchange.start_all()
 signal = Event()
-bot1 = Bot(8)
-bot1.dry_run = False
+bot1 = Bot(27)
+bot1.dry_run = True
 print("starting")
 try:
-    bot1.run_loop(test=True, stop_signal=signal)
+    bot1.run_loop(test=False, stop_signal=signal)
 except KeyboardInterrupt:
     print("hola")
-#bot1
-'''
-manager = BotManager()
-manager.start_bot(4)
-time.sleep(4)
-print("next one")
-manager.start_bot(7)
-#print(manager.is_running(3))
-#ipdb.set_trace()
-#manager.start(3)
-#res = manager.bots_list()
-#manager.bots_live_list()
-'''
+
 print("minitest complete")
 
 exchange.stop_all()

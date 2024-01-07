@@ -174,8 +174,11 @@ class ExchangeMethods():
         """
         return self.wbsrv.start_my_trades_socket()
 
-    def fetch_trades(self, symbol: Optional[str], since: Optional[int], limit: Optional[int] = None,
-                         params: Optional[Dict[str, Any]] = None) -> Any:
+    def fetch_trades(self,
+                     symbol: Optional[str],
+                     since: Optional[int],
+                     limit: Optional[int] = None,
+                     params: Optional[Dict[str, Any]] = None) -> Any:
         """Fetches all trades.
 
         Args:

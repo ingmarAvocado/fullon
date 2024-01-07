@@ -9,9 +9,10 @@ import pytest
 def mock_prompt(prompt, **kwargs):
     # Map prompt strings to responses
     prompt_responses = {
-        "(Strategy Shell) Select a strategy by name: ": "trading101",
-        "(Strategy Shell) Select a strategy from catalog: ": "trading101",
-        "(Strategy Shell) Select a name: ": "testname"
+        "(Strategies Shell) Select a strategy by name: ": "trading101",
+        "(Strategies Shell) Select a strategy from catalog: ": "trading101",
+        "(Strategies Shell) Select a name: ": "testname",
+        "(Strategies Shell) Select a strategy to delete> ": "trading101"
     }
     response = prompt_responses.get(prompt, "")
     return response
@@ -43,7 +44,7 @@ def test_add_strats(ctl):
 
 
 @patch('libs.ctl.ctl_strategies_lib.PromptSession', autospec=True)
-def test_set_new_strategy(mock_prompt_session, ctl, uid):
+def test_set_new_strategy(mock_prompt_session, ctl):
     # Mock the prompt function
     mock_prompt_session.return_value.prompt.side_effect = mock_prompt
     # Use create_pipe_input and DummyOutput
@@ -54,5 +55,13 @@ def test_set_new_strategy(mock_prompt_session, ctl, uid):
         result = ctl.del_user_strategy(0)
         assert 'Error' in result
 
-def test_delete_strategy(ctl):
-    pass
+@patch('libs.ctl.ctl_strategies_lib.PromptSession', autospec=True)
+def test_delete_strategy(mock_prompt_session, ctl):
+    # Mock the prompt function
+    strats = ['trading101']
+    mock_prompt_session.return_value.prompt.side_effect = mock_prompt
+    # Use create_pipe_input and DummyOutput
+    with create_pipe_input() as inp:
+        inp.send_text("trading101\n")
+        result = ctl.del_strategy(strats=strats)
+        assert isinstance(result[0], dict)

@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Union, Tuple, Any
 import psycopg2
 from psycopg2.extensions import AsIs, ISOLATION_LEVEL_AUTOCOMMIT, ISOLATION_LEVEL_DEFAULT
 from psycopg2.pool import PoolError
@@ -7,17 +7,19 @@ import arrow
 import time
 from libs import settings, log
 from libs import database_helpers as dbhelpers
-from libs.connection_pg_pool import create_connection_pool
+from libs.connection_pg_pool import create_connection_pool, close_all_database_pools
 from libs.structs.trade_struct import TradeStruct
 from datetime import datetime
 
 
 logger = log.fullon_logger(__name__)
+_max_conn: int
 
 
 class Database:
 
     def __init__(self, exchange: str, symbol: str, max_conn: int = settings.DBPOOLSIZE, simul: bool = False):
+        self._max_conn = max_conn
         self.exchange = exchange
         symbol = exchange + "_" + symbol.replace("/", "_")
         symbol = symbol.replace(":", "_")
@@ -43,6 +45,31 @@ class Database:
         except PoolError as error:
             logger.error(str(error))
 
+    def reset_connection_pool(self):
+        """
+        Now some times due to some raise errors my code needs
+        to reset the connection pool.
+
+        Help with the the reseting here
+
+        """
+        close_all_database_pools()
+        self.get_connection(max_conn=self._max_conn)
+
+    @staticmethod
+    def is_connection_valid(conn):
+        """
+        Check if the database connection is open and valid.
+        """
+        try:
+            # Use a simple query to test the connection
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                return True
+        except (psycopg2.DatabaseError, psycopg2.OperationalError):
+            # If there's any error, the connection is not valid
+            return False
+
     def get_connection(self, max_conn: int, retries: int = 60, delay: int = 1) -> None:
         """
         Attempt to obtain a connection from the pool, with retries.
@@ -56,8 +83,12 @@ class Database:
                                            database=settings.DBNAME_OHLCV)
         while retries > 0:
             try:
-                self.con = self.pool.getconn()
-                break  # Exit the loop if connection is successful
+                temp_con = self.pool.getconn()
+                if self.is_connection_valid(temp_con):
+                    self.con = temp_con
+                    break
+                else:
+                    self.pool.putconn(temp_con, close=True)
             except (PoolError, OperationalError) as error:
                 logger.error(f"Connection attempt failed: {error}")
                 time.sleep(delay)  # Wait for a while before retrying
@@ -68,20 +99,19 @@ class Database:
             # Handle the situation where connection could not be established
             # For example, raise an exception or return a specific value
 
-
     def fetch_ohlcv(self,
                     table: str,
                     compression: int,
                     period: str,
                     fromdate: datetime,
-                    todate: datetime) -> str:
+                    todate: datetime) -> List[Any]:
         """
         Fetches OHLCV data from a PostgreSQL database.
 
         Args:
             table (str): The name of the table to fetch data from.
             compression (int): The compression factor for the time buckets.
-            period (str): The period  for the time buckets. minutes, days, hours, etc
+            period (str): The period  for the time buckets. minutes, days, etc
             fromdate (str): The starting date for the data range (inclusive), in 'YYYY-MM-DD' format.
             todate (str): The ending date for the data range (inclusive), in 'YYYY-MM-DD' format.
 
@@ -575,7 +605,7 @@ class Database:
 
         Args:
             compression (int): The compression factor for the time buckets.
-            period (str): The period size for the time buckets, e.g., 'minutes', 'hours'.
+            period (str): The period size for the time buckets, e.g., 'minutes', 'days'.
 
         Returns:
             A list of tuples representing the VWAP data. Each tuple contains:
@@ -588,8 +618,6 @@ class Database:
         match period.lower():
             case 'minutes':
                 fromdate = todate.shift(minutes=-compression*8)
-            case 'hours':
-                fromdate = todate.shift(hours=-compression*8)
             case 'days':
                 fromdate = todate.shift(days=-compression*8)
             case _:
@@ -618,7 +646,7 @@ class Database:
 
         Args:
             compression (int): The compression factor for the time buckets.
-            period (str): The period size for the time buckets, e.g., 'minutes', 'hours'.
+            period (str): The period size for the time buckets, e.g., 'minutes', 'days'.
 
         Returns:
             A list of tuples representing the TWAP data. Each tuple contains:
@@ -631,8 +659,6 @@ class Database:
         match period.lower():
             case 'minutes':
                 fromdate = todate.shift(minutes=-compression*8)
-            case 'hours':
-                fromdate = todate.shift(hours=-compression*8)
             case 'days':
                 fromdate = todate.shift(days=-compression*8)
             case _:

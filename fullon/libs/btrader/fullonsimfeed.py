@@ -28,13 +28,12 @@ class FullonSimFeed(FullonFeed):
     time_factor: int
     last_date: Optional[arrow.arrow.Arrow] = None
     dataframe = None
-    MAX_TRADE_BARS = 8000  # bars
+    MAX_TRADE_MINUTES = 525600  # bars
     noise = settings.NOISE
 
     def _load(self):
         """Description"""
         if self._state == self._ST_HISTORY:
-            # this are ticks...
             self._fetch_ohlcv()
             self._load_ohlcv()
             return True
@@ -42,10 +41,11 @@ class FullonSimFeed(FullonFeed):
             return False
         return False
 
-    def start(self):
+    def start(self, count=1):
         super().start()
         self.time_factor = self.get_time_factor()
         self.last_date = self.get_last_date().floor('day').shift(minutes=0)
+        #self.last_date = self.get_last_date()
         self.last_moments = self.params.mainfeed.last_date.shift(  # pylint: disable=no-member
             seconds=-self.time_factor)
         self.last_moments = bt.date2num(self.last_moments)
@@ -98,7 +98,8 @@ class FullonSimFeed(FullonFeed):
         bool: Returns True if the file was successfully saved, False otherwise.
         """
         pre_fix = f"pickle/{self._table}_{self.compression}_{self.feed.period}"
-        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH_mm')}.pkl"
+        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH_mm')}"
+        filename += f"_to_{self.last_date.format('YYYY_MM_DD_HH_mm')}.pkl"
         try:
             self.dataframe.to_pickle(filename)
             print(f"saved: {filename}")
@@ -114,7 +115,8 @@ class FullonSimFeed(FullonFeed):
             pd.DataFrame: The loaded data.
         """
         pre_fix = f"pickle/{self._table}_{self.compression}_{self.feed.period}"
-        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH_mm')}.pkl"
+        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH_mm')}"
+        filename += f"_to_{self.last_date.format('YYYY_MM_DD_HH_mm')}.pkl"
         rows = []
         try:
             with open(filename, 'rb') as file:
@@ -125,8 +127,9 @@ class FullonSimFeed(FullonFeed):
                 new_df = self.dataframe[self.dataframe.index >= x_date]
                 new_df.reset_index(inplace=True)
                 rows = new_df.values.tolist()
+
         except FileNotFoundError:
-            print(f"Pickle file ({filename}) not found")
+            logger.error(f"Pickle file ({filename}) not found")
         return rows
 
     def _add_gaussian_noise(self, std_scale=0.003):
@@ -176,7 +179,7 @@ class FullonSimFeed(FullonFeed):
         Returns:
             rows: The fetched data.
         """
-        todate = arrow.get(self.last_date).floor('day')
+        todate = self.last_date
         todate = todate.format('YYYY-MM-DD HH:mm:ss ZZ')
         with Database_ohlcv(exchange=self.feed.exchange_name,
                             symbol=self.symbol) as dbase:
@@ -190,8 +193,8 @@ class FullonSimFeed(FullonFeed):
         # Determine the resampling rule based on the compression and feed period
         if self.compression != 1 and self.feed.period.lower() == 'minutes':
             resampling_rule = f'{self.compression}T'
-        elif self.compression != 1 and self.feed.period.lower() in ['hours', 'days']:
-            time_unit = 'H' if self.feed.period == 'hours' else 'D'
+        elif self.feed.period.lower() in ['days']:
+            time_unit = 'D'
             resampling_rule = f'{self.compression}{time_unit}'
         else:
             return  # No resampling needed
@@ -256,6 +259,10 @@ class FullonSimFeed(FullonFeed):
                 else:
                     self._add_gaussian_noise()
                 rows = self.dataframe.reset_index().values.tolist()
+            self.last_date = arrow.get(rows[-1][0])
+            self.last_moments = self.params.mainfeed.last_date.shift(  # pylint: disable=no-member
+                seconds=-self.time_factor)
+            self.last_moments = bt.date2num(self.last_moments)
             self.result = deque(rows)
             if self.compression != 1 and self.feed.period != 'minutes':
                 self.adjust_dataframe()

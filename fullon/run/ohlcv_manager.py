@@ -135,8 +135,6 @@ class OhlcvManager:
         Returns:
             None
         """
-        import time
-
         with self.database_handler(symbol=symbol) as dbase:
             last_ts = dbase.get_latest_timestamp(
                 table2=symbol.exchange_name+"_" + symbol.symbol.replace("/", "_") + ".trades")
@@ -145,7 +143,8 @@ class OhlcvManager:
         else:
             since = time.time() - (symbol.backtest * 24 * 60 * 60) # timestamp 'symbol.backtest' days ago
         trade_manager = TradeManager()
-        while not stop_signal.is_set():
+        #while not stop_signal.is_set():
+        while True:
             last = trade_manager.update_trades_since(exchange=symbol.exchange_name,
                                                      symbol=symbol.symbol,
                                                      since=since,

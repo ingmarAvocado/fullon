@@ -2,7 +2,6 @@
 Comments
 """
 
-from tabulate import tabulate
 from libs import log
 from libs.ctl.ctl_ticks_lib import CTL
 from clint.textui import colored
@@ -20,7 +19,7 @@ class CTL(CTL):
     """
 
     def get_strat_list(self, page: int = 1,
-                       page_size: int = 10,
+                       page_size: int = 30,
                        all=False,
                        minimal=False) -> list:
         """
@@ -54,43 +53,72 @@ class CTL(CTL):
         _strats: list = self.RPC.strategies('user_list', args)
         return _strats
 
-    def add_strategies(self) -> bool:
+    def reload_strategies(self) -> bool:
         """
         Adds new strategies to the system and prints a success or failure message.
 
         Returns:
             None
         """
-        res: bool = self.RPC.strategies('add')
-        if res:
-            print(colored.green("Strategies have been added"))
-            return True
-        else:
-            print(colored.red("No new strategies to add"))
-            return False
+        res: bool = self.RPC.strategies('reload')
+        print(colored.green("Strategies have been reloaded"))
 
     def del_strategy(self, strats: List):
         """
         deletes a global strategy from the system
         """
-        bots = self.RPC.strategies('get_bots', {'cat_str_name': cat_str_name})
-
         session = PromptSession()
         completer = WordCompleter(strats, ignore_case=True)
 
         while True:
             try:
-                print("Pick strategy to delete")
-                cat_str_name = session.prompt("(Strategies Shell)> ",
+                cat_str_name = session.prompt("(Strategies Shell) Select a strategy to delete> ",
                                               completer=completer).strip().lower()
-            except (EOFError, KeyboardInterrupt):  # Catch Ctrl+D and Ctrl+C and exit
+            except (EOFError, KeyboardInterrupt):
                 return
             except ValueError:
                 print(colored.red("\nInvalid input, please enter a valid strategy to delete"))
 
-            print(f"i will delete {cat_str_name}")
+            print(f"Lets delete: {cat_str_name}")
             # 1 check if there is a bot with that strategy, if it is ask if we want to delete
             bots = self.RPC.strategies('get_bots', {'cat_str_name': cat_str_name})
+            completer = WordCompleter(['yes', 'no'], ignore_case=True)
+            if bots:
+                print("To delete this strategy we are going to delete associated bots:")
+                _yes = False
+                for bot in bots:
+                    print(f"- bot_id {bot['bot_id']} owned by {bot['mail']}")
+                try:
+                    _yes = session.prompt("(Strategies Shell) Are you sure you want to delete bots> ",
+                                          completer=completer).strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    return
+                except ValueError:
+                    print(colored.red("\nInvalid input, please enter pick a valid choice"))
+                if _yes == "yes":
+                    for bot in bots:
+                        delete = self.RPC.bots('delete', {'bot_id': bot['bot_id']})
+                        if 'Error' not in str(delete):
+                            print(colored.green(f"Bot bot_id {bot['bot_id']} deleted"))
+                        else:
+                            print(colored.red(f"Bot bot_id {bot['bot_id']} could not be deleted"))
+
+            if bots and _yes != 'yes':
+                break
+            else:
+                try:
+                    _yes = session.prompt("(Strategies Shell) Are you sure you want to delete> ",
+                                          completer=completer).strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    return
+                except ValueError:
+                    print(colored.red("\nInvalid input, please enter a valid strategy to delete"))
+                if _yes == "yes":
+                    if self.RPC.strategies('del_cat_str', {'cat_str_name': cat_str_name}):
+                        print(colored.green(f"Strategy {cat_str_name} deleted"))
+                    else:
+                        print(colored.red(f"Strategy {cat_str_name} could not be deleted"))
+            return bots
 
         #bots = self.RPC.strategies('get_bots', {'cat_str_id': cat_str_id})
 
