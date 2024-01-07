@@ -152,28 +152,6 @@ class Strategy(bt.Strategy):
     def set_indicators_df(self):
         pass
 
-    def set_brokers(self) -> None:
-        """
-        Initializes and sets the brokers for each data feed.
-
-        Returns:
-            None
-        """
-        self.brokers: List[bt.Broker] = []
-        for i, data in enumerate(self.datas):
-            if self.dry_run:
-                broker = bt.brokers.BackBroker()
-                broker.setcash(10000)
-                broker.setcommission(
-                    commission=0.001,
-                    margin=None,
-                    mult=1,
-                    interest=.001
-                )
-            else:
-                broker = FullonBroker(feed=data.feed)
-            self.datas[i].broker = broker
-
     def feeds_have_futures(self):
         """ check if a trading feed supports futures """
         for _, data in enumerate(self.datas):
@@ -264,6 +242,8 @@ class Strategy(bt.Strategy):
         setattr(self.indicators, name, value)
 
     def _set_indicators(self):
+        """
+        """
         self._state_variables()
         self.udpate_indicators_df()
         if not self.indicators_df.empty:
@@ -558,7 +538,6 @@ class Strategy(bt.Strategy):
 
         # if bot not blocked
         # then block using a new key,, say bot is opening position
-
         if self.datas[0].last_moments is True:
             return False
         if self.entry_signal[datas_num] == "Buy":
@@ -640,8 +619,14 @@ class Strategy(bt.Strategy):
         if self.size[datas_num]:
             entry = (self.size[datas_num] / price * self.p.leverage)
         else:
-            cash = self.cash[datas_num] * (self.p.size_pct / 100) * self.p.leverage
-            entry = cash / price
+            # Get the cash available for the dataset
+            available_cash = self.cash[datas_num]
+            # Calculate the total cash to be used for the trade
+            cash_for_trade = available_cash * (self.p.size_pct / 100)
+            # Apply leverage
+            cash_with_leverage = cash_for_trade * self.p.leverage
+            # Calculate entry size
+            entry = cash_with_leverage / price
         return entry
 
     def kill_orders(self):
@@ -724,7 +709,7 @@ class Strategy(bt.Strategy):
         self.lastclose[datas_num] = 'Open'
         if self.datas[datas_num].feed.futures:
             entry_size = self.entry(datas_num=datas_num,
-                                    price=self.tick[datas_num])
+                                    price=self.tick[datas_num]) 
             return self.place_order(signal="Sell",
                                     otype=otype,
                                     entry=entry_size,
@@ -751,13 +736,10 @@ class Strategy(bt.Strategy):
         """
         current_time = self.curtime[feed]
         compression = self.datas[feed].compression
-
         # Depending on the timeframe, calculate the time to the next bar
         match self.datas[feed].timeframe:
             case bt.TimeFrame.Minutes:
                 next_bar_time = current_time.shift(minutes=compression)
-            case bt.TimeFrame.Hours:
-                next_bar_time = current_time.shift(hours=compression)
             case bt.TimeFrame.Days:
                 next_bar_time = current_time.shift(days=compression)
             case bt.TimeFrame.Weeks:

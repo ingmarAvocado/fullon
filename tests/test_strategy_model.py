@@ -71,5 +71,17 @@ def test_install_strategy(dbase):
     strname = 'pytest'
     base_params = {'take_profit': 2.5, 'trailing_stop': None, 'timeout': 30, 'stop_loss': 1.5, 'pre_load_bars': 30, 'feeds': 2} 
     params = {'rsi_period': 14, 'rsi_upper': 63, 'rsi_lower': 36}
-
     res = dbase.install_strategy(name=strname, base_params=base_params, params=params)
+    assert res is None
+
+
+def test_get_strategies_bot(dbase):
+    cat_str_name = "trading101"
+    res = dbase.get_strategies_bots(cat_str_name=cat_str_name)
+    assert isinstance(res[0].name, str)
+
+
+def test_delete_cat_strategy(dbase):
+    cat_str_name = "pytest"
+    res = dbase.del_cat_strategy(cat_str_name=cat_str_name)
+    assert res is True

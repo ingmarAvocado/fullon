@@ -42,7 +42,7 @@ class FullonEventFeed(FullonSimFeed):
         Determine the time of the next timeout.
 
         If a timeout has been set, it will be used. Otherwise, the timeout will
-        be set to MAX_TRADE_BARS bars after the current time.
+        be set to MAX_TRADE_MINUTES after the current time.
 
         Parameters:
         - cur_time (str): The current time.
@@ -51,12 +51,12 @@ class FullonEventFeed(FullonSimFeed):
         - arrow.Arrow: The time of the next timeout.
         """
         if self.timeout:
-            timeout = self.timeout
+            timeout = arrow.get(self.timeout)
         else:
-            # Get the duration of a single bar in the relevant unit (minutes, hours, days, etc.)
+            # Get the duration of a single bar in the relevant unit (minutes,  days, etc.)
             bar_duration = {self.feed.period: self.compression}
-            # calculate the total shift duration for MAX_TRADE_BARS
-            maxi = self.MAX_TRADE_BARS
+            # calculate the total shift duration for MAX_TRADE_MINUTES
+            maxi = self.MAX_TRADE_MINUTES
             total_duration = {self.feed.period: self.compression * maxi}
             timeout = arrow.get(cur_time).shift(**total_duration)
         return timeout

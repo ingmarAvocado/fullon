@@ -8,7 +8,7 @@ from unittest.mock import patch
 def mock_prompt(prompt, **kwargs):
     # Map prompt strings to responses
     prompt_responses = {
-        "(Strategy Shell) Select a strategy by name: ": "trading101",
+        "(Strategies Shell) Select a strategy by name: ": "trading101",
         "(Bots Shell Feed) Pick Feed Exchange - press [tab] > ": "kraken",
         "(Bots Shell Feed) Pick Symbol > ": "BTC/USD",
         "(Symbols Shell Feed) Pick feed 0 period > ": "Ticks",

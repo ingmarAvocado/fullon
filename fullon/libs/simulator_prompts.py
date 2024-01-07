@@ -211,7 +211,7 @@ class Prompts():
             return
         param_names = list(self.FEEDS.keys())
         session = PromptSession(complete_style=CompleteStyle.MULTI_COLUMN)
-        periods = ["Ticks", "Minutes", "Hours", "Days", "Weeks", "Months"]
+        periods = ["Ticks", "Minutes", "Days", "Weeks", "Months"]
         period_options = WordCompleter(periods)
         field_options = WordCompleter(['Period', 'Compression'], ignore_case=True)
 
@@ -414,9 +414,6 @@ class Prompts():
             match feed['Period'].lower():
                 case 'minutes':
                     feeds[num] = {'compression': feed['Compression']}
-                case 'hours':
-                    minutes = int(feed['Compression']) * 60
-                    feeds[num] = {'compression': minutes}
                 case 'days':
                     minutes = int(feed['Compression']) * 60 * 24
                     feeds[num] = {'compression': minutes}

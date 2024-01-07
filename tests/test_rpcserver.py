@@ -123,8 +123,17 @@ def test_strategies_user_list(client, uid):
 
 def test_strategies_bot(client):
     response = client.strategies('get_bots', {'cat_str_name': 'trading101'})
-    print(response)
     assert len(response) > 0
+
+
+def test_del_cat_str(client):
+    response = client.strategies('del_cat_str', {'cat_str_name': 'pytest'})
+    assert response is False
+
+
+def test_reload_str(client):
+    response = client.strategies('reload')
+    assert isinstance(response, bool)
 
 
 def test_list_users_exchange(client):

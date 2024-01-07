@@ -146,14 +146,14 @@ class TradeManager:
         try:
             data = exchange_conn.fetch_trades(symbol=symbol,
                                               since=then,
-                                              limit=1000)
-        except EOFError:
+                                              limit=5000)
+        except (EOFError, RuntimeError):
             return None
         if not data or test:
             return
         with Database_ohlcv(exchange=exchange, symbol=symbol) as dbase:
             dbase.save_symbol_trades(data)
-        latest_timestamp = float(data[-1].timestamp)
+        latest_timestamp = float(data[-1].timestamp)+0.000001
         return latest_timestamp
 
     @staticmethod

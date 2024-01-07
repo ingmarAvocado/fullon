@@ -153,6 +153,47 @@ class Database(database.Database):
         except BaseException:
             raise
 
+    def get_strategies_bots(self, cat_str_name: str) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get bots that use a cat_strategy
+
+        Args:
+            cat_str_name (int): The cat  strategy name.
+
+        Returns:
+            Optional[List[Dict[str, Any]]]: A list of dictionaries containing the bots  or None if an error occurs.
+        """
+        try:
+            sql = """
+                    SELECT
+                        public.bots.bot_id,
+                        public.bots.name,
+                        public.bots.uid,
+                        public.users.mail
+                    FROM
+                        public.bots
+                        INNER JOIN public.strategies
+                         ON public.bots.bot_id = public.strategies.bot_id
+                        INNER JOIN public.cat_strategies
+                         ON public.strategies.cat_str_id = public.cat_strategies.cat_str_id
+                        INNER JOIN public.users
+                         ON public.bots.uid = public.users.uid
+                    WHERE public.cat_strategies.name = %s
+                    """
+            strats = []
+            with self.con.cursor() as cur:
+                cur.execute(sql, (cat_str_name,))
+                for row in cur.fetchall():
+                    strats.append(dbhelpers.reg(cur, row))
+            return strats
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.info(
+                self.error_print(
+                    error=error,
+                    method="get_user_strat_params",
+                    query=sql))
+            return None
+
     def get_user_strat_params(self, bot_id: int) -> Optional[List[Dict[str, Any]]]:
         """
         Get user strategy parameters.
@@ -259,10 +300,10 @@ class Database(database.Database):
                     strategy.get('stop_loss'),
                     strategy.get('trailing_stop'),
                     strategy.get('timeout'),
-                    strategy.get('levergage', 1),
-                    strategy.get('size_pct'),
+                    strategy.get('levergage', 2),
+                    strategy.get('size_pct', 10),
                     strategy.get('size'),
-                    strategy.get('size_currency'),
+                    strategy.get('size_currency', 'USD'),
                     strategy.get('pre_load_bars')
                 ))
                 params = self.get_cat_strategies_params(cat_str_id=strategy['cat_str_id'])
@@ -513,3 +554,30 @@ class Database(database.Database):
             logger.warning(error_msg)
             raise psycopg2.DatabaseError(error_msg) from error
         return strategy_params
+
+    def del_cat_strategy(self, cat_str_name: str) -> bool:
+        """
+        Retrieves strategy from the `cat_strategies` table in the database.
+
+        Args:
+            cat_str_name (str): The name of the strategy.
+
+        Raises:
+            psycopg2.DatabaseError: If an error occurs during database operation.
+
+        Returns:
+            bool: True if successful.
+        """
+        sql = "DELETE FROM cat_strategies WHERE name = %s"
+        try:
+            with self.con.cursor() as cur:
+                cur.execute(sql, (cat_str_name,))
+                self.con.commit()  # Commit the transaction
+                return cur.rowcount > 0  # True if rows were affected
+        except psycopg2.DatabaseError as error:
+            error_msg = self.error_print(error=error,
+                                         method="del_cat_strategy",
+                                         query=sql)
+            logger.warning(error_msg)
+            raise psycopg2.DatabaseError(error_msg) from error
+

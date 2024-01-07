@@ -3,6 +3,7 @@ from multiprocessing import Process, Manager
 from multiprocessing.queues import Queue
 from time import sleep
 from setproctitle import setproctitle
+import psycopg2
 from libs import log, settings
 from libs.models.bot_model import Database as MainDatabase
 from libs.queue_pool import QueuePool
@@ -40,28 +41,41 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
     while True:
         try:
             request = request_queue.get()
-
             if request == ControlSignals.STOP.value:
-                mngr.shutdown()
-                return
+                logger.warning(f"Stopping worker {num}")
+                break
 
             method_name, method_params, response_queue = request
-            with MainDatabase(max_conn=1) as dbase_instance:
-                method = getattr(dbase_instance, method_name)
-                result = method(**method_params)
-                response_queue.put(result)
 
+            # Attempt to process the request with retries
+            max_retries = 30
+            for attempt in range(max_retries):
+                try:
+                    with MainDatabase(max_conn=1) as dbase_instance:
+                        method = getattr(dbase_instance, method_name)
+                        result = method(**method_params)
+                        response_queue.put(result)
+                        break  # Break the loop if successful
+                except psycopg2.OperationalError as db_error:
+                    if attempt < max_retries - 1:  # Check if more retries are left
+                        logger.warning(f"Database operation failed, retry {attempt + 1}/{max_retries}. Error: {db_error}")
+                        sleep(1.5)  # Wait before retrying
+                        with MainDatabase(max_conn=1) as dbase_instance:
+                            dbase_instance.reset_connection_pool()  # Reset connection pool before retry
+                    else:
+                        logger.error(f"Database operation failed after {max_retries} attempts. Error: {db_error}")
+                        response_queue.put(None)  # Indicate failure to the requester
+                        break
         except KeyboardInterrupt:
-            # logger.warning("KeyboardInterrupt received. Shutting down.")
-            mngr.shutdown()
-            return
+            logger.error("KeyboardInterrupt received. Shutting down.")
+            break
         except (BrokenPipeError, EOFError, ConnectionResetError) as error:
-            # logger.error(f"Connection-related error: {error}")
-            mngr.shutdown()
-            return
+            #logger.warning(f"Connection-related error: {error}")
+            break
         except TypeError as error:
             logger.error(f"Type error: {error}")
             response_queue.put(None)
+    mngr.shutdown()
 
 
 def start():

@@ -3,6 +3,7 @@ from multiprocessing import Process, Manager
 from multiprocessing.queues import Queue
 from time import sleep
 from setproctitle import setproctitle
+import psycopg2
 from libs import log, settings
 from libs.models.ohlcv_model import Database as DatabaseOHLCV
 from libs.queue_pool import QueuePool
@@ -38,28 +39,40 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
     while True:
         try:
             request = request_queue.get()
-
             if request == ControlSignals.STOP.value:
-                mngr.shutdown()
-                return
-
+                logger.warning(f"Stopping ohlcv worker {num}")
+                break
             exchange, symbol, method_name, method_params, response_queue = request
-            with DatabaseOHLCV(exchange=exchange, symbol=symbol, max_conn=1) as dbase_instance:
-                method = getattr(dbase_instance, method_name)
-                result = method(**method_params)
-                response_queue.put(result)
-
+            max_retries = 30
+            for attempt in range(max_retries):
+                try:
+                    with DatabaseOHLCV(exchange=exchange, symbol=symbol, max_conn=1) as dbase_instance:
+                        method = getattr(dbase_instance, method_name)
+                        result = method(**method_params)
+                        response_queue.put(result)
+                        break  # Break the loop if successful
+                except psycopg2.OperationalError as db_error:
+                    if attempt < max_retries - 1:  # Check if more retries are left
+                        msg = f"OHLCV database operation failed, retry {attempt + 1}/{max_retries}. Error: {db_error}"
+                        logger.warning(msg)
+                        sleep(1.5)  # Wait before retrying
+                        with DatabaseOHLCV(exchange=exchange, symbol=symbol, max_conn=1) as dbase_instance:
+                            dbase_instance.reset_connection_pool()  # Reset connection pool before retry
+                    else:
+                        msg = f"OHLCVd atabase operation failed after {max_retries} attempts. Error: {db_error}"
+                        logger.error(msg)
+                        response_queue.put(None)  # Indicate failure to the requester
+                        break
         except KeyboardInterrupt:
-            #logger.warning("KeyboardInterrupt received. Shutting down.")
-            mngr.shutdown()
-            return
-        except (BrokenPipeError, EOFError, ConnectionResetError, ConnectionRefusedError) as error:
+            logger.error("KeyboardInterrupt received. Shutting down.")
+            break
+        except (BrokenPipeError, EOFError, ConnectionResetError) as error:
             #logger.error(f"Connection-related error: {error}")
-            mngr.shutdown()
-            return
+            break
         except TypeError as error:
             logger.error(f"Type error: {error}")
             response_queue.put(None)
+    mngr.shutdown()
 
 
 def start():
