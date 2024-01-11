@@ -18,7 +18,7 @@ logger = log.fullon_logger(__name__)
 
 class Interface:
 
-    _socket: object
+    _socket: Optional[Any]
     _sleep: float = 3.0
     websocket_connected = False
     sleep = 0
@@ -542,7 +542,7 @@ class Interface:
         else:
             logger.warning("WebSocket is not initialized")
 
-    def start_ticker_socket(self, tickers: list):
+    def start_ticker_socket(self, tickers: list) -> bool:
         """
         Subscribes to ticker updates for a list of trading pairs and saves them to Redis.
 
@@ -552,7 +552,7 @@ class Interface:
         Returns:
         bool: True if the subscription was successfully created, False otherwise.
         """
-        pass
+        return True
 
     def stop_ticker_socket(self) -> bool:
         """
@@ -572,12 +572,9 @@ class Interface:
         """
         return False
 
-    def connect_websocket(self) -> bool:
+    def connect_websocket(self):
         """
         Establishes a connection to the WebSocket and sets the `websocket_connected` attribute to True.
-
-        Returns:
-        bool: True if the WebSocket connection was successfully established, False otherwise.
         """
         pass
 
@@ -625,11 +622,11 @@ class Interface:
         """
         return False
 
-    def my_open_orders_socket(self) -> None:
+    def my_open_orders_socket(self) -> bool:
         """
         Subscribes to user's trades.
 
         Returns:
         None
         """
-        return
+        return False

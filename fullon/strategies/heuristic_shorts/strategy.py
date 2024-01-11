@@ -23,21 +23,20 @@ class Strategy(strat.Strategy):
 
     params = (
         ('rsi', 14),
-        ('rsi_entry', 35),
-        ('rsi_exit', 40),
-        ('rsi_weight', 5),
-        ('macd_entry', 1),
-        ('macd_exit', 0),
-        ('macd_weight', 12),
-        ('vwap_entry', 0.2),
-        ('vwap_exit', 0.4),
-        ('vwap_weight', 4),
-        ('stoch_entry', 50),
-        ('stoch_exit', 55),
-        ('stoch_weight', 14),
+        ('rsi_entry', 45),
+        ('rsi_exit', 45),
+        ('rsi_weight', 4),
+        ('rsi_sma', 18),
+        ('rsi_sma_weight', 1),
+        ('macd_entry', -1),
+        ('macd_exit', -2),
+        ('macd_weight', 1),
+        ('vwap_entry', -2),
+        ('vwap_exit', -2),
+        ('vwap_weight', 1),
         ('pre_load_bars', 50),
-        ('entry', 11),
-        ('exit', 86),
+        ('entry', 18),
+        ('exit', 56),
         ('ema', 30),
         ('feeds', 2)
     )
@@ -50,7 +49,7 @@ class Strategy(strat.Strategy):
         self.order_cmd = "spread"
         if self.p.timeout:
             self.p.timeout = self.datas[1].bar_size_minutes * self.p.timeout
-        total_weights = self.p.rsi_weight + self.p.macd_weight + self.p.stoch_weight
+        total_weights = self.p.rsi_weight + self.p.macd_weight + self.p.vwap_weight + self.p.rsi_sma_weight
         self.myentry = total_weights * self.p.entry/100
         self.myexit = total_weights * self.p.exit/100
         if self.p.rsi_entry > self.p.rsi_exit:
@@ -73,6 +72,7 @@ class Strategy(strat.Strategy):
 
         # Compute RSI
         self.indicators_df['rsi'] = ta.rsi(self.indicators_df['close'], length=self.p.rsi)
+        self.indicators_df['rsi_sma'] = self.indicators_df['rsi'].rolling(window=int(self.p.rsi_sma)).mean()
         # Compute MACD
         macd = ta.macd(self.indicators_df['close'])
         self.indicators_df['macd'] = macd['MACD_12_26_9']
@@ -86,11 +86,6 @@ class Strategy(strat.Strategy):
                                              close=self.indicators_df['close'],
                                              volume=self.indicators_df['volume'])
         self.indicators_df['vwap_diff'] = (self.indicators_df['close'] - self.indicators_df['vwap']) / self.indicators_df['vwap'] * 100
-
-        #  Compute Stochastic Oscillator
-        stochastic = ta.stoch(self.indicators_df['high'], self.indicators_df['low'], self.indicators_df['close'])
-        self.indicators_df['stoch_k'] = stochastic['STOCHk_14_3_3']
-        self.indicators_df['stoch_d'] = stochastic['STOCHd_14_3_3']
         self._set_signals()
         self.indicators_df = self.indicators_df.dropna()
 
@@ -100,7 +95,7 @@ class Strategy(strat.Strategy):
         score += self.p.rsi_weight * (1 if row['rsi_entry'] else 0)
         score += self.p.macd_weight * (1 if row['macd_entry'] else 0)
         score += self.p.vwap_weight * (1 if row['vwap_entry'] else 0)
-        score += self.p.stoch_weight * (1 if row['stoch_entry'] else 0)
+        score += self.p.rsi_sma_weight * (1 if row['rsma_entry'] else 0)
         return score
 
     def _calculate_exit_score(self, row):
@@ -109,7 +104,7 @@ class Strategy(strat.Strategy):
         score += self.p.rsi_weight * (1 if row['rsi_exit'] else 0)
         score += self.p.macd_weight * (1 if row['macd_exit'] else 0)
         score += self.p.vwap_weight * (1 if row['vwap_exit'] else 0)
-        score += self.p.stoch_weight * (1 if row['stoch_exit'] else 0)
+        score += self.p.rsi_sma_weight * (1 if row['rsma_exit'] else 0)
         return score
 
     def _set_signals(self):
@@ -121,6 +116,9 @@ class Strategy(strat.Strategy):
         self.indicators_df['rsi_entry'] = (self.indicators_df['rsi'] < self.p.rsi_entry) & (self.indicators_df['rsi'] > 25)
         self.indicators_df['rsi_exit'] = self.indicators_df['rsi'] > self.p.rsi_exit
 
+        self.indicators_df['rsma_entry'] = (self.indicators_df['rsi_sma'] < self.indicators_df['rsi'])
+        self.indicators_df['rsma_exit'] = (self.indicators_df['rsi_sma'] > self.indicators_df['rsi'])
+
         # Define conditions for entry and exit signals by MACD
         self.indicators_df['macd_entry'] = self.indicators_df['macd_histo'] < self.p.macd_entry
         self.indicators_df['macd_exit'] = self.indicators_df['macd_histo'] > self.p.macd_exit
@@ -128,28 +126,6 @@ class Strategy(strat.Strategy):
         # define conditions for long entry and exit signals for VWAP
         self.indicators_df['vwap_entry'] = self.indicators_df['vwap_diff'] > self.p.vwap_entry
         self.indicators_df['vwap_exit'] = self.indicators_df['vwap_diff'] < self.p.vwap_exit*-1
-
-        # Define conditions for entry shorts (Bearish Entry)
-        bearish_entry_momentum_condition = (
-            (self.indicators_df['stoch_k'] < self.p.stoch_entry) &
-            (self.indicators_df['stoch_d'] < self.p.stoch_entry)
-        )
-        bearish_entry_crossover = (
-            (self.indicators_df['stoch_k'].shift(1) > self.indicators_df['stoch_d'].shift(1)) &
-            (self.indicators_df['stoch_k'] < self.indicators_df['stoch_d'])
-        )
-        self.indicators_df['stoch_entry'] = bearish_entry_momentum_condition & bearish_entry_crossover
-
-        # Define conditions for exit shorts (Bearish Exit)
-        bearish_exit_momentum_condition = (
-            (self.indicators_df['stoch_k'] > self.p.stoch_exit) &
-            (self.indicators_df['stoch_d'] > self.p.stoch_exit)
-        )
-        bearish_exit_crossover = (
-            (self.indicators_df['stoch_k'].shift(1) < self.indicators_df['stoch_d'].shift(1)) &
-            (self.indicators_df['stoch_k'] > self.indicators_df['stoch_d'])
-        )
-        self.indicators_df['stoch_exit'] = bearish_exit_momentum_condition & bearish_exit_crossover
 
         self.indicators_df['entry_score'] = self.indicators_df.apply(self._calculate_entry_score, axis=1)
         self.indicators_df['exit_score'] = self.indicators_df.apply(self._calculate_exit_score, axis=1)

@@ -38,8 +38,8 @@ def test_get_strat_list(ctl):
     assert len(strats) > 1
 
 
-def test_add_strats(ctl):
-    res = ctl.add_strategies()
+def test_reload_strats(ctl):
+    res = ctl.reload_strategies()
     assert isinstance(res, bool)
 
 
@@ -64,4 +64,4 @@ def test_delete_strategy(mock_prompt_session, ctl):
     with create_pipe_input() as inp:
         inp.send_text("trading101\n")
         result = ctl.del_strategy(strats=strats)
-        assert isinstance(result[0], dict)
+        assert result is None

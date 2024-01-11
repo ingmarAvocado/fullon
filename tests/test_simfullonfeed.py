@@ -21,6 +21,7 @@ def fullon_sim_feed():
                                 helper=bot1,
                                 fromdate=fromdate,
                                 mainfeed=None)
+    setattr(fullon_feed, 'time_factor', 1)
     return fullon_feed
 
 

@@ -30,7 +30,9 @@ def test_calculate_final_summary(sim):
             'Average Duration (hours)': 4.0, 'Profit Factor': 'placeholder',
             'Recovery Factor': 'placeholder', 'Sharpe Ratio': 0.6619,
             'params': {},
-            'df': DataFrame()
+            'df': DataFrame(),
+            'Compression': 1,
+            'Period': 'Days'
         },
         1: {
             'Strategy': 'trading_moving_avg', 'Symbol': 1,
@@ -48,7 +50,9 @@ def test_calculate_final_summary(sim):
             'Average Duration (hours)': 5.0, 'Profit Factor': 'placeholder',
             'Recovery Factor': 'placeholder', 'Sharpe Ratio': 0.8,
             'params': {},
-            'df': DataFrame()
+            'df': DataFrame(),
+            'Compression': 1,
+            'Period': 'Days'
         },
         2: {
             'Strategy': 'trading_macd', 'Symbol': 2,
@@ -66,7 +70,9 @@ def test_calculate_final_summary(sim):
             'Average Duration (hours)': 3.0, 'Profit Factor': 'placeholder',
             'Recovery Factor': 'placeholder', 'Sharpe Ratio': 0.75,
             'params': {},
-            'df': DataFrame()
+            'df': DataFrame(),
+            'Compression': 1,
+            'Period': 'Days'
         }
     }
     res = sim.calculate_final_summary(summaries)

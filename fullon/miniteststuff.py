@@ -125,7 +125,7 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 #time.sleep(1)
 #del exch
 ohlcv = OhlcvManager()
-ohlcv.run_ohlcv_loop(symbol='ETH/BTC', exchange='kraken')
+ohlcv.run_ohlcv_loop(symbol='SOL/USD', exchange='kraken')
 ohlcv.run_loop()
 #exch.get_positions()
 #exch.connect_websocket()

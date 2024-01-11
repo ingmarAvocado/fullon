@@ -60,8 +60,11 @@ class CTL(CTL):
         Returns:
             None
         """
-        res: bool = self.RPC.strategies('reload')
+        res = self.RPC.strategies('reload')
         print(colored.green("Strategies have been reloaded"))
+        if res:
+            return True
+        return False
 
     def del_strategy(self, strats: List):
         """

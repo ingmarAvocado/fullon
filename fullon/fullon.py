@@ -7,11 +7,12 @@ from libs.database import start as start_database, stop as stop_database
 from libs.database_ohlcv import start as start_ohlcv, stop as stop_ohlcv
 from libs.simul_launcher import simulator
 from libs.bot import Bot
-settings.NOISE = False
+settings.NOISE = True
 settings.LOG_LEVEL = 'ERROR'
 start_database()
 start_ohlcv()
 simulator.start()
+
 
 
 params2 = {
@@ -47,14 +48,12 @@ params2 = {
           "size_pct": "45",
           "size": "500"}
 
-
-
 #params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
 BOT = {"bot_id": 35,
        "periods": 450,
        "warm_up": 50,
        "xls": False,
-       "verbose": True,
+       "verbose": False,
        "visual": False}
 filename = None
 feeds = {}
@@ -289,24 +288,24 @@ params2 = {
           "size_pct": "45",
           "size": "500"}
 
+
 params2 = {
           "stop_loss": "None",
-          'take_profit': "30",
-          'trailing_stop': "30",
+          'take_profit': "15",
+          'trailing_stop': "10",
           "timeout": "None",
           'rsi': "14",  #
           'rsi_entry': "45",
           'rsi_exit': "45",
           'rsi_weight': "4",
+          'rsi_sma': "18",
+          'rsi_sma_weight': "1",
           'vwap_entry': "-2",
           'vwap_exit': "-1",
           'vwap_weight': "1",
           'macd_entry': "-1",
           'macd_exit': "-2",
           'macd_weight': "1",
-          'stoch_entry': "40",
-          'stoch_exit': "20",
-          'stoch_weight': "0",
           'ema': '21',
           'entry': "18",
           'exit': "56",

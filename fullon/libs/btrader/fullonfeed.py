@@ -6,7 +6,7 @@ from __future__ import (
     division,
     print_function,
     unicode_literals)
-from typing import List, Union, Any, Literal
+from typing import List, Union, Any, Literal, Optional
 from collections import deque
 from backtrader.feed import DataBase
 import backtrader as bt
@@ -79,7 +79,7 @@ class FullonFeed(DataBase):
     _last_id: str = ""
     symbol: str = ""
     helper: object = None
-    last_moments: bool = False
+    last_moments: Optional[float] = None
     bar_size_minutes: int = 0
     ismainfeed = False
 
