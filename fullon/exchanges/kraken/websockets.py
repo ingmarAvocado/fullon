@@ -427,5 +427,10 @@ class WebSocket:
                     if pair not in self.subscribed_tickers:
                         self.subscribed_tickers.append(pair)
             else:
-                logger.warning(f"Failed to subscribe: {data}")
-                #Message: "Failed to subscribe: {'errorMessage': 'EAPI:Rate limit exceeded', 'event': 'subscriptionStatus', 'status': 'error', 'subscription': {'name': 'ownTrades'}}"
+                if 'Invalid session' in data['errorMessage']:
+                    with Cache() as store:
+                        res = store.push_ws_error(
+                            error=data['errorMessage'],
+                            ex_id=self.ex_id)
+                else:
+                    logger.warning(f"Failed to subscribe: {data}")

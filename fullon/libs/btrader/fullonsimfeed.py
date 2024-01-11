@@ -48,7 +48,7 @@ class FullonSimFeed(FullonFeed):
         #self.last_date = self.get_last_date()
         self.last_moments = self.params.mainfeed.last_date.shift(  # pylint: disable=no-member
             seconds=-self.time_factor)
-        self.last_moments = bt.date2num(self.last_moments)
+        self.last_moments = bt.date2num(self.last_moments.datetime)
         seed_value = int(time.time()) + os.getpid()
         np.random.seed(seed_value)
 
@@ -262,7 +262,7 @@ class FullonSimFeed(FullonFeed):
             self.last_date = arrow.get(rows[-1][0])
             self.last_moments = self.params.mainfeed.last_date.shift(  # pylint: disable=no-member
                 seconds=-self.time_factor)
-            self.last_moments = bt.date2num(self.last_moments)
+            self.last_moments = bt.date2num(self.last_moments.datetime)
             self.result = deque(rows)
             if self.compression != 1 and self.feed.period != 'minutes':
                 self.adjust_dataframe()

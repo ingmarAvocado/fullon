@@ -65,9 +65,8 @@ def test_get_time_factor(fullon_feed):
 def test_empty_bar(fullon_feed):
     fullon_feed._state = fullon_feed._ST_LIVE
     fullon_feed._empty_bar()
-
     assert fullon_feed.result == []
-    assert fullon_feed._last_id is None
+    assert fullon_feed._last_id is ''
 
 
 def test_get_table(fullon_feed, mocker):

@@ -396,7 +396,7 @@ class Database:
         """
         sql = f"""
             CREATE TABLE IF NOT EXISTS {self.schema}.trades(
-            timestamp  TIMESTAMPTZ NOT NULL PRIMARY KEY,
+            timestamp  TIMESTAMP NOT NULL PRIMARY KEY,
             price DOUBLE PRECISION NOT NULL,
             volume DOUBLE PRECISION NOT NULL,
             side TEXT NOT NULL,

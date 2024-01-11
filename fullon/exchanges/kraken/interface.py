@@ -1,6 +1,6 @@
+from inspect import Attribute
 import sys
 import time
-
 from libs import log, settings
 from libs.caches import orders_cache as cache
 from libs.structs.trade_struct import TradeStruct
@@ -12,6 +12,7 @@ from exchanges.kraken import websockets
 from collections import defaultdict
 import uuid
 from collections import Counter
+import threading
 
 logger = log.fullon_logger(__name__)
 
@@ -24,6 +25,7 @@ class Interface(Ccxt_Interface):
     _ws_token = None
     _ws_subscriptions: Dict = {}
     _markets: Dict = {}
+    _token_refresh_thread: Optional[threading.Thread] = None
     currencies: dict = {}
     pairs: dict = {}
 
@@ -42,6 +44,7 @@ class Interface(Ccxt_Interface):
             self.set_pairs()
         self._markets = self._markets_dict()
         self._ws_pre_check()
+        self.start_token_refresh_thread()
         self.no_sleep.extend(['start_ticker_socket',
                               'start_trade_socket',
                               'start_my_trades_socket',
@@ -53,6 +56,8 @@ class Interface(Ccxt_Interface):
         self.stop()
 
     def stop(self):
+        """
+        """
         try:
             if self._socket:
                 logger.info(f"Closing Kraken Websocket: {self.params.ex_id}")
@@ -60,6 +65,11 @@ class Interface(Ccxt_Interface):
                 self._socket = None
         except AttributeError:
             pass
+        if self._token_refresh_thread is not None:
+            try:
+                self._token_refresh_thread.join(timeout=1)
+            except AttributeError:
+                pass
         super().stop()
 
     def _ws_pre_check(self):
@@ -109,6 +119,52 @@ class Interface(Ccxt_Interface):
             self._ws_subscriptions['trades'] = []
             self._ws_subscriptions['ownTrades'] = False
             self._ws_subscriptions['openOrders'] = False
+
+    def refresh_token(self):
+        """
+        Refreshes the WebSocket token by re-authenticating with the Kraken API.
+        """
+        try:
+            with cache.Cache() as store:
+                error = store.pop_ws_error(ex_id=self.params.ex_id)
+            if error:
+                logger.warning(f"Kraken WebSocket is not connected {self.params.ex_id}")
+                self._ws_token = False
+                self._generate_auth_token()
+                self._socket.stop()
+                del self._socket
+                self._socket: Optional[websockets.WebSocket] = None
+                # now connect again
+                self.connect_websocket()
+                self._reconnect_ws_subscriptions()
+                return self._ws_pre_check()
+        except (TypeError, AttributeError) as error:
+            self._socket = None
+            time.sleep(1)
+            logger.info("No previous Kraken websocket found")
+            self.connect_websocket()
+            return self._ws_pre_check()
+
+    def start_token_refresh_thread(self, interval=60):
+        """
+        Starts a background thread that periodically refreshes the WebSocket token.
+
+        Args:
+            interval: Time in seconds between each token refresh (default: 3600 seconds).
+        """
+
+        def run():
+            while True:
+                try:
+                    self.refresh_token()
+                except:
+                    pass
+                time.sleep(interval)
+
+        self._token_refresh_thread = threading.Thread(target=run)
+        self._token_refresh_thread.daemon = True  # Daemonize thread
+        self._token_refresh_thread.start()
+        logger.info("Token refresh thread started.")
 
     def start_ticker_socket(self, tickers: list) -> bool:
         """
@@ -380,6 +436,8 @@ class Interface(Ccxt_Interface):
         Returns:
         list: A list of trade dictionaries, each containing trade information such as price, volume, timestamp, and more.
         """
+        if isinstance(since, str):
+            since = arrow.get(since).timestamp()
         since = since+1
         symbol = self.replace_symbol(symbol=symbol)
         if len(str(since)) == 10:

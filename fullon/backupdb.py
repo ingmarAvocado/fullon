@@ -60,7 +60,7 @@ db_params = {
     'password': 'fullon'
     # Add other parameters as needed
 }
-table_name = 'kraken_eth_btc.trades'
+table_name = 'kraken_sol_usd.trades'
 backup_file = 'backup.sql'
 date_threshold = '2022-02-17 02:55:14.125407'  # '2022-02-28 23:59:59'
 

@@ -7,7 +7,7 @@ from libs.structs.exchange_struct import ExchangeStruct
 from libs.caches import process_cache as cache
 from typing import Dict, List
 import time
-
+import redis
 
 logger = log.fullon_logger(__name__)
 
@@ -199,3 +199,41 @@ class Cache(cache.Cache):
             from_database()
             exchange_list = self.get_exchanges()
         return exchange_list
+
+    def push_ws_error(self, error: str, ex_id: str) -> None:
+        """
+        Push the ID of an open order to a Redis list.
+
+        Args:
+            ex_id (str): The exchange ID.
+            oid (str): The ID of the open order.
+
+        Returns:
+            None
+        """
+        redis_key = f"ws_error:{ex_id}"
+        self.conn.rpush(redis_key, error)
+
+    def pop_ws_error(self, ex_id: str) -> bool:
+        """
+        Pop the next open order from the Redis list.
+
+        Args:
+            ex_id (str): The exchange ID.
+
+        Returns:
+            str: The ID of the next open order.
+
+        Raises:
+            TimeoutError: If the open order queue is empty and the timeout period has expired.
+        """
+        redis_key = f"ws_error:{ex_id}"
+        try:
+            _, error = self.conn.blpop(redis_key, timeout=0)
+            if error:
+                return False
+        except redis.exceptions.TimeoutError:
+            pass
+        except KeyboardInterrupt:
+            pass
+        return False

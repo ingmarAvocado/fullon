@@ -1,6 +1,7 @@
+"""
 import backtrader as bt
 import pytest
-from strategies.xgb_forest.strategy import Strategy
+from fullon.strategies.xgb_forest.strategy import Strategy
 from unittest.mock import MagicMock, patch
 import arrow
 from backtrader import TimeFrame
@@ -77,3 +78,4 @@ def test_is_new_candle(strat):
     res = strat._is_new_candle(self=strat, feed=1)
     assert res is True
 '''
+"""

@@ -226,14 +226,13 @@ def install():
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
-    '''
 
     # -------------------------------------------------------
     # New bot #3
 
     BOT = {
         'user': UID,
-        'name': 'rsi long BTC/USD',
+        'name': 'HMOMLONG BTC/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -242,7 +241,7 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='rsimom_long')
+        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -250,31 +249,26 @@ def install():
     user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 7,
+        "symbol_id": 1,
         "bot_id": bot_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 7,
+        "symbol_id": 1,
         "bot_id": bot_id,
-        "period": 'Minutes',
-        "compression": 60,
+        "period": 'Days',
+        "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "take_profit": 2.5,
-            "trailing_stop": 0.8,
             "size": 250,
-            "size_pct": 10,
+            "size_pct": None,
             "size_currency": 'USD'
             }
-    _bot['extended'] = {
-              "long_entry": "58",
-              "long_exit": "68"}
     bot.edit(bot=_bot)
 
     # -------------------------------------------------------
@@ -282,7 +276,7 @@ def install():
 
     BOT = {
         'user': UID,
-        'name': 'trading_rsi2 ETH/USD',
+        'name': 'HMOMLONG ETH/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -291,87 +285,79 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='trading_rsi2')
+        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "leverage": 2,
-        }
-    user.add_bot_strategy(strategy=STRAT)
-
-    feed = {
-        "symbol_id": 2,
-        "bot_id": bot_id,
-        "period": 'Ticks',
-        "compression": 1,
-        "order": 1}
-    user.add_feed_to_bot(feed=feed)
-    feed = {
-        "symbol_id": 2,
-        "bot_id": bot_id,
-        "period": 'Minutes',
-        "compression": 60,
-        "order": 2}
-    user.add_feed_to_bot(feed=feed)
-    bot = bot_manager.BotManager()
-    _bot = {"bot_id": bot_id,
-            "take_profit": 2.5,
-            "stop_loss": 1,
-            "trailing_stop": 0.8,
-            "size": 250,
-            "size_pct": 10,
-            "size_currency": 'USD'
-            }
-    _bot['extended'] = {
-              "rsi_upper": "58",
-              "rsi_lower": "48"}
-    bot.edit(bot=_bot)
-
-    # -------------------------------------------------------
-    # New bot #5
-    BOT = {
-        'user': UID,
-        'name': 'trading_rsi ETH/BTC',
-        'dry_run': 'True',
-        'active': 'True'
-    }
-    bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
-    user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
-    with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='trading_rsi2')
-    STRAT = {
-        "cat_str_id": cat_str_id,
-        "bot_id": bot_id,
-        "name": f"trading_rsi2 bot {bot_id} ETH/BTC",
         "leverage": 2}
     user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 3,
+        "symbol_id": 2,
         "bot_id": bot_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 3,
+        "symbol_id": 2,
         "bot_id": bot_id,
-        "period": 'Minutes',
-        "compression": 60,
+        "period": 'Days',
+        "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
+
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "take_profit": 2.5,
-            "stop_loss": 1.5,
-            "trailing_stop": 1,
             "size": 250,
-            "size_currency": 'USD',
-            "size_pct": 10}
-    _bot['extended'] = {
-              "rsi_upper": "63",
-              "rsi_lower": "36"}
+            "size_pct": None,
+            "size_currency": 'USD'
+            }
+    bot.edit(bot=_bot)
+
+
+    # -------------------------------------------------------
+    # New bot #5
+
+    BOT = {
+        'user': UID,
+        'name': 'HMOMLONG XMR/USD',
+        'dry_run': 'True',
+        'active': 'True'
+    }
+    bot_id = user.add_bot(bot=BOT)
+    exchange = {"exchange_id": f"{ex_id}"}
+    user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
+
+    with Database() as dbase:
+        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
+    STRAT = {
+        "cat_str_id": cat_str_id,
+        "bot_id": bot_id,
+        "leverage": 2}
+    user.add_bot_strategy(strategy=STRAT)
+
+    feed = {
+        "symbol_id": 4,
+        "bot_id": bot_id,
+        "period": 'Ticks',
+        "compression": 1,
+        "order": 1}
+    user.add_feed_to_bot(feed=feed)
+    feed = {
+        "symbol_id": 4,
+        "bot_id": bot_id,
+        "period": 'Days',
+        "compression": 1,
+        "order": 2}
+    user.add_feed_to_bot(feed=feed)
+
+    bot = bot_manager.BotManager()
+    _bot = {"bot_id": bot_id,
+            "size": 250,
+            "size_pct": None,
+            "size_currency": 'USD'
+            }
     bot.edit(bot=_bot)
 
     # -------------------------------------------------------
@@ -379,7 +365,7 @@ def install():
 
     BOT = {
         'user': UID,
-        'name': 'trading_rsi2 XMR/USD',
+        'name': 'HMOMLONG MATIC/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -388,45 +374,41 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='trading_rsi2')
+        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "name": f"trading_rsi2 bot {bot_id} XMR/USD",
         "leverage": 2}
     user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 4,
+        "symbol_id": 5,
         "bot_id": bot_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 4,
+        "symbol_id": 5,
         "bot_id": bot_id,
-        "period": 'Minutes',
-        "compression": 60,
+        "period": 'Days',
+        "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
+
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "take_profit": 2.1,
-            "stop_loss": 1.5,
-            "trailing_stop": 0.6,
             "size": 250,
-            "size_currency": 'USD'}
-    _bot['extended'] = {
-              "rsi_upper": "53",
-              "rsi_lower": "40"}
+            "size_pct": None,
+            "size_currency": 'USD'
+            }
     bot.edit(bot=_bot)
 
     # -------------------------------------------------------
     # New bot #7
     BOT = {
         'user': UID,
-        'name': 'trading_rsi MATIC/USD',
+        'name': 'HMOMLONG SOL/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -435,85 +417,32 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='trading_rsi2')
+        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "name": f"trading_rsi2 bot {bot_id} MATIC/USD",
         "leverage": 2}
     user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 5,
+        "symbol_id": 8,
         "bot_id": bot_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 5,
+        "symbol_id": 8,
         "bot_id": bot_id,
-        "period": 'Minutes',
-        "compression": 60,
+        "period": 'Days',
+        "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
+
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "take_profit": 2.1,
-            "stop_loss": 1.5,
-            "trailing_stop": 0.6,
             "size": 250,
+            "size_pct": None,
             "size_currency": 'USD'
             }
-    _bot['extended'] = {
-              "rsi_upper": "53",
-              "rsi_lower": "40"}
     bot.edit(bot=_bot)
-
-    # -------------------------------------------------------
-    # New bot #8
-    BOT = {
-        'user': UID,
-        'name': 'trading_rsi XMR/BTC',
-        'dry_run': 'True',
-        'active': 'True'
-    }
-    bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
-    user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
-
-    with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='trading_rsi2')
-    STRAT = {
-        "cat_str_id": cat_str_id,
-        "bot_id": bot_id,
-        "name": f"trading_rsi2 bot {bot_id} XMR/BTC",
-        "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
-
-    feed = {
-        "symbol_id": 6,
-        "bot_id": bot_id,
-        "period": 'Ticks',
-        "compression": 1,
-        "order": 1}
-    user.add_feed_to_bot(feed=feed)
-    feed = {
-        "symbol_id": 6,
-        "bot_id": bot_id,
-        "period": 'Minutes',
-        "compression": 60,
-        "order": 2}
-    user.add_feed_to_bot(feed=feed)
-    bot = bot_manager.BotManager()
-    _bot = {"bot_id": bot_id,
-            "take_profit": 2.5,
-            "stop_loss": 1.5,
-            "trailing_stop": 1,
-            "size": 250,
-            "size_currency": 'USD'}
-    _bot['extended'] = {
-              "rsi_upper": "63",
-              "rsi_lower": "36"}
-    bot.edit(bot=_bot)
-    '''
