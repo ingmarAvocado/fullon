@@ -43,7 +43,7 @@ class Strategy(Strategy):
             self.local_nextstart()
             self.nextstart_done = True
             try:
-                self.local_nextstart()  # How to check whether this exists or not
+                self.local_nextstart()
             except AttributeError:
                 pass
             return None
@@ -54,6 +54,7 @@ class Strategy(Strategy):
         """
         # Check if data feed is live
         if not self.datas[0].islive():
+            # print(arrow.get(bt.num2date(self.datas[0].datetime[0])))
             self.set_indicators_df()
             return
         self.status = "looping"

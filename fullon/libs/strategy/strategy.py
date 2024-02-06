@@ -10,13 +10,13 @@ from IPython.core.application import ProfileAwareConfigLoader
 import backtrader as bt
 import arrow
 from pandas.core.base import NoNewAttributesMixin
+from pause import milliseconds
 from libs import log
 from libs.btrader.fullonbroker import FullonBroker
 from libs.database import Database
 from libs.structs.trade_struct import TradeStruct
 import pandas
 from typing import List, Optional, Dict, Any
-
 
 logger = log.fullon_logger(__name__)
 
@@ -53,6 +53,7 @@ class Strategy(bt.Strategy):
     anypos = 0
     tick = {}
     curtime = {}
+    curtime_prev = {}
     cash = {}
     totalfunds = {}
     last_candle_date = {}
@@ -137,13 +138,11 @@ class Strategy(bt.Strategy):
         self.local_init()
         self.entry_signal = [None] * len(self.datas)
         self.open_trade = {num: TradeStruct for num, data in enumerate(self.datas) if data.timeframe == bt.TimeFrame.Ticks}
-        if not self.p.size_pct:
-            msg = f"Parameters size_pct({self.p.size_pct}) not set"
+        if not self.p.size_pct and not self.p.size:
+            msg = f"Parameters size({self.p.size}) or size_pct {self.p.size_pct} not set"
             logger.error(msg)
-            if not self.p.size:
-                msg = f"Parameters size({self.p.size}) not set"
-                logger.error(msg)
             self.cerebro.runstop()
+        logger.info("Bot %s completed init sequence", self.helper.id)
 
     def __del__(self):
         """ description """
@@ -222,7 +221,11 @@ class Strategy(bt.Strategy):
                 else:
                     self.take_profit[num] = None
                     self.stop_loss[num] = None
-            self.curtime[num] = arrow.get(bt.num2date(datas.datetime[0]))
+            curtime = arrow.get(bt.num2date(datas.datetime[0]))
+            if datas.timeframe != bt.TimeFrame.Ticks:
+                if curtime.microsecond > 999000:
+                    curtime = curtime.ceil('minute').shift(microseconds=1)
+            self.curtime[num] = curtime
             self.new_candle[num] = self._is_new_candle(feed=num)
         self.anypos = any_pos
 

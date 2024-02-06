@@ -328,6 +328,10 @@ class simul:
                 'Sharpe Ratio': sharpe_ratio,
                 'df': df
             })
+            validate_keys = ['stop_loss', 'take_profit', 'trailing_stop', 'timeout', 'size_pct', 'size']
+            for key in validate_keys:
+                if key not in summary:
+                    summary[key] = None
             summaries[n] = summary
 
         #so what happens is that results is a dict like {feed_number, simulation results}, some times i can have
@@ -346,7 +350,6 @@ class simul:
 
         final_summary = {}
         n = len(summaries)
-
         # Static info
         static_keys = [
             'Strategy', 'Symbol', 'stop_loss', 'take_profit',

@@ -61,6 +61,8 @@ seaborn = "^0.13.0"
 xgboost = "^2.0.3"
 lightgbm = "^4.2.0"
 catboost = "^1.2.2"
+pykalman-py311-update = "^0.9.6"
+astral = "^3.2"
 
 
 [tool.poetry.dev-dependencies]

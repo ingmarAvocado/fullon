@@ -67,6 +67,7 @@ class FullonFeed(DataBase):
         ('broker', ''),
         ('mainfeed', None),
         ('fromdate', ''),
+        ('fromdate2', ''),
         ('compression', 0),
         ('timeframe', bt.TimeFrame.Ticks),
     )
@@ -123,18 +124,19 @@ class FullonFeed(DataBase):
         self._state = self._ST_HISTORY
         self._table = self._get_table()
 
-    def _load(self) -> Literal[False]:
+    def _load(self) -> bool:
         """
         Loads data from the database.
         """
-        if self._state == self._ST_OVER:
-            return False
+        res = False
         if self._state == self._ST_LIVE:
-            return self._load_ticks()
+            res = self._load_ticks()
+            return res
         if self._state == self._ST_HISTORY:
             self._fetch_ohlcv()
-            return self._load_ohlcv()
-        return False
+            res = self._load_ohlcv()
+            return res
+        return res
 
     def _set_bar_size(self):
         """
@@ -168,16 +170,19 @@ class FullonFeed(DataBase):
         Returns:
             tuple: A tuple containing the tick data.
         """
-        with cache.Cache() as mem:
-            res = mem.get_ticker(exchange=self.feed.exchange_name,
-                                 symbol=self.symbol)
-            time.sleep(rest)
-        utc_now = arrow.utcnow().format('YYYY-MM-DD HH:mm:ss.SSS')
-        if res[0] == 0:
-            time.sleep(1)
-            return self._fetch_tick(rest=rest+rest)
-        res = (utc_now, res[0], res[0], res[0], res[0], res[0])
-        return res
+        try:
+            with cache.Cache() as mem:
+                res = mem.get_ticker(exchange=self.feed.exchange_name,
+                                     symbol=self.symbol)
+                time.sleep(rest)
+            utc_now = arrow.utcnow().format('YYYY-MM-DD HH:mm:ss.SSS')
+            if res[0] == 0:
+                time.sleep(1)
+                return self._fetch_tick(rest=rest+rest)
+            res = (utc_now, res[0], res[0], res[0], res[0], res[0])
+            return res
+        except KeyboardInterrupt:
+            return None
 
     def _get_table(self) -> str:
         """
@@ -264,13 +269,19 @@ class FullonFeed(DataBase):
         if self.result:
             return
         todate = arrow.utcnow().datetime
-        # Here i must call with compression 1 and minutes, why? because i use fullonfeedresampler, to resample the data
+        # Here i must call with compression 1 and minutes, why? resampler
+        # but fullon_resampler makes its own query to timescaledb, so 
+        # loads from database directy rather than here, however doesnt
+        # work if this doesnt load some data, to try to feed into the resampler,
+        # so we send at least to periods of data. For now we use 2 full days, 
+        # but if one of the feeds is into the weekly this might not work as it
+        # will need  2 weeks
         with DataBase_ohclv(exchange=self.feed.exchange_name,
                             symbol=self.symbol) as dbase:
             rows = dbase.fetch_ohlcv(table=self._table,
                                      compression=1,
                                      period='Minutes',
-                                     fromdate=self.params.fromdate,   # pylint: disable=E1101
+                                     fromdate=self.p.fromdate2.datetime,   # pylint: disable=E1101
                                      todate=todate)
         if rows:
             self._last_id = rows[-1][0]
@@ -335,7 +346,7 @@ class FullonFeed(DataBase):
         """
         return self._state == self._ST_LIVE
 
-    def islive(self):
+    def islive(self) -> bool:
         '''Returns ``True`` to notify ``Cerebro`` that preloading and runonce
         should be deactivated'''
         return self._state == self._ST_LIVE

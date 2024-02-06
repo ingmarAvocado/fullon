@@ -15,7 +15,7 @@ from libs.database_ohlcv import Database as Database_ohlcv
 from libs.btrader.fullonbroker import FullonBroker
 from libs.btrader.basebroker import BaseBroker
 from libs.btrader.fullonresampler import FullonFeedResampler
-from typing import Optional, Any
+from typing import Optional, Any, Tuple
 from setproctitle import setproctitle
 
 FEED_CLASSES = {
@@ -146,7 +146,7 @@ class Bot:
             for key, value in test_params.items():
                 self.str_params[key] = value
 
-    def _set_timeframe(self, period: str) -> bt.TimeFrame:
+    def _set_timeframe(self, period: str) -> Any:
         """
         Convert a string representation of a time frame to the corresponding constant value in the backtrader library.
         """
@@ -163,10 +163,12 @@ class Bot:
         # return the corresponding constant from the dictionary, or None if the period is not in the dictionary
         return period_map.get(period)
 
-    def backload_from(self, bars: int = 100) -> arrow.Arrow:
+    def backload_from(self, bars: int = 100) -> Tuple[arrow.Arrow, arrow.Arrow]:
         """
         Shift the current time by a certain amount, based on the 'frame' and 'compression' parameters.
         Returns a new Arrow object with the shifted time.
+
+        Returns a second date which the fullonfeed requieres for faster startup
         """
         # define a dictionary that maps each period string to the corresponding time unit for Arrow
         period_map = {
@@ -184,11 +186,20 @@ class Bot:
             raise ValueError("Unrecognized period: {}".format(feed.period))
         shift_args = {time_unit: -feed.compression * bars}
         # shift the current time by the specified amount and set the time to midnight
-        if timeframe >= 5:
-            target = arrow.utcnow().shift(**shift_args).floor('day')
-        else:
-            target = arrow.utcnow().shift(**shift_args).floor('minute')
-        return target
+        match timeframe:
+            case 5:
+                target1 = arrow.utcnow().shift(**shift_args).floor('day')
+                target2 = arrow.utcnow().shift(days=-2).floor('day')
+            case 6:
+                target1 = arrow.utcnow().shift(**shift_args).floor('day')
+                target2 = arrow.utcnow().shift(weeks=-2).floor('day')
+            case 7:
+                target1 = arrow.utcnow().shift(**shift_args).floor('day')
+                target2 = arrow.utcnow().shift(months=-2).floor('day')
+            case _:
+                target1 = arrow.utcnow().shift(**shift_args).floor('minute')
+                target2 = arrow.utcnow().shift(minutes=-1*(bars*2)+1)
+        return target1, target2
 
     def _pair_feeds(self, cerebro: bt.Cerebro) -> bool:
         """
@@ -233,7 +244,7 @@ class Bot:
             return False
         return True
 
-    def _feeds_can_start(self, stop_signal, retries=20) -> bool:
+    def _feeds_can_start(self, stop_signal, retries=80) -> bool:
         """
         Checks if all feeds can start based on certain conditions.
         It will check for the conditions for a number of times defined by 'retries' before giving up.
@@ -256,7 +267,7 @@ class Bot:
 
                 # Check if the account associated with `self.uid` is being updated and its timestamp is not older than 120 seconds.
                 if not self.check_account(store):
-                    return self.retry_or_fail(retries, f"Account {self.uid} is not being updated", stop)
+                    return self.retry_or_fail(retries, f"Account {self.uid} is not being updated", stop_signal)
 
         return True
 
@@ -367,10 +378,10 @@ class Bot:
                 pass
             # Adjust the start date if the feed has compression > 1
             if compression > 1:
-                fromdate = self.backload_from(bars=self.bars+warm_up).floor('day')
+                fromdate, _ = self.backload_from(bars=self.bars+warm_up)
             else:
                 # Set the start date for the backtest
-                fromdate = self.backload_from(bars=self.bars).floor('day')
+                fromdate, _ = self.backload_from(bars=self.bars)
             if not self._sim_feeds_can_start(feed=feed, fromdate=fromdate):
                 logger.error("Feeds can't start, exiting bot startup")
                 return False
@@ -383,13 +394,12 @@ class Bot:
             FeedClass = getattr(importlib.import_module(feed_module), feed_class_name)
             # Create a new broker object for this feed
             # Create a new data object using the chosen feed class
-            data = FeedClass(
-                feed=feed,
-                timeframe=timeframe,
-                compression=int(compression),
-                helper=self,
-                fromdate=fromdate,
-                mainfeed=feed0)
+            data = FeedClass(feed=feed,
+                             timeframe=timeframe,
+                             compression=int(compression),
+                             helper=self,
+                             fromdate=fromdate,
+                             mainfeed=feed0)
             # Add the data object to the cerebro instance
             cerebro.adddata(data, name=f'{num}')
             # Store the first feed object for later use
@@ -430,7 +440,6 @@ class Bot:
         module = importlib.import_module(
             'strategies.' + self.strategy + '.strategy',
             package='Strategy')
-        self.str_params['size'] = None
         cerebro.addstrategy(module.Strategy, **self.str_params)
         if not self._load_feeds(cerebro=cerebro, warm_up=warm_up, event=event, ofeeds=feeds):
             return False
@@ -483,7 +492,7 @@ class Bot:
         - None
         """
         # Initialize the first feed as None
-        fromdate = self.backload_from(bars=bars)
+        fromdate, fromdate2 = self.backload_from(bars=bars)
         #fromdate = arrow.get('2023-09-04 00:00:00')
         feed_map = {}
         for num, feed in enumerate(self.str_feeds):
@@ -503,6 +512,7 @@ class Bot:
                                  compression=1,
                                  helper=self,
                                  fromdate=fromdate,
+                                 fromdate2=fromdate2,
                                  mainfeed=None)
                 cerebro.adddata(data, name=f'{num}')
                 try:
