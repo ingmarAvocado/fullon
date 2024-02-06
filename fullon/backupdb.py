@@ -60,9 +60,9 @@ db_params = {
     'password': 'fullon'
     # Add other parameters as needed
 }
-table_name = 'kraken_sol_usd.trades'
-backup_file = 'backup.sql'
-date_threshold = '2022-02-17 02:55:14.125407'  # '2022-02-28 23:59:59'
+table_name = 'kraken_btc_usd.trades'
+backup_file = 'backup_btc.usd.sql'
+date_threshold = '2023-06-01 00:00:00.000000'  # 
 
 # Call the function
 backup_ohlcv(db_params, table_name, backup_file, date_threshold)

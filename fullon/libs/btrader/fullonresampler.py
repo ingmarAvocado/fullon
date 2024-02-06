@@ -93,24 +93,44 @@ class FullonFeedResampler:
 
     def append_row(self) -> None:
         """
-        Appends the current data line to the internal DataFrame.
+        Appends a new row of OHLCV (Open, High, Low, Close, Volume) data to the internal DataFrame.
+
+        This method calculates the appropriate time range for the new data row, fetches the corresponding
+        OHLCV data from the database, and appends it to the internal DataFrame. The method ensures that
+        the new data is only appended if the current time is beyond the 'to_date' of the OHLCV data, 
+        indicating that the latest period has completed and new data is available.
         """
-        from_date = self._data.dataframe.index[-1]
-        to_date = arrow.get(from_date).shift(minutes=self.delta_time)
-        if arrow.utcnow() < arrow.get(to_date):
+
+        # Calculate the 'from_date' for the new data row.
+        # This is based on the last date in the DataFrame, shifted by 'delta_time' minutes.
+        # 'delta_time' represents the time interval of each OHLCV data point.
+        from_date = arrow.get(self._data.dataframe.index[-1]).shift(minutes=self.delta_time)
+
+        # Calculate the 'to_date' for the new data row.
+        # This is 'from_date' shifted by 'delta_time' minutes, minus one microsecond,
+        # to accurately represent the closing time of the OHLCV data.
+        to_date = arrow.get(from_date).shift(minutes=self.delta_time, microseconds=-1)
+
+        # Check if the current time is before 'to_date'.
+        # If it is, the latest OHLCV period has not completed, so we do not append new data yet.
+        if arrow.utcnow() < to_date:
             return
-        # Fetch new rows from the database.
-        to_date = to_date + pd.Timedelta(microseconds=-1)
-        with DataBase_ohclv(exchange=self._data.exchange,
-                            symbol=self._data.symbol) as dbase:
+
+        # Fetch the new OHLCV data row from the database for the time range between 'from_date' and 'to_date'.
+        with DataBase_ohclv(exchange=self._data.exchange, symbol=self._data.symbol) as dbase:
             rows = dbase.fetch_ohlcv(table=self._data._table,
                                      compression=self._data.compression,
                                      period=self._period,
                                      fromdate=from_date,
                                      todate=to_date)
-            # Get the rows as a DataFrame.
-        next_date = arrow.get(rows[0][0]).shift(minutes=self.delta_time).format('YYYY-MM-DD HH:mm:ss')
+
+        # Extract the OHLCV values from the fetched data.
+        # The first element of the row contains the timestamp, and the next five elements are OHLCV.
+        next_date = arrow.get(rows[0][0]).format('YYYY-MM-DD HH:mm:ss')
         ohlcv_values = rows[0][1:6]
+
+        # Append the new OHLCV data to the internal DataFrame.
+        # The new data is indexed by the 'next_date' and contains the OHLCV values.
         self._data.dataframe.loc[next_date, ['open', 'high', 'low', 'close', 'volume']] = ohlcv_values
 
     def _custom_next(self, original_next):
@@ -160,28 +180,41 @@ class FullonFeedResampler:
         return period_map[period]
 
     def _create_dataframe(self, rows: list) -> pd.DataFrame:
+        """
+        Creates a DataFrame from a list of OHLCV data rows.
+
+        This method takes a list of OHLCV (Open, High, Low, Close, Volume) data rows,
+        converts them into a properly formatted DataFrame, sets the appropriate column
+        names, and ensures that all data types are correct. It also calculates the time
+        delta between the last two data points to determine the interval of the OHLCV data.
+
+        Args:
+            rows (list): A list of lists, where each inner list contains OHLCV data.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the OHLCV data with a datetime index.
+        """
+
+        # Create a DataFrame from the provided rows
         dataframe = pd.DataFrame(rows)
-        dataframe.rename(columns={0: "date",
-                                  1: "open",
-                                  2: "high",
-                                  3: "low",
-                                  4: "close",
-                                  5: "volume"}, inplace=True)
+
+        # Rename columns for readability and set the 'date' column as the index
+        dataframe.rename(columns={0: "date", 1: "open", 2: "high", 3: "low", 4: "close", 5: "volume"}, inplace=True)
         dataframe.set_index("date", inplace=True)
+
+        # Convert all columns except 'date' to numeric values
         columns_to_convert = dataframe.columns.difference(['date'])
         dataframe[columns_to_convert] = dataframe[columns_to_convert].apply(pd.to_numeric)
+
+        # Convert the index to datetime format
         dataframe.index = pd.to_datetime(dataframe.index)
-        # Calculate the new date for the last row
+
+        # Calculate the time delta between the last two data points
+        # This is used to determine the interval of the OHLCV data
         last_two_dates = dataframe.index[-2:]
         try:
             self.delta_time = (last_two_dates[1] - last_two_dates[0]).total_seconds() / 60
         except IndexError:
+            # If there are not enough data points to calculate the delta, return an empty DataFrame
             return pd.DataFrame()
-        last_date = arrow.get(last_two_dates[1]).shift(minutes=self.delta_time).datetime
-        # Ensure the new date is naive
-        last_date = last_date.replace(tzinfo=None)
-        dataframe.loc[last_date] = np.nan
-        # Drop the first row, shift the dataframe rows down
-        dataframe = dataframe.shift(1).dropna()
-        dataframe = dataframe.dropna()
         return dataframe

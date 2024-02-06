@@ -12,7 +12,7 @@ startohlcv()
 startdb()
 exchange.start_all()
 signal = Event()
-bot1 = Bot(27)
+bot1 = Bot(6)
 bot1.dry_run = True
 print("starting")
 try:

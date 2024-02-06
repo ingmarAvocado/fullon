@@ -1,5 +1,3 @@
-import uuid
-import sys
 from run import install_manager
 from run import user_manager
 from run import bot_manager
@@ -102,6 +100,28 @@ def install():
         "futures": "t"}
     system.install_symbol(symbol=SymbolStruct.from_dict(SYMBOL))
 
+    SYMBOL = {
+        "symbol": "ETH/USDC",
+        "exchange_name": "kraken",
+        "updateframe": "1h",
+        "backtest": "365",
+        "decimals": 6,
+        "base": "USD",
+        "ex_base": "",
+        "futures": "t"}
+    system.install_symbol(symbol=SymbolStruct.from_dict(SYMBOL))
+
+    SYMBOL = {
+        "symbol": "SOL/USDC",
+        "exchange_name": "kraken",
+        "updateframe": "1h",
+        "backtest": "365",
+        "decimals": 6,
+        "base": "USD",
+        "ex_base": "",
+        "futures": "t"}
+    system.install_symbol(symbol=SymbolStruct.from_dict(SYMBOL))
+
     # now lets add a user
     USER = {
         "mail": "admin@fullon",
@@ -143,7 +163,7 @@ def install():
         'user': UID,
         'name': 'test pair',
         'dry_run': 'True',
-        'active': 'True'
+        'active': 'False'
     }
     bot_id = user.add_bot(bot=BOT)
     exchange = {"exchange_id": f"{ex_id}"}
@@ -195,7 +215,7 @@ def install():
         'user': UID,
         'name': 'trading101',
         'dry_run': 'True',
-        'active': 'True'
+        'active': 'False'
     }
     bot_id = user.add_bot(bot=BOT)
     exchange = {"exchange_id": f"{ex_id}"}
@@ -232,7 +252,7 @@ def install():
 
     BOT = {
         'user': UID,
-        'name': 'HMOMLONG BTC/USD',
+        'name': 'FOREST LONG BTC/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -241,7 +261,7 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
+        cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_long')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -265,10 +285,26 @@ def install():
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "size": 250,
-            "size_pct": None,
-            "size_currency": 'USD'
+            "size": None,
+            "size_pct": 10,
+            "size_currency": "USD",
+            "take_profit": 14,
+            "trailing_stop": 13,
+            "timeout": None
             }
+    extended = {
+          'rsi': "14",  #
+          'rsi_entry': "60",
+          'cmf': "18",
+          'cmf_entry': '9',
+          'vwap_entry': "0.4",
+          'obv': "18",
+          'obv_entry': "0.8",
+          'macd_entry': "2.5",
+          "ema": "20",
+          "prediction_steps": "1",
+          "threshold": "0.48"}
+    _bot['extended'] = extended
     bot.edit(bot=_bot)
 
     # -------------------------------------------------------
@@ -276,7 +312,7 @@ def install():
 
     BOT = {
         'user': UID,
-        'name': 'HMOMLONG ETH/USD',
+        'name': 'FOREST LONG ETH/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -285,7 +321,7 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
+        cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_long')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -309,19 +345,34 @@ def install():
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "size": 250,
-            "size_pct": None,
-            "size_currency": 'USD'
+            "size": None,
+            "size_pct": 10,
+            "size_currency": "USD",
+            "take_profit": 14,
+            "trailing_stop": 13,
+            "timeout": None
             }
+    extended = {
+          'rsi': "14",  #
+          'rsi_entry': "60",
+          'cmf': "18",
+          'cmf_entry': '13',
+          'vwap_entry': "0.4",
+          'obv': "18",
+          'obv_entry': "0.8",
+          'macd_entry': "2.5",
+          "ema": "20",
+          "prediction_steps": "1",
+          "threshold": "0.35"}
+    _bot['extended'] = extended
     bot.edit(bot=_bot)
 
 
     # -------------------------------------------------------
     # New bot #5
-
     BOT = {
         'user': UID,
-        'name': 'HMOMLONG XMR/USD',
+        'name': 'FOREST LONG SOL/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -330,7 +381,7 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
+        cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_long')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -338,14 +389,14 @@ def install():
     user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 4,
+        "symbol_id": 8,
         "bot_id": bot_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 4,
+        "symbol_id": 8,
         "bot_id": bot_id,
         "period": 'Days',
         "compression": 1,
@@ -354,18 +405,33 @@ def install():
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "size": 250,
-            "size_pct": None,
-            "size_currency": 'USD'
+            "size": None,
+            "size_pct": 10,
+            "size_currency": "USD",
+            "take_profit": 14,
+            "trailing_stop": 13,
+            "timeout": None
             }
+    extended = {
+          'rsi': "14",  #
+          'rsi_entry': "60",
+          'cmf': "18",
+          'cmf_entry': '9',
+          'vwap_entry': "0.4",
+          'obv': "18",
+          'obv_entry': "0.8",
+          'macd_entry': "2.5",
+          "ema": "20",
+          "prediction_steps": "1",
+          "threshold": "0.48"}
+    _bot['extended'] = extended
     bot.edit(bot=_bot)
 
     # -------------------------------------------------------
-    # bot 6
-
+    # New bot #6
     BOT = {
         'user': UID,
-        'name': 'HMOMLONG MATIC/USD',
+        'name': 'FOREST SHORT BTC/USDC',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -374,7 +440,7 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
+        cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_short')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -382,14 +448,14 @@ def install():
     user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 5,
+        "symbol_id": 7,
         "bot_id": bot_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 5,
+        "symbol_id": 7,
         "bot_id": bot_id,
         "period": 'Days',
         "compression": 1,
@@ -398,17 +464,31 @@ def install():
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "size": 250,
-            "size_pct": None,
-            "size_currency": 'USD'
+            "size": None,
+            "size_pct": 10,
+            "size_currency": "USD",
+            "take_profit": 16,
+            "trailing_stop": 13,
+            "timeout": None
             }
+    extended = {
+          'rsi': "14",
+          'rsi_entry': "40",
+          'macd_entry': "1.5",
+          'stoch_entry': "50",
+          "ema": "21",
+          "prediction_steps": "1",
+          "threshold": "0.35"
+          }
+    _bot['extended'] = extended
     bot.edit(bot=_bot)
+
 
     # -------------------------------------------------------
     # New bot #7
     BOT = {
         'user': UID,
-        'name': 'HMOMLONG SOL/USD',
+        'name': 'FOREST SHORT ETH/USDC',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -417,7 +497,63 @@ def install():
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='heuristic_longs')
+        cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_short')
+    STRAT = {
+        "cat_str_id": cat_str_id,
+        "bot_id": bot_id,
+        "leverage": 2}
+    user.add_bot_strategy(strategy=STRAT)
+
+    feed = {
+        "symbol_id": 9,
+        "bot_id": bot_id,
+        "period": 'Ticks',
+        "compression": 1,
+        "order": 1}
+    user.add_feed_to_bot(feed=feed)
+    feed = {
+        "symbol_id": 9,
+        "bot_id": bot_id,
+        "period": 'Days',
+        "compression": 1,
+        "order": 2}
+    user.add_feed_to_bot(feed=feed)
+
+    bot = bot_manager.BotManager()
+    _bot = {"bot_id": bot_id,
+            "size": None,
+            "size_pct": 10,
+            "size_currency": "USD",
+            "take_profit": 16,
+            "trailing_stop": 13,
+            "timeout": None
+            }
+    extended = {
+          'rsi': "14",
+          'rsi_entry': "40",
+          'macd_entry': "1.5",
+          'stoch_entry': "50",
+          "ema": "21",
+          "prediction_steps": "1",
+          "threshold": "0.35"
+          }
+    _bot['extended'] = extended
+    bot.edit(bot=_bot)
+
+    # -------------------------------------------------------
+    # New bot #8
+    BOT = {
+        'user': UID,
+        'name': 'FOREST SHORT SOL/USD',
+        'dry_run': 'True',
+        'active': 'True'
+    }
+    bot_id = user.add_bot(bot=BOT)
+    exchange = {"exchange_id": f"{ex_id}"}
+    user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
+
+    with Database() as dbase:
+        cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_short')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -432,7 +568,7 @@ def install():
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 8,
+        "symbol_id": 10,
         "bot_id": bot_id,
         "period": 'Days',
         "compression": 1,
@@ -441,8 +577,21 @@ def install():
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
-            "size": 250,
-            "size_pct": None,
-            "size_currency": 'USD'
+            "size": None,
+            "size_pct": 10,
+            "size_currency": "USD",
+            "take_profit": 16,
+            "trailing_stop": 13,
+            "timeout": None
             }
+    extended = {
+          'rsi': "14",
+          'rsi_entry': "40",
+          'macd_entry': "1.5",
+          'stoch_entry': "50",
+          "ema": "21",
+          "prediction_steps": "1",
+          "threshold": "0.35"
+          }
+    _bot['extended'] = extended
     bot.edit(bot=_bot)

@@ -269,8 +269,10 @@ def scale_data(data: pandas.DataFrame) -> Tuple[pandas.DataFrame, MinMaxScaler]:
     numerical_cols = data.select_dtypes(include=['float64', 'int64']).columns
     bool_cols = data.select_dtypes(include=['bool']).columns
     cols_to_scale = [col for col in numerical_cols if col not in bool_cols]
-    data[cols_to_scale] = scaler.fit_transform(data[cols_to_scale])
-    return data, scaler
+    if cols_to_scale:
+        data[cols_to_scale] = scaler.fit_transform(data[cols_to_scale])
+        return data, scaler
+    return data, None
 
 
 def rescale_data(data: pandas.DataFrame, scaler: MinMaxScaler) -> pandas.DataFrame:
@@ -285,10 +287,11 @@ def rescale_data(data: pandas.DataFrame, scaler: MinMaxScaler) -> pandas.DataFra
         pandas.DataFrame: The DataFrame with scaled features.
     """
     # Selecting numerical columns to scale, excluding booleans
-    numerical_cols = data.select_dtypes(include=['float64', 'int64']).columns
-    bool_cols = data.select_dtypes(include=['bool']).columns
-    cols_to_scale = [col for col in numerical_cols if col not in bool_cols]
-    data[cols_to_scale] = scaler.fit_transform(data[cols_to_scale])
+    if scaler:
+        numerical_cols = data.select_dtypes(include=['float64', 'int64']).columns
+        bool_cols = data.select_dtypes(include=['bool']).columns
+        cols_to_scale = [col for col in numerical_cols if col not in bool_cols]
+        data[cols_to_scale] = scaler.fit_transform(data[cols_to_scale])
     return data
 
 
@@ -352,19 +355,27 @@ def try_loading(fromdate: str,
     """
     symbol = feed.symbol.replace('/', '_')
     pre_fix = f"reg_{feed.strategy_name}_{symbol}_{feed.compression}_{feed.period}"
-    regressor_file = f"predictors/{pre_fix}_{fromdate}_to_{todate}_{predictor}.joblib"
+    regressor_file = f"predictors/{pre_fix}_{predictor}.joblib"
     regressor_file = regressor_file.replace(' ', '_')
+    regressor = None
     if os.path.exists(regressor_file) and saved:
         regressor = joblib.load(regressor_file)
     else:
-        regressor = None
+        regressor_file = f"predictors/{pre_fix}_{fromdate}_to_{todate}_{predictor}.joblib"
+        regressor_file = regressor_file.replace(' ', '_')
+        if os.path.exists(regressor_file) and saved:
+            regressor = joblib.load(regressor_file)
     pre_fix = f"scaler_{feed.strategy_name}_{symbol}_{feed.compression}_{feed.period}"
-    scaler_file = f"predictors/{pre_fix}_{fromdate}_to_{todate}.joblib"
+    scaler_file = f"predictors/{pre_fix}.joblib"
     scaler_file = scaler_file.replace(' ', '_')
+    scaler = None
     if os.path.exists(scaler_file) and saved:
         scaler = joblib.load(scaler_file)
     else:
-        scaler = None
+        scaler_file = f"predictors/{pre_fix}_{fromdate}_to_{todate}.joblib"
+        scaler_file = scaler_file.replace(' ', '_')
+        if os.path.exists(scaler_file) and saved:
+            scaler = joblib.load(scaler_file)
     return (regressor, regressor_file, scaler, scaler_file)
 
 
@@ -375,7 +386,7 @@ def train_regressors(data: pandas.DataFrame,
     """
     Trains a variety of regression and classification models specified in the
     'regressors' list.
-    Each model is fitted on the provided data and target, then saved to a file 
+    Each model is fitted on the provided data and target, then saved to a file
     specified in the 'filenames' dictionary.
 
     Parameters:
@@ -414,7 +425,7 @@ def train_regressors(data: pandas.DataFrame,
                 predictor = LGBMClassifier(n_estimators=100,
                                            random_state=42)
             case 'CatBoostClassifier':
-                predictor = CatBoostClassifier(n_estimators=100,
+                predictor = CatBoostClassifier(n_estimators=1000,
                                                random_state=42,
                                                verbose=0)
             case 'MLPClassifier':

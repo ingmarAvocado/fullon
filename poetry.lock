@@ -175,6 +175,20 @@ files = [
 ]
 
 [[package]]
+name = "astral"
+version = "3.2"
+description = "Calculations for the position of the sun and moon."
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "astral-3.2-py3-none-any.whl", hash = "sha256:cb7b49a3f0d4c64ae666be131276d2a3226134c598db10e672028cf8ff855f83"},
+    {file = "astral-3.2.tar.gz", hash = "sha256:9b7c3b412e9e69d172cfb24be0e6addcc9f1bd01a28db8bebe66d75ccc533d88"},
+]
+
+[package.dependencies]
+tzdata = {version = "*", markers = "sys_platform == \"win32\""}
+
+[[package]]
 name = "astroid"
 version = "2.15.8"
 description = "An abstract syntax tree for Python with inference support."
@@ -2809,6 +2823,25 @@ tests = ["coverage[toml]", "dataclasses", "mypy (!=0.940)", "pytest (>=5.0)", "p
 tests-numpy = ["numpy", "pyhamcrest[tests]"]
 
 [[package]]
+name = "pykalman-py311-update"
+version = "0.9.6"
+description = "An implementation of the Kalman Filter, Kalman Smoother, and EM algorithm in Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pykalman-py311-update-0.9.6.tar.gz", hash = "sha256:6c7bf9a2d67876b6e87aaabdd07ea2432287d17612ad87d5a54a331edd162cde"},
+    {file = "pykalman_py311_update-0.9.6-py3-none-any.whl", hash = "sha256:79adebf11fcccd03e8b92bbe8e8a9a6cca374881b3fc4c12ea26b15558e1f91e"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+docs = ["Sphinx", "numpydoc"]
+tests = ["nose"]
+
+[[package]]
 name = "pylint"
 version = "2.17.7"
 description = "python code static checker"
@@ -3984,4 +4017,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.13,>=3.11.5"
-content-hash = "a12692eeececa077058809096701f161a90f17228b62bc640ce650bb63844cb5"
+content-hash = "dee722a474110f3b1511fde5ced88b4bbe44367c7b05e542b1166873c3af4118"

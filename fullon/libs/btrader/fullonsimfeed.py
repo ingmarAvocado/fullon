@@ -179,15 +179,14 @@ class FullonSimFeed(FullonFeed):
         Returns:
             rows: The fetched data.
         """
-        todate = self.last_date
-        todate = todate.format('YYYY-MM-DD HH:mm:ss ZZ')
+        todate = self.last_date.shift(microseconds=-1)
         with Database_ohlcv(exchange=self.feed.exchange_name,
                             symbol=self.symbol) as dbase:
             return dbase.fetch_ohlcv(table=self._table,
                                      compression=self.compression,
                                      period=self.feed.period,
                                      fromdate=self.p.fromdate,
-                                     todate=todate)
+                                     todate=todate.datetime)
 
     def _resample(self):
         # Determine the resampling rule based on the compression and feed period
@@ -264,23 +263,9 @@ class FullonSimFeed(FullonFeed):
                 seconds=-self.time_factor)
             self.last_moments = bt.date2num(self.last_moments.datetime)
             self.result = deque(rows)
-            if self.compression != 1 and self.feed.period != 'minutes':
-                self.adjust_dataframe()
+
         else:
             self._empty_bar()
-
-    def adjust_dataframe(self):
-        """ohlcv need to shift time, so that when calculating the RSI or other indicators 
-        is easier to handle dates
-        """
-        dataframe = self.dataframe
-        last_date = dataframe.index[-1]
-        last_date = arrow.get(last_date).shift(minutes=self.bar_size_minutes).datetime
-        # Ensure the new date is naive
-        last_date = last_date.replace(tzinfo=None)
-        # Drop the first row, shift the dataframe rows down
-        dataframe.loc[last_date] = np.nan
-        self.dataframe = dataframe.shift(1).dropna()
 
     def _empty_bar(self):
         """

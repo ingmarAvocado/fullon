@@ -262,6 +262,8 @@ class SimulManager():
             sim_list = self.load_from_file(filename=filename)
         else:
             sim_list = self.get_simul_list(params)
+        if not params:
+            sim_list = [{}]
         progress_bar = tqdm(total=len(sim_list)*montecarlo, desc="Running Simulations")
         results = []
         start_time = time.perf_counter()
@@ -279,7 +281,10 @@ class SimulManager():
                 results.append((bot, result))
         progress_bar.close()
         sim = simul.simul()
-        sim.echo_results(bot=bot, results=results, sharpe_filter=sharpe_filter, montecarlo=montecarlo > 1)
+        sim.echo_results(bot=bot,
+                         results=results,
+                         sharpe_filter=sharpe_filter,
+                         montecarlo=montecarlo > 1)
         end_time = time.perf_counter()
         execution_time = end_time - start_time
         print(f"\nRun time: {round(execution_time,5)}sec")

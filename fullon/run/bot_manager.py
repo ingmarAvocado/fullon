@@ -285,6 +285,11 @@ class BotManager:
                 return False
 
             if extended:
+                forbidden = ['leverage', 'dry_run', 'active', 'take_profit',
+                             'stop_loss', 'trailing_stop', 'period',
+                             'compression', 'order', 'bot_id', 'symbol_id',
+                             'size', 'size_pct', 'size_currency', 'timeout']
+                extended = {k: v for k, v in extended.items() if k not in forbidden}
                 if not (res := dbase.edit_strat_params(bot_id=bot['bot_id'], params=extended)):
                     return False
 

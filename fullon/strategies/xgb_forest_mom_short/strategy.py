@@ -9,6 +9,7 @@ import libs.predictor.predictor_tools as PredictorTools
 import pandas
 import pandas_ta as ta
 import backtrader as bt
+from astral import moon
 
 
 logger = log.fullon_logger(__name__)
@@ -70,7 +71,7 @@ class Strategy(strat.Strategy):
                 res = self.close_position(feed=0, reason="strategy")
         if res:
             #self.next_open = self.time_to_next_bar(feed=1).shift(minutes=240*0)
-            self.next_open = self.time_to_next_bar(feed=1).shift(days=0)
+            self.next_open = self.time_to_next_bar(feed=1).shift(days=1)
             self.entry_signal[0] = ""
             time_difference = (self.next_open.timestamp() - self.curtime[0].timestamp())
             if time_difference <= 60:  # less than 60 seconds
@@ -196,7 +197,7 @@ class Strategy(strat.Strategy):
             self.cerebro.runstop()
         self.scaler = scaler
         target, data = PredictorTools.set_target(data=data,
-                                                 target="go_long",
+                                                 target="go_short",
                                                  steps=self.p.prediction_steps)
         if target.empty:
             logger.error("Target was not set")
@@ -228,7 +229,7 @@ class Strategy(strat.Strategy):
 
         # Compute RSI
         data['rsi'] = ta.rsi(data['close'], length=self.p.rsi)
-
+        data['rsi_sma'] = data['rsi'].rolling(window=10).mean()
         # Compute MACD
         macd = ta.macd(data['close'])
         data['macd'] = macd['MACD_12_26_9']
@@ -240,12 +241,12 @@ class Strategy(strat.Strategy):
         stochastic = ta.stoch(data['high'], data['low'], data['close'])
         data['stoch_k'] = stochastic['STOCHk_14_3_3']
         data['stoch_d'] = stochastic['STOCHd_14_3_3']
-
-        # Calculate the percentage change of the closing price
+        data['moon'] = data.index.to_series().apply(moon.phase)
         data['change_pct'] = ((data['close'] - data['open']) / data['open']) * 100
+        data['roc'] = data['close'].pct_change(periods=19) * 100
 
         # Modify this to suit the condition for shorting
-        data['go_short'] = data['change_pct'] < 2  # This is a placeholder, adjust according to your strategy
+        data['go_short'] = data['change_pct'] < 1
 
         # Further feature engineering and breakout checks
         data = self.set_ta_features(data=data)  # Adjust this method for shorts
@@ -278,7 +279,7 @@ class Strategy(strat.Strategy):
 
         # Lower RSI might indicate an overbought market suitable for shorts
         data['rsi_entry'] = (data['rsi'] < self.p.rsi_entry) & (data['rsi'] > 25)
-
+        data['rsi_sma_entry'] = (data['rsi'] < data['rsi_sma'])
         # Negative MACD histogram might indicate bearish momentum
         data['macd_entry'] = data['macd_histo'] < self.p.macd_entry
 

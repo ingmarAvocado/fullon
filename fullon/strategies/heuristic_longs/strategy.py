@@ -7,6 +7,7 @@ from libs.strategy import loader
 from libs import log
 import pandas
 import pandas_ta as ta
+import ipdb
 
 
 #from libs.strategy import strategy as strat
@@ -132,8 +133,14 @@ class Strategy(strat.Strategy):
                                            length=self.p.cmf)
         # Remember to update the _set_signals method to include the logic for these new indicators
         self._set_signals()
+        self.indicators_df.drop(['high', 'low', 'open', 'volume', 'open'], axis=1, inplace=True)
+        # here i shift one row so i can use it with current date, since we are using the closing date of previous
+        # OHLCV, rather than the open of the new one. and new need the indicators in current time
+        next_date = arrow.get(self.indicators_df.index[-1]).shift(minutes=self.datas[1].bar_size_minutes)
+        self.indicators_df.loc[next_date.format('YYYY-MM-DD HH:mm:ss')] = None
+        new_index = self.indicators_df.index.to_series().shift(-1).ffill().astype('datetime64[ns]')
+        self.indicators_df.index = new_index
         self.indicators_df = self.indicators_df.dropna()
-        #print(self.indicators_df)
 
     def _calculate_entry_score(self, row):
         score = 0
@@ -224,6 +231,7 @@ class Strategy(strat.Strategy):
                 self.set_indicator(indicator, value)
             except KeyError:
                 self.set_indicator(indicator, False)
+        #ipdb.set_trace()
 
     def local_nextstart(self):
         """ Only runs once, before local_next"""
@@ -253,6 +261,7 @@ class Strategy(strat.Strategy):
 
         filtered_df = self.indicators_df[mask]
         # Check if the filtered dataframe has any rows
+        #ipdb.set_trace()
         if not filtered_df.empty:
             return arrow.get(str(filtered_df.index[0]))
         # If the function hasn't returned by this point, simply return None

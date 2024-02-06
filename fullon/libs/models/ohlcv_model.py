@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import List, Optional, Union, Tuple, Any
 import psycopg2
 from psycopg2.extensions import AsIs, ISOLATION_LEVEL_AUTOCOMMIT, ISOLATION_LEVEL_DEFAULT
@@ -90,14 +91,18 @@ class Database:
                 else:
                     self.pool.putconn(temp_con, close=True)
             except (PoolError, OperationalError) as error:
-                logger.error(f"Connection attempt failed: {error}")
+                logger.info(f"Connection attempt {abs(retries-59)} failed: {error}")
                 time.sleep(delay)  # Wait for a while before retrying
                 retries -= 1  # Decrement the retry counter
-
-        if retries == 0:
-            logger.error("All connection attempts failed.")
-            # Handle the situation where connection could not be established
-            # For example, raise an exception or return a specific value
+            except:
+                logger.info(f"Connection attempt failed {abs(retries-59)} unkown error")
+                time.sleep(delay)  # Wait for a while before retrying
+                retries -= 1  # Decrement the retry counter
+            if retries == 0:
+                logger.error("All connection attempts failed.")
+                self.reset_connection_pool()
+                # Handle the situation where connection could not be established
+                # For example, raise an exception or return a specific value
 
     def fetch_ohlcv(self,
                     table: str,
