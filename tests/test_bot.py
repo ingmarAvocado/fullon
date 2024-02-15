@@ -74,23 +74,24 @@ def test__set_timeframe(bot):
 
 def test_backload_from(bot):
     # Setup feeds
-    dbase = Database()
-    feeds = dbase.get_bot_feeds(bot_id=bot.id)
-    bot._set_feeds(feeds, dbase=dbase)
+    with Database() as dbase:
+        feeds = dbase.get_bot_feeds(bot_id=bot.id)
+        bot._set_feeds(feeds, dbase=dbase)
 
-    del dbase
     # Test valid bars
     backload_time_100 = bot.backload_from(100)
     backload_time_200 = bot.backload_from(200)
 
-    assert isinstance(backload_time_100, arrow.Arrow)
-    assert isinstance(backload_time_200, arrow.Arrow)
+    assert isinstance(backload_time_100[0], arrow.Arrow)
+    assert isinstance(backload_time_100[0], arrow.Arrow)
+    assert isinstance(backload_time_200[1], arrow.Arrow)
+    assert isinstance(backload_time_200[1], arrow.Arrow)
 
     # Test if backload_time_200 is before backload_time_100
-    assert backload_time_200 < backload_time_100
+    assert backload_time_200[0] < backload_time_100[0]
 
     # Test if backload_time_100 is before current time
-    assert backload_time_100 < arrow.utcnow()
+    assert backload_time_100[0] < arrow.utcnow()
 
 
 def test__load_feeds(bot, mocker):

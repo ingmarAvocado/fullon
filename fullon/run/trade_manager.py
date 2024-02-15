@@ -14,7 +14,7 @@ from libs.caches.trades_cache import Cache
 from libs.database import Database
 from libs.exchange import Exchange
 from libs.structs.exchange_struct import ExchangeStruct
-from libs.models.ohlcv_model import Database as Database_ohlcv
+from libs.database_ohlcv import Database as Database_ohlcv
 from typing import Union, Optional
 
 logger = log.fullon_logger(__name__)
@@ -93,16 +93,16 @@ class TradeManager:
                 then = arrow.get(then).int_timestamp
             # Refresh if more than one minute has passed.
             while now - then >= 59:
-                table = dbase.schema + ".trades"
+                table = dbase.get_schema() + ".trades"
                 seconds = now - then
                 days = round(seconds/60/60/24, 2)
                 mesg = f"Installing/Updating trade database of {symbol.symbol}.\
                 Behind for seconds({seconds})  days ({days})  on table {table}"
                 logger.info(mesg)
                 data = ex.fetch_trades(
-                    symbol=symbol.symbol, since=then, limit=500)            
+                    symbol=symbol.symbol, since=then, limit=500)
                 if data and not test:
-                    dbase.save_symbol_trades(data)
+                    dbase.save_symbol_trades(data=data)
                     then = int(data[-1:][0].timestamp)
                 if test:
                     break
@@ -126,7 +126,7 @@ class TradeManager:
         """
         exchange_conn = Exchange(exchange=exchange)
         with Database_ohlcv(exchange=exchange, symbol=symbol) as dbase:
-            table = f"{dbase.schema}.trades"
+            table = f"{dbase.get_schema()}.trades"
             then = dbase.get_latest_timestamp(table2=table)
         if not then:
             then = since
@@ -152,7 +152,7 @@ class TradeManager:
         if not data or test:
             return
         with Database_ohlcv(exchange=exchange, symbol=symbol) as dbase:
-            dbase.save_symbol_trades(data)
+            dbase.save_symbol_trades(data=data)
         latest_timestamp = float(data[-1].timestamp)+0.000001
         return latest_timestamp
 

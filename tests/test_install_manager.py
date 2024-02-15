@@ -144,13 +144,12 @@ def test_add_and_remove_user(install_manager):
     install_manager.add_user(user)
 
     # Check if the user was added
-    dbase = Database()
-    user_id = dbase.get_user_id(mail=user['mail'])
-    assert user_id is not None
-    # Remove the user
-    install_manager.remove_user(user_id=user_id)
+    with Database() as dbase:
+        user_id = dbase.get_user_id(mail=user['mail'])
+        assert user_id is not None
+        # Remove the user
+        install_manager.remove_user(user_id=user_id)
 
-    # Check if the user was removed
-    user_id_after_removal = dbase.get_user_id(mail=user['mail'])
-    assert user_id_after_removal is None
-    del dbase
+        # Check if the user was removed
+        user_id_after_removal = dbase.get_user_id(mail=user['mail'])
+        assert user_id_after_removal is None

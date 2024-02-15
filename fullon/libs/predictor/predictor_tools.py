@@ -2,7 +2,7 @@ from numpy.lib.shape_base import row_stack
 import pandas
 from pandas.core.tools.datetimes import objects_to_datetime64ns
 import pandas_ta as ta
-from libs.models.ohlcv_model import Database as Database_ohlcv
+from libs.database_ohlcv import Database as Database_ohlcv
 from libs import log
 from libs.btrader.fullonfeed import FullonFeed
 from backtrader import num2date

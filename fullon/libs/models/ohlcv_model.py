@@ -1,31 +1,24 @@
-from types import NoneType
 from typing import List, Optional, Union, Tuple, Any
 import psycopg2
 from psycopg2.extensions import AsIs, ISOLATION_LEVEL_AUTOCOMMIT, ISOLATION_LEVEL_DEFAULT
-from psycopg2.pool import PoolError
-from psycopg2 import OperationalError
 import arrow
-import time
 from libs import settings, log
 from libs import database_helpers as dbhelpers
-from libs.connection_pg_pool import create_connection_pool, close_all_database_pools
 from libs.structs.trade_struct import TradeStruct
 from datetime import datetime
 
-
 logger = log.fullon_logger(__name__)
-_max_conn: int
 
 
 class Database:
 
-    def __init__(self, exchange: str, symbol: str, max_conn: int = settings.DBPOOLSIZE, simul: bool = False):
-        self._max_conn = max_conn
+    def __init__(self, exchange: str, symbol: str):
         self.exchange = exchange
         symbol = exchange + "_" + symbol.replace("/", "_")
         symbol = symbol.replace(":", "_")
         self.schema = symbol.replace("-", "_")
-        self.get_connection(max_conn=max_conn)
+        self.con = None
+        self.get_connection()
 
     def __del__(self):
         self.endthis()
@@ -36,73 +29,51 @@ class Database:
     def __exit__(self, exc_type, exc_value, traceback):
         self.endthis()
 
+    def reset_params(self, exchange: str, symbol: str):
+        self.exchange = exchange
+        symbol = exchange + "_" + symbol.replace("/", "_")
+        symbol = symbol.replace(":", "_")
+        self.schema = symbol.replace("-", "_")
+
     def endthis(self):
         try:
-            self.pool.putconn(self.con)
-            del self.pool
-            del self.con
+            if self.con:
+                self.con.close()
+                del self.con
         except AttributeError:
             pass
-        except PoolError as error:
-            logger.error(str(error))
-
-    def reset_connection_pool(self):
-        """
-        Now some times due to some raise errors my code needs
-        to reset the connection pool.
-
-        Help with the the reseting here
-
-        """
-        close_all_database_pools()
-        self.get_connection(max_conn=self._max_conn)
 
     @staticmethod
     def is_connection_valid(conn):
-        """
-        Check if the database connection is open and valid.
-        """
         try:
-            # Use a simple query to test the connection
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
                 return True
         except (psycopg2.DatabaseError, psycopg2.OperationalError):
-            # If there's any error, the connection is not valid
             return False
 
-    def get_connection(self, max_conn: int, retries: int = 60, delay: int = 1) -> None:
-        """
-        Attempt to obtain a connection from the pool, with retries.
+    def get_connection(self) -> None:
+        try:
+            self.con = psycopg2.connect(
+                dbname=settings.DBNAME_OHLCV,
+                user=settings.DBUSER,
+                password=settings.DBPASSWD,
+                host=settings.DBHOST,  # Assuming pgBouncer is running on this host
+                port=settings.DBPORT  # The port pgBouncer is listening on
+            )
+            if self.is_connection_valid(self.con):
+                logger.info("Database connection established.")
+            else:
+                logger.error("Failed to establish a valid database connection.")
+        except psycopg2.DatabaseError as e:
+            logger.error(f"Database connection failed: {e}")
+            raise
 
-        :param retries: The number of retry attempts to make.
-        :param delay: The delay between retry attempts in seconds.
-        :return: The connection object if successful, or None if all attempts fail.
+    def get_schema(self) -> str:
         """
-        self.pool = create_connection_pool(min_conn=1,
-                                           max_conn=max_conn,
-                                           database=settings.DBNAME_OHLCV)
-        while retries > 0:
-            try:
-                temp_con = self.pool.getconn()
-                if self.is_connection_valid(temp_con):
-                    self.con = temp_con
-                    break
-                else:
-                    self.pool.putconn(temp_con, close=True)
-            except (PoolError, OperationalError) as error:
-                logger.info(f"Connection attempt {abs(retries-59)} failed: {error}")
-                time.sleep(delay)  # Wait for a while before retrying
-                retries -= 1  # Decrement the retry counter
-            except:
-                logger.info(f"Connection attempt failed {abs(retries-59)} unkown error")
-                time.sleep(delay)  # Wait for a while before retrying
-                retries -= 1  # Decrement the retry counter
-            if retries == 0:
-                logger.error("All connection attempts failed.")
-                self.reset_connection_pool()
-                # Handle the situation where connection could not be established
-                # For example, raise an exception or return a specific value
+        returns the current schema
+        """
+        return self.schema
 
     def fetch_ohlcv(self,
                     table: str,
@@ -292,20 +263,16 @@ class Database:
         if not schema:
             schema = self.schema
         try:
-            cur = self.con.cursor()
-            sql = f"select exists(select * from information_schema.tables where table_schema = '{schema.lower()}' and table_name='{table.lower()}')"
-            cur.execute(sql)
-            r = cur.fetchone()[0]
-            cur.close()
-            del (cur)
-            return r
+            with self.con.cursor() as cur:
+                sql = f"select exists(select * from information_schema.tables where table_schema = '{schema.lower()}' and table_name='{table.lower()}')"
+                cur.execute(sql)
+                r = cur.fetchone()[0]
+                cur.close()
+                return r
         except (Exception, psycopg2.DatabaseError) as error:
-            cur.close()
-            del (cur)
-            raise DatabaseError(f"Cant execute query {sql}")
+            raise psycopg2.DatabaseError(f"Cant execute query {sql}")
         except BaseException:
             raise
-        return False
 
     def delete_schema(self):
         try:
@@ -316,6 +283,7 @@ class Database:
                 logger.info("Schema dropped")
             return True
         except (Exception, psycopg2.DatabaseError) as error:
+            self.con.rollback()
             logger.info(str(error))
         return False
 
@@ -333,8 +301,6 @@ class Database:
             cur.close()
             error = "Error cant delete_test_view, postgres says: " + str(error)
             logger.info(self.error_print(error=error, method="delete_test_view", query=sql))
-
-            logger.info(error)
         return False
 
     def save_symbol_trades(self, data: List[TradeStruct]) -> None:
@@ -596,13 +562,13 @@ class Database:
                 prepared_data.append((line.ts, line.open, line.high, line.low, line.close, line.vol))
 
             try:
-                cur = self.con.cursor()
-                cur.executemany(sql, ([AsIs(f"{self.schema}.{table}"), *row] for row in prepared_data))
-                self.con.commit()
-                cur.close()
+                with self.con.cursor() as cur:
+                    cur.executemany(sql, ([AsIs(f"{self.schema}.{table}"), *row] for row in prepared_data))
+                    self.con.commit()
+                    cur.close()
             except (Exception, psycopg2.DatabaseError) as error:
+                self.con.rollback()
                 logger.info(self.error_print(error=error, method="fill_candle_table", query=sql))
-                sys.exit()
 
     def vwap(self, compression: int, period: str) -> List[Tuple[str, float]]:
         """

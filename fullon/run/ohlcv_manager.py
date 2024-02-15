@@ -9,7 +9,7 @@ from libs import cache, log
 from libs.database import Database
 from libs.exchange import Exchange
 from libs.structs.symbol_struct import SymbolStruct
-from libs.models.ohlcv_model import Database as Database_Ohlcv
+from libs.database_ohlcv import Database as Database_Ohlcv
 from run.trade_manager import TradeManager
 from os import getpid
 from signal import SIGTERM
@@ -77,10 +77,9 @@ class OhlcvManager:
             self.stop(thread=thread)
         self.started = False
 
-    def database_handler(self, symbol: SymbolStruct, simul=False):
+    def database_handler(self, symbol: SymbolStruct):
         res = Database_Ohlcv(exchange=symbol.exchange_name,
-                             symbol=symbol.symbol,
-                             simul=simul)
+                             symbol=symbol.symbol)
         return res
 
     def clean_cache(self) -> None:
@@ -166,13 +165,13 @@ class OhlcvManager:
         Returns:
             None
         """
-        trade = None
+        trades = None
         with cache.Cache() as store:
             trades = store.get_trades_list(
                 symbol=symbol.symbol, exchange=symbol.exchange_name)
         if trades:
             with self.database_handler(symbol=symbol) as dbase:
-                dbase.save_symbol_trades(trades)
+                dbase.save_symbol_trades(trades=trades)
 
     @staticmethod
     def _update_process(exchange_name: str, symbol: str) -> bool:

@@ -260,7 +260,8 @@ class Launcher():
                     request_queue.put(('get_bots', '', response_queue))
                     res = response_queue.get()
                     return res
+        except EOFError:
+            pass
         except Exception as e:
             logger.error(f"Failed to get list of bots: {e}")
-
         return []

@@ -36,6 +36,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
         mngr: An instance of multiprocessing.Manager.
     """
     setproctitle(f"Fullon bot database queue #{num} for OHLCV")
+    dbase_instance = None
     while True:
         try:
             request = request_queue.get()
@@ -46,23 +47,30 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
             max_retries = 30
             for attempt in range(max_retries):
                 try:
-                    with DatabaseOHLCV(exchange=exchange, symbol=symbol, max_conn=1) as dbase_instance:
-                        method = getattr(dbase_instance, method_name)
-                        result = method(**method_params)
-                        response_queue.put(result)
-                        break  # Break the loop if successful
+                    if not dbase_instance:
+                        dbase_instance = DatabaseOHLCV(exchange=exchange, symbol=symbol)
+                    else:
+                        dbase_instance.reset_params(exchange=exchange, symbol=symbol)
+                    method = getattr(dbase_instance, method_name)
+                    result = method(**method_params)
+                    response_queue.put(result)
+                    break  # Break the loop if successful
                 except psycopg2.OperationalError as db_error:
                     if attempt < max_retries - 1:  # Check if more retries are left
                         msg = f"OHLCV database operation failed, retry {attempt + 1}/{max_retries}. Error: {db_error}"
                         logger.warning(msg)
                         sleep(1.5)  # Wait before retrying
-                        with DatabaseOHLCV(exchange=exchange, symbol=symbol, max_conn=1) as dbase_instance:
-                            dbase_instance.reset_connection_pool()  # Reset connection pool before retry
+                        if dbase_instance:
+                            dbase_instance.endthis()  # Reset connection pool before retry
+                            dbase_instance = None
                     else:
                         msg = f"OHLCVd atabase operation failed after {max_retries} attempts. Error: {db_error}"
                         logger.error(msg)
                         response_queue.put(None)  # Indicate failure to the requester
                         break
+                except psycopg2.errors.SyntaxError:
+                    msg = f"Error in method{method_name} with params {method_params}"
+                    logger.error(msg)
         except KeyboardInterrupt:
             logger.error("KeyboardInterrupt received. Shutting down.")
             break
@@ -72,6 +80,8 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
         except TypeError as error:
             logger.error(f"Type error: {error}")
             response_queue.put(None)
+    if dbase_instance:
+        dbase_instance.endthis()
     mngr.shutdown()
 
 
@@ -86,7 +96,7 @@ def start():
         logger.info(f"Starting Database Queue Manager for OHCLV")
         mngr = Manager()
         request_queue = mngr.Queue()
-        for num in range(0, int(settings.DBPOOLSIZE*0.33)):
+        for num in range(0, settings.DBWORKERS_OHLCV):
             processes[num] = Process(target=process_requests, args=(num, request_queue, mngr))
             processes[num].start()
     #lets start at least 4 response_queues
