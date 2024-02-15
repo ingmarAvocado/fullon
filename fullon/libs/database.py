@@ -15,7 +15,7 @@ request_queue: Optional[Queue] = None
 response_queue_pool: Optional[QueuePool] = QueuePool()
 processes: Dict = {}
 _started: bool = False
-WORKERS = int(settings.DBPOOLSIZE*0.66)
+WORKERS = settings.DBWORKERS
 
 
 class ControlSignals(Enum):
@@ -38,6 +38,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
     """
     title = f"Fullon database queue #{num} for {settings.DBNAME}"
     setproctitle(title)
+    dbase_instance = MainDatabase()
     while True:
         try:
             request = request_queue.get()
@@ -51,17 +52,19 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
             max_retries = 30
             for attempt in range(max_retries):
                 try:
-                    with MainDatabase(max_conn=1) as dbase_instance:
-                        method = getattr(dbase_instance, method_name)
-                        result = method(**method_params)
-                        response_queue.put(result)
-                        break  # Break the loop if successful
+                    if not dbase_instance:
+                        dbase_instance = MainDatabase()
+                    method = getattr(dbase_instance, method_name)
+                    result = method(**method_params)
+                    response_queue.put(result)
+                    break  # Break the loop if successful
                 except psycopg2.OperationalError as db_error:
                     if attempt < max_retries - 1:  # Check if more retries are left
                         logger.warning(f"Database operation failed, retry {attempt + 1}/{max_retries}. Error: {db_error}")
                         sleep(1.5)  # Wait before retrying
-                        with MainDatabase(max_conn=1) as dbase_instance:
-                            dbase_instance.reset_connection_pool()  # Reset connection pool before retry
+                        if dbase_instance:
+                            dbase_instance.endthis()  # Reset connection pool before retry
+                            dbase_instance = None
                     else:
                         logger.error(f"Database operation failed after {max_retries} attempts. Error: {db_error}")
                         response_queue.put(None)  # Indicate failure to the requester
@@ -75,6 +78,8 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
         except TypeError as error:
             logger.error(f"Type error: {error}")
             response_queue.put(None)
+    if dbase_instance:
+        dbase_instance.endthis()
     mngr.shutdown()
 
 
@@ -171,7 +176,10 @@ class Database:
                 raise WorkerError("Database queue not initialized")
 
             request_queue.put((attr, params, response_queue))
-            result = response_queue.get()
+            try:
+                result = response_queue.get()
+            except EOFError:
+                return
             if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
                 raise WorkerError(f"Error in worker process: {result[1]}")
             return result

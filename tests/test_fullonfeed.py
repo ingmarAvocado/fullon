@@ -18,7 +18,7 @@ def fullon_feed():
         feeds = dbase.get_bot_feeds(bot_id=bot1.id)
     feed = feeds[0]
     timeframe = bot1._set_timeframe(period=feed.period)
-    fromdate = bot1.backload_from(bars=bot1.bars).floor('day')
+    fromdate = bot1.backload_from(bars=bot1.bars)[0].floor('day')
     fullon_feed = FullonFeed(feed=feed,
                              timeframe=timeframe,
                              compression=int(feed.compression),
