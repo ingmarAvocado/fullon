@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fullon"
-version = "0.7.0"
+version = "0.8.0"
 description = ""
 authors = ["ingmar <ingmar@avocadoblock.com>"]
 license = "GPL"

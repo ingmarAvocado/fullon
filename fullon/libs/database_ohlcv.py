@@ -119,7 +119,7 @@ def stop():
         for num, process in processes.copy().items():
             process.join(timeout=0.1)
             if process.is_alive():
-                logger.info(f"Force terminating process for 'OHLCV'")
+                logger.debug(f"Force terminating process for 'OHLCV'")
                 process.terminate()
             del processes[num]
         request_queue = None

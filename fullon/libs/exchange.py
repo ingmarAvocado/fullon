@@ -1,3 +1,4 @@
+from inspect import Attribute
 from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager, Queue, Lock
 from queue import Empty
@@ -203,25 +204,28 @@ class Exchange:
         """
         global request_queues, response_queue_pool  # Consider avoiding global variables
         result = None
-        with response_queue_pool.get_queue() as response_queue:
-            try:
-                # Place a request in the queue for the worker to process.
-                request_queues[self.exchange].put(
-                    (self.exchange, self.uid, self.params, attr, params, response_queue)
-                )
-            except KeyError as error:
-                # Handle a missing queue for this exchange.
-                raise WorkerError(f"Exchange queue for {self.exchange} not available or broken.")
+        try:
+            with response_queue_pool.get_queue() as response_queue:
+                try:
+                    # Place a request in the queue for the worker to process.
+                    request_queues[self.exchange].put(
+                        (self.exchange, self.uid, self.params, attr, params, response_queue)
+                    )
+                except KeyError as error:
+                    # Handle a missing queue for this exchange.
+                    raise WorkerError(f"Exchange queue for {self.exchange} not available or broken.")
 
-            try:
-                # Wait for the worker to process the request and get the result.
-                result = response_queue.get(timeout=timeout)
-            except Empty:
-                logger.error("Worker timed out.")
-                return None
-            finally:
-                if isinstance(result, tuple) and result[0] == SENTINEL:
-                    # Handle any errors raised by the worker.
-                    raise WorkerError(f"Error in worker process: {result[1]}")
-
+                try:
+                    # Wait for the worker to process the request and get the result.
+                    result = response_queue.get(timeout=timeout)
+                except Empty:
+                    logger.error("Worker timed out.")
+                    return None
+                finally:
+                    if isinstance(result, tuple) and result[0] == SENTINEL:
+                        # Handle any errors raised by the worker.
+                        raise WorkerError(f"Error in worker process: {result[1]}")
+        except AttributeError:
+            logger.debug("AttributeError: 'NoneType' object has no attribute 'get_queue'")
+            pass
         return result
