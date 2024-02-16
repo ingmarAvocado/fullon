@@ -62,7 +62,8 @@ class Database:
                 port=settings.DBPORT  # The port pgBouncer is listening on
             )
             if self.is_connection_valid(self.con):
-                logger.info("Database connection established.")
+                pass
+                # logger.info("Database connection established.")
             else:
                 logger.error("Failed to establish a valid database connection.")
         except psycopg2.DatabaseError as e:

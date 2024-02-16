@@ -8,7 +8,7 @@ from libs.database_ohlcv import start as start_ohlcv, stop as stop_ohlcv
 from libs.simul_launcher import simulator
 from libs.bot import Bot
 settings.NOISE = False
-settings.LOG_LEVEL = 'ERROR'
+settings.LOG_LEVEL = 'INFO'
 start_database()
 start_ohlcv()
 simulator.start()
@@ -30,13 +30,13 @@ params2 = {
           'stoch_entry': "0",
           "ema": "20",
           "leverage": "2",
-          "size_pct": "45",
+          "size_pct": "10",
           "prediction_steps": "1",
           "threshold": "0.48"}
-params2 = {"size_pct": "49"}
+params2 = {"size_pct": "10"}
 #params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
-BOT = {"bot_id": 3,
-       "periods": 450,
+BOT = {"bot_id": 8,
+       "periods": 50,
        "warm_up": 50,
        "xls": False,
        "verbose": False,
@@ -69,7 +69,7 @@ simul.bot_simul(bot=BOT,
                 feeds=feeds,
                 params=params2,
                 filename=filename,
-                montecarlo=40,
+                montecarlo=1,
                 sharpe_filter=-10.00)
 
 stop_database()
