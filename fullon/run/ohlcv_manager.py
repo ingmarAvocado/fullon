@@ -171,7 +171,7 @@ class OhlcvManager:
                 symbol=symbol.symbol, exchange=symbol.exchange_name)
         if trades:
             with self.database_handler(symbol=symbol) as dbase:
-                dbase.save_symbol_trades(trades=trades)
+                dbase.save_symbol_trades(data=trades)
 
     @staticmethod
     def _update_process(exchange_name: str, symbol: str) -> bool:
