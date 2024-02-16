@@ -1,16 +1,13 @@
 from numpy.lib.shape_base import row_stack
 import pandas
-from pandas.core.tools.datetimes import objects_to_datetime64ns
 import pandas_ta as ta
 from libs.database_ohlcv import Database as Database_ohlcv
 from libs import log
 from libs.btrader.fullonfeed import FullonFeed
-from backtrader import num2date
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingClassifier, GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error
-from typing import Tuple, List, Any, Dict, Optional
+from typing import Tuple, List, Any, Dict
 import os
 import arrow
 from time import sleep
