@@ -79,7 +79,7 @@ class Strategy(strat.Strategy):
 
     def set_indicators_df(self):
         """
-        sets indidcator_df to use during the strategies, it works on every loop with real trading
+        sets indicator_df to use during the strategies, it works on every loop with real trading
         but only once when simulating
         """
         data = self.datas[1].dataframe[['open', 'high', 'low', 'close', 'volume']].copy()

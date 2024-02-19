@@ -19,24 +19,17 @@ params2 = {
           'take_profit': "14",
           'trailing_stop': "13",  # 12
           "timeout": "None",
-          'rsi': "14",  #
-          'rsi_entry': "60",
-          'cmf': "18",
-          'cmf_entry': '9',
-          'vwap_entry': "0.4",
-          'obv': "18",
-          'obv_entry': "0.8",
-          'macd_entry': "2.5",
-          'stoch_entry': "0",
-          "ema": "20",
+          'rsi': "14",
+          'entry': "65",
+          'exit': "60",
           "leverage": "2",
           "size_pct": "10",
           "prediction_steps": "1",
           "threshold": "0.48"}
 params2 = {"size_pct": "10"}
 #params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
-BOT = {"bot_id": 8,
-       "periods": 50,
+BOT = {"bot_id": 9,
+       "periods": 250,
        "warm_up": 50,
        "xls": False,
        "verbose": False,
@@ -46,7 +39,7 @@ feeds = {}
 #filename = "rsi2long2.csv"
 #feeds = {2: {'compression': 30}, 3: {'compression': 30}}
 #feeds = {1: {'compression': 480}}
-'''
+
 abot = Bot(BOT['bot_id'], BOT['periods'])
 params3 = {}
 for p, key in params2.items():
@@ -59,6 +52,7 @@ for p, key in params2.items():
            raise
 
 abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params=params3, event=True)
+
 #abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params={}, event=True)
 #params2 = {}
 #params2 = {"size_pct": "10"}
@@ -71,7 +65,7 @@ simul.bot_simul(bot=BOT,
                 filename=filename,
                 montecarlo=1,
                 sharpe_filter=-10.00)
-
+'''
 stop_database()
 stop_ohlcv()
 simulator.stop()

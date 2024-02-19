@@ -35,7 +35,6 @@ class FullonFeed(DataBase):
         _last_id (str): The last processed trade ID for ohlcv data.
         result (deque): A deque of ohlcv data rows.
         timeframe (int): The timeframe for the data feed.
-        last_date (str): The timestamp of the last processed row.
         _todate (str): The todate value for the data feed.
         _ST_LIVE (int): The state value for the live data state.
         _ST_OVER (int): The state value for the finished data state.
@@ -160,7 +159,7 @@ class FullonFeed(DataBase):
             case 'weeks':
                 self.bar_size_minutes = self.compression*24*60*7
 
-    def _fetch_tick(self, rest: float = 0.2) -> Any:
+    def _fetch_tick(self, rest: float = 1.0) -> Any:
         """
         Fetches tick data from the cache.
 

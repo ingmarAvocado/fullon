@@ -190,7 +190,7 @@ class Exchange:
 
         return default
 
-    def _run_default(self, attr: str, params: Dict[str, Any], timeout=360) -> Any:
+    def _run_default(self, attr: str, params: Dict[str, Any], timeout=30, attemps=1) -> Any:
         """
         Run the default implementation of a missing method.
 
@@ -219,8 +219,19 @@ class Exchange:
                     # Wait for the worker to process the request and get the result.
                     result = response_queue.get(timeout=timeout)
                 except Empty:
-                    logger.error("Worker timed out.")
-                    return None
+                    logger.error("Worker timed out running: %s %s", attr, params)
+                    logger.error("relaunching worker")
+                    stop(exchange=self.exchange)
+                    sleep(1)
+                    start(exchange=self.exchange)
+                    if attemps > 7:
+                        logger.error("Workers keeps timing out")
+                        return None
+                    else:
+                        sleep(10*attemps)
+                    return self._run_default(attr=attr,
+                                             params=params,
+                                             attemps=attemps-1)
                 finally:
                     if isinstance(result, tuple) and result[0] == SENTINEL:
                         # Handle any errors raised by the worker.
