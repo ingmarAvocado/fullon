@@ -55,7 +55,7 @@ class Strategy(Strategy):
         # Check if data feed is live
         if not self.datas[0].islive():
             # print(arrow.get(bt.num2date(self.datas[0].datetime[0])))
-            self.set_indicators_df()
+            #self.set_indicators_df()
             return
         self.status = "looping"
         self._stop_signal()
@@ -94,6 +94,21 @@ class Strategy(Strategy):
             return False
         else:
             return True
+
+    def _bar_start_date(self, compression: int, period: str):
+        """
+        Gets starting date of bot data feed
+        """
+        bars = self.p.pre_load_bars
+        period_map = {
+            "ticks": 1,
+            "minutes": 60,
+            "days": 86400,
+            "weeks": 604800,
+            "months": 2629746  # assuming 30.44 days per month
+        }
+        seconds = compression * period_map.get(period, 0)
+        return self.curtime[0].shift(seconds=-seconds*bars)
 
     def kill_orders(self):
         """ description """

@@ -40,9 +40,9 @@ class TickManager:
         """
         with self.thread_lock:  # Acquire the lock before accessing shared resources
             if thread in self.stop_signals:
-                self.stop_signals[thread].set()
-                _thread = self.threads[thread]
                 try:
+                    self.stop_signals[thread].set()
+                    _thread = self.threads[thread]
                     _thread.join(timeout=2)  # Wait for the thread to finish with a timeout
                     del self.threads[thread]
                     logger.info(f"Stopped tick {thread}")

@@ -6,17 +6,13 @@ from __future__ import (
     division,
     print_function,
     unicode_literals)
-from IPython.core.application import ProfileAwareConfigLoader
 import backtrader as bt
 import arrow
-from pandas.core.base import NoNewAttributesMixin
-from pause import milliseconds
 from libs import log
-from libs.btrader.fullonbroker import FullonBroker
 from libs.database import Database
 from libs.structs.trade_struct import TradeStruct
 import pandas
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
 logger = log.fullon_logger(__name__)
 
@@ -191,6 +187,12 @@ class Strategy(bt.Strategy):
                 logger.error(msg)
                 return False
         return True
+
+    def _bar_start_date(self, compression: int, period: str):
+        """
+        Gets starting date of bot data feed
+        """
+        return self.datas[0].params.fromdate
 
     def _state_variables(self) -> None:
         """
@@ -460,19 +462,6 @@ class Strategy(bt.Strategy):
                         self.stop_loss[feed] = stop_loss
         except TypeError:
             raise
-            mesg = f"WTF {self.pos}, {self.stop_loss}, {self.take_profit}"
-            logger.error(mesg)
-            print("Affected BOT", self.name)
-            import ipdb
-            ipdb.set_trace()
-
-            '''
-            open_trade = self._get_last_trade(datas_num=feed)
-            self.handle_open_pos(datas_num=feed,
-                                 is_buy=is_positive,
-                                 tick=open_trade.price)
-            return self.update_trade_vars(feed=feed)
-            '''
 
     @staticmethod
     def calculate_trade_variable(tick: float,

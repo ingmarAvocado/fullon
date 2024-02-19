@@ -65,8 +65,8 @@ class AccountManager:
         """
         with self.thread_lock:  # Acquire the lock before accessing shared resources
             if thread in self.stop_signals:
-                self.stop_signals[thread].set()
                 try:
+                    self.stop_signals[thread].set()
                     _thread = self.threads[thread]
                 except KeyError:
                     pass
