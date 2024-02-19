@@ -31,6 +31,8 @@ class Interface(Ccxt_Interface):
 
     def __init__(self, exchange, params, dry_run=False):
         super().__init__(exchange, params)
+        self.exchange = exchange
+        self.params = params
         self.ws.verbose = False
         self.short = True
         self.ohlcv_needs_trades = True
@@ -71,6 +73,13 @@ class Interface(Ccxt_Interface):
             except AttributeError:
                 pass
         super().stop()
+
+    def refresh(self):
+        super().__init__(self.exchange, self.params)
+        if not self.ws.markets:
+            self.ws.load_markets()
+        self._ws_pre_check()
+        self.start_token_refresh_thread()
 
     def _ws_pre_check(self):
         """

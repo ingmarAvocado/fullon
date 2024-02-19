@@ -171,15 +171,18 @@ class Database:
             WorkerError: If the database queue is not initialized.
         """
         global request_queue, response_queue_pool
-        with response_queue_pool.get_queue() as response_queue:
-            if not request_queue:
-                raise WorkerError("Database queue not initialized")
+        try:
+            with response_queue_pool.get_queue() as response_queue:
+                if not request_queue:
+                    raise WorkerError("Database queue not initialized")
 
-            request_queue.put((attr, params, response_queue))
-            try:
-                result = response_queue.get()
-            except EOFError:
-                return
-            if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
-                raise WorkerError(f"Error in worker process: {result[1]}")
-            return result
+                request_queue.put((attr, params, response_queue))
+                try:
+                    result = response_queue.get()
+                except EOFError:
+                    return
+                if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
+                    raise WorkerError(f"Error in worker process: {result[1]}")
+                return result
+        except RuntimeError:
+            pass

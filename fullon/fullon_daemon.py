@@ -47,28 +47,30 @@ def kill_processes(name):
     try:
         pids = subprocess.check_output(["pgrep", "-f", name])
     except subprocess.CalledProcessError:
-        print("No processes to kill")
         return
     if not pids:
         return
+
     pids = pids.splitlines()
     _pids = [int(x.decode('utf-8')) for x in pids]
     pids = sorted(_pids, reverse=True)
-
     # Send SIGTERM signal to each process
-    for pid in pids:
-        os.kill(int(pid), signal.SIGTERM)
-
-    # Wait for a moment for processes to terminate
-    # time.sleep(1)  # uncomment this if needed
-
-    # Double check if processes are still running
+    my_pid = os.getpid()
+    try:
+        pids.remove(my_pid)
+    except ValueError:
+        pass
     for pid in pids:
         try:
-            # Try to kill with SIGKILL to make sure they are terminated
+            os.kill(int(pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+    time.sleep(1)
+    for pid in pids:
+        try:
             os.kill(int(pid), signal.SIGKILL)
         except ProcessLookupError:
-            # Process already terminated or not exists
             pass
 
 
@@ -102,13 +104,13 @@ def kill_hard():
     logger.warning(colored.red("Quitting Fullon... stopping threads..."))
     stop_launcher()
     stop_all()
-    print("kill fullon")
-    kill_processes('Fullon')
-    pid = os.getpid()
-    os.kill(pid, signal.SIGTERM)
-    time.sleep(2)
-    if os.path.exists(f"/proc/{pid}"):
-        os.kill(pid, signal.SIGKILL)
+    for process in ['Fullon', 'fullon']:
+        kill_processes(process)
+    # pid = os.getpid()
+    # os.kill(pid, signal.SIGTERM)
+    # time.sleep(1)
+    # if os.path.exists(f"/proc/{pid}"):
+    #    os.kill(pid, signal.SIGKILL)
     pass
 
 
@@ -132,6 +134,7 @@ def main(cli_args: argparse.Namespace) -> None:
 
     if cli_args.stop:
         kill_processes('Fullon')
+        kill_processes('fullon')
         return
     # Set up signal handling for graceful shutdown on SIGINT or CTRL-C
     #signal(SIGINT, handler)
@@ -186,6 +189,8 @@ def main(cli_args: argparse.Namespace) -> None:
             kill_hard()
         except (EOFError, KeyboardInterrupt):
             kill_hard()
+        print("bye...")
+        exit()
 
 
 if __name__ == '__main__':
