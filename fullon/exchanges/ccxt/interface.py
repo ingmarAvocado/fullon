@@ -78,6 +78,9 @@ class Interface:
     def stop(self):
         pass
 
+    def refresh(self):
+        pass
+
     def test(self, symbol):
         if self.get_market(symbol):
             return True
@@ -157,45 +160,45 @@ class Interface:
             retvalue = getattr(self.ws, api_call)(*vals)
             self.auth = True
         except ccxt.DDoSProtection as e:
-            logger.warning("Request Timed Out, sleeping")
+            logger.error("Request Timed Out, sleeping")
             if retries < 69:  # one hour trying
                 time.sleep(30)
                 return self.execute_ws(api_call=api_call, vals=vals, retries=retries+1)
             retvalue = False
         except ccxt.RequestTimeout as e:
-            logger.warning("Request Timed Out, sleeping")
+            logger.error("Request Timed Out, sleeping")
             if retries < 69:  # one hour trying
                 time.sleep(30)
                 return self.execute_ws(api_call=api_call, vals=vals, retries=retries+1)
             retvalue = False
         except ccxt.ExchangeNotAvailable as error:
-            logger.warning("Exchange %s Not Available due to downtime or maintenance (%s)", self.exchange, str(error))
-            logger.warning(f"Call {api_call}")
+            logger.error("Exchange %s Not Available due to downtime or maintenance (%s)", self.exchange, str(error))
+            logger.error(f"Call {api_call}")
             if retries < 140:  # one hour trying
                 time.sleep(15)
                 return self.execute_ws(api_call=api_call, vals=vals, retries=retries+1)
             retvalue = False
         except ccxt.AuthenticationError as e:
-            logger.warning("Authentication Error (missing API keys, ignoring)")
+            logger.error("Authentication Error (missing API keys, ignoring)")
             retvalue = False
         except ccxt.InsufficientFunds as e:
-            logger.warning("Insufficient Funds")
+            logger.error("Insufficient Funds")
             retvalue = False
         except ccxt.OrderNotFound as e:
-            logger.warning("Order Not Found")
+            logger.error("Order Not Found")
             retvalue = False
         except ccxt.NetworkError as error:
-            logger.warning("Network error exchange(%s): %s,  sleeping", self.exchange, str(error))
-            logger.warning(f"Call {api_call}")
+            logger.error("Network error exchange(%s): %s,  sleeping", self.exchange, str(error))
+            logger.error(f"Call {api_call}")
             if retries < 140:
                 time.sleep(5)
                 return self.execute_ws(api_call=api_call, vals=vals, retries=retries+1)
             retvalue = False
         except ccxt.NotSupported as e:
-            logger.warning("API call not supported")
+            logger.error("API call not supported")
             retvalue = False
         except ccxt.ExchangeError as error:
-            logger.warning("Exchange Error, sleeping: ", str(error))
+            logger.error("Exchange Error, sleeping: ", str(error))
             retvalue = False
         return retvalue
 

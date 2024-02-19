@@ -11,8 +11,11 @@ class QueuePool:
         """
         Context manager for safely getting and releasing a queue.
         """
-        queue = self.manager.Queue()
+        queue = None
         try:
+            queue = self.manager.Queue()
             yield queue
+        except ConnectionRefusedError:
+            exit()
         finally:
             del queue  # Assuming the queue will be garbage collected

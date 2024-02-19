@@ -1,4 +1,3 @@
-from inspect import Attribute
 from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager, Queue, Lock
 from queue import Empty
@@ -10,6 +9,7 @@ from libs.queue_pool import QueuePool
 from time import sleep
 from run import user_manager
 from setproctitle import setproctitle
+import arrow
 
 logger = log.fullon_logger(__name__)
 
@@ -44,6 +44,7 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
         request_queue (Queue): Queue for incoming requests.
         mngr (object): The manager object for resource management.
     """
+    expires = {}
     exchange_pool = {}
     setproctitle(f"Fullon queue for {exchange}")
     try:
@@ -58,7 +59,7 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
 
             if uid not in exchange_pool:
                 exchange_pool[uid] = ExchangeMethods(exchange=exchange, params=params)
-
+                expires[uid] = arrow.utcnow().shift(minutes=60*11.75)
             try:
                 class_method = getattr(exchange_pool[uid], method_name)
                 result = class_method(**method_params)
@@ -71,6 +72,10 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
             if method_name not in exchange_pool[uid].no_sleep():
                 logger.debug(f"Sleeping for: {method_name}")
                 sleep(exchange_pool[uid].get_sleep())
+
+            if expires[uid] < arrow.utcnow():
+                exchange_pool[uid].refresh()
+                expires[uid] = arrow.utcnow().shift(minutes=60*10.75)
 
     except KeyboardInterrupt:
         pass
@@ -190,7 +195,8 @@ class Exchange:
 
         return default
 
-    def _run_default(self, attr: str, params: Dict[str, Any], timeout=30, attemps=1) -> Any:
+    def _run_default(self, attr: str, params: Dict[str, Any],
+                     timeout=360, attempts=7) -> Any:
         """
         Run the default implementation of a missing method.
 
@@ -214,7 +220,6 @@ class Exchange:
                 except KeyError as error:
                     # Handle a missing queue for this exchange.
                     raise WorkerError(f"Exchange queue for {self.exchange} not available or broken.")
-
                 try:
                     # Wait for the worker to process the request and get the result.
                     result = response_queue.get(timeout=timeout)
@@ -224,19 +229,18 @@ class Exchange:
                     stop(exchange=self.exchange)
                     sleep(1)
                     start(exchange=self.exchange)
-                    if attemps > 7:
+                    if attempts > 7:
                         logger.error("Workers keeps timing out")
                         return None
                     else:
-                        sleep(10*attemps)
+                        sleep(10*attempts)
                     return self._run_default(attr=attr,
                                              params=params,
-                                             attemps=attemps-1)
+                                             attempts=attempts-1)
                 finally:
                     if isinstance(result, tuple) and result[0] == SENTINEL:
                         # Handle any errors raised by the worker.
                         raise WorkerError(f"Error in worker process: {result[1]}")
         except AttributeError:
-            logger.debug("AttributeError: 'NoneType' object has no attribute 'get_queue'")
             pass
         return result

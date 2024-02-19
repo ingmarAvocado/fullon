@@ -45,6 +45,10 @@ class ExchangeMethods():
         except AttributeError:
             logger.error(f"Error closing exchange for uid {self.uid}")
 
+    def refresh(self):
+        self.wbsrv.refresh()
+        pass
+
     def load_exchange_interface(self,
                                 exchange: str,
                                 params: Optional[ExchangeStruct] = None,
