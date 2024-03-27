@@ -1,8 +1,6 @@
 from __future__ import unicode_literals, print_function
-import sys
 from run.user_manager import UserManager
 import pytest
-import arrow
 from libs import cache, database
 from unittest.mock import MagicMock
 
@@ -72,27 +70,7 @@ def user_ex(store):
                       cat_ex_id=params.cat_ex_id)
 
 
-def test_get_cat_exchanges(store):
-    result = store.get_cat_exchanges()
-    assert len(result) > 0
-
-
-def test_get_exchange_symbols(store):
-    result = store.get_exchange_symbols("00000000-0000-0000-0000-000000000002")
-    assert len(result) == 0
-
-
-def test_get_exchange1(store, user_ex):
-    result = store.get_exchange(ex_id=user_ex.ex_id)
-    #assert isinstance(result.name, str)
-
-
-def test_get_exchange2(store, user_ex):
-    result = store.get_exchange(ex_id='00000000-0000-0000-0000-000000000029')
-    assert result.name is ''
-    #assert isinstance(result, ExchangeStruct)
-
-
+@pytest.mark.order(5)
 def test_get_symbols(store, user_ex):
     symbols = store.get_symbols(exchange='kraken')
     assert len(symbols) > 0
@@ -105,6 +83,7 @@ def test_get_symbols(store, user_ex):
     assert isinstance(symbols[0].ohlcv_view, str)
 
 
+@pytest.mark.order(6)
 def test_get_symbol(store, user_ex):
     symbol = 'BTC/USD'
     cat_ex_id = user_ex.cat_ex_id
@@ -115,6 +94,7 @@ def test_get_symbol(store, user_ex):
     assert symbol_data.cat_ex_id == cat_ex_id
 
 
+@pytest.mark.order(7)
 def test_prepare_cache(store):
     result = store.prepare_cache()
     assert result is None

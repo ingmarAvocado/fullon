@@ -4,7 +4,6 @@ from libs.models import base_model as database
 from libs.structs.symbol_struct import SymbolStruct
 from typing import List, Optional
 import psycopg2
-import uuid
 
 
 logger = log.fullon_logger(__name__)
@@ -42,6 +41,7 @@ class Database(database.Database):
 
         except (Exception, psycopg2.DatabaseError) as error:
             self.con
+        return False
 
     def install_symbol(self, symbol: SymbolStruct) -> int:
         """

@@ -5,6 +5,7 @@ import datetime
 from multiprocessing import Process
 
 
+@pytest.mark.order(1)
 def test_get_latest_timestamp():
     with Database(exchange='kraken', symbol='BTC/USD') as dbase:
         ts = dbase.get_latest_timestamp()
@@ -24,7 +25,7 @@ def test_get_latest_timestamp():
     for num in procs.copy().keys():
         procs[num].join(timeout=4)
 
-
+@pytest.mark.order(2)
 def test_test():
     with Database(exchange='kraken', symbol='BTC/USD') as dbase:
         ts = dbase.get_oldest_timestamp()

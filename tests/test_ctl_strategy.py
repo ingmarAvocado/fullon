@@ -32,17 +32,20 @@ def uid():
     yield uid
 
 
+@pytest.mark.order(1)
 def test_get_strat_list(ctl):
     strats = ctl.get_strat_list(page=1, page_size=2)
     assert isinstance(strats, list)
     assert len(strats) > 1
 
 
+@pytest.mark.order(2)
 def test_reload_strats(ctl):
     res = ctl.reload_strategies()
     assert isinstance(res, bool)
 
 
+@pytest.mark.order(3)
 @patch('libs.ctl.ctl_strategies_lib.PromptSession', autospec=True)
 def test_set_new_strategy(mock_prompt_session, ctl):
     # Mock the prompt function
@@ -55,6 +58,8 @@ def test_set_new_strategy(mock_prompt_session, ctl):
         result = ctl.del_user_strategy(0)
         assert 'Error' in result
 
+
+@pytest.mark.order(4)
 @patch('libs.ctl.ctl_strategies_lib.PromptSession', autospec=True)
 def test_delete_strategy(mock_prompt_session, ctl):
     # Mock the prompt function

@@ -41,7 +41,7 @@ def fullon_datas(fullon_feed):
         base = 'BTC'
         symbol = 'BTC/USD'
         trading = True
-        bot_id = '000000000-b4b3-45b2-936b-b6894b81762d'
+        bot_id = 1
         futures = True
         size_pct = 10
         leverage = 3
@@ -77,7 +77,7 @@ def fullon_order():
              "command": "spread",
              "subcommand": "60:minutes",
              "leverage": 3,
-             "bot_id": "00000000-0000-0000-0000-000000000002"}
+             "bot_id": 2}
     order = OrderStruct.from_dict(order)
     yield order
 

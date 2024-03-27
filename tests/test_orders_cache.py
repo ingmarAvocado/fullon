@@ -42,6 +42,7 @@ def user():
     yield test_user()
 
 
+@pytest.mark.order(1)
 def test_get_orders(store, user):
     # Test new_process for tick type
     res = store.get_orders(ex_id=user.ex_id)

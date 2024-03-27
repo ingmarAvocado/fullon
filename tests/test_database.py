@@ -6,7 +6,7 @@ from libs.structs.trade_struct import TradeStruct
 from run.user_manager import UserManager
 import datetime
 import pytest
-import uuid
+
 
 @pytest.fixture(scope="module")
 def dbase():
@@ -31,8 +31,8 @@ def mock_trade():
         trade_id='',
         ex_trade_id="test_ex_trade_id",
         ex_order_id="test_ex_order_id",
-        uid=str(uuid.uuid4()),  # convert UUID to string
-        ex_id=str(uuid.uuid4()),  # convert UUID to string
+        uid=10,  # convert UUID to string
+        ex_id=5,  # convert UUID to string
         symbol="test_symbol",
         order_type="test_order_type",
         side="buy",

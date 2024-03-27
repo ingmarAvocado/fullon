@@ -64,6 +64,14 @@ catboost = "^1.2.2"
 pykalman-py311-update = "^0.9.6"
 astral = "^3.2"
 twisted = "^23.10.0"
+apify-client = "^1.6.3"
+pytest-forked = "^1.6.0"
+pytest-xdist = "^3.5.0"
+pytest-dependency = "^0.6.0"
+pytest-order = "^1.2.0"
+trio = "^0.24.0"
+pytesseract = "^0.3.10"
+openai = "^1.14.3"
 
 
 [tool.poetry.dev-dependencies]

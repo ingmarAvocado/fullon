@@ -16,6 +16,8 @@ def tick_manager():
     yield t
     t.stop_all()
 
+
+@pytest.mark.order(1)
 @pytest.mark.parametrize("exchange_name", ["kraken"])
 def test_run_loop_test(tick_manager, exchange_name, caplog):
     cat_exchanges = tick_manager.get_cat_exchanges()
@@ -54,6 +56,7 @@ def test_run_loop_test(tick_manager, exchange_name, caplog):
     assert len(caplog.records) >= 1, "Tick manager didn't properly start"
 
 
+@pytest.mark.order(2)
 def test_run_btc_ticker(tick_manager):
     store = Cache()
     ticker_data = {
@@ -72,6 +75,7 @@ def test_run_btc_ticker(tick_manager):
     assert btc_price > 0
 
 
+@pytest.mark.order(3)
 def test_get_cat_exchanges(tick_manager):
     cat_exchanges = tick_manager.get_cat_exchanges()
     assert isinstance(cat_exchanges, list)
@@ -82,6 +86,7 @@ def test_get_cat_exchanges(tick_manager):
         assert 'id' in exch and isinstance(exch['id'], str)
 
 
+@pytest.mark.order(4)
 def test_get_exchange_pairs(tick_manager):
     pairs = tick_manager.get_exchange_pairs(exchange_name="kraken")
     assert isinstance(pairs, list)
@@ -90,10 +95,12 @@ def test_get_exchange_pairs(tick_manager):
         assert isinstance(pair, str)
 
 
+@pytest.mark.order(5)
 def test_init_install_ticker(tick_manager):
     assert tick_manager.started is False
 
 
+@pytest.mark.order(6)
 def test_get_ticker_list(tick_manager):
     res = tick_manager.get_tickers()
     assert isinstance(res, list)

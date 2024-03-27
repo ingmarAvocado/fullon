@@ -11,6 +11,7 @@ from run import trade_manager
 from run import process_manager
 from run import user_manager
 from run import bot_status_manager
+from run import crawler_manager
 
 logger = log.fullon_logger(__name__)
 
@@ -48,4 +49,8 @@ class UserManager(user_manager.UserManager):
 
 
 class BotStatusManager(bot_status_manager.BotStatusManager):
+    """ description """
+
+
+class CrawlerManager(crawler_manager.CrawlerManager):
     """ description """

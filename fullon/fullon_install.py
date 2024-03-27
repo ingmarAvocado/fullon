@@ -122,8 +122,14 @@ def install_fullon(cli_args: argparse.Namespace) -> None:
     if cli_args.full or cli_args.reinstalls:
         # Install strategies and exchanges
         logger.info("Installing the basic SQL schema")
+        stop_database()
+        start_database()
         install.install_strategies()
+        logger.info("Strategies Installed")
         install.install_exchanges()
+        logger.info("Exchanges Installed")
+        install.install_crawlers()
+        logger.info("Crawlers Installed")
 
         # Prepare the cache
         logger.info("Preparing cache")

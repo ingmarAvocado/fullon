@@ -15,12 +15,14 @@ def prompts():
     del prompts
 
 
+@pytest.mark.order(1)
 def test__get_str_params(prompts):
     #now i need to set the bot first
     p = prompts._get_str_params()
     assert 'stop_loss' in p
 
 
+@pytest.mark.order(2)
 def test__str_get_feeds(prompts):
     #now i need to set the bot first
     p = prompts._get_feeds()

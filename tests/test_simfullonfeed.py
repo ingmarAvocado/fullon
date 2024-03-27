@@ -25,6 +25,7 @@ def fullon_sim_feed():
     return fullon_feed
 
 
+@pytest.mark.order(1)
 def test_fetch_ohlcv(fullon_sim_feed):
     with patch.object(fullon_sim_feed, '_load_from_pickle') as mock_load_from_pickle, \
             patch.object(fullon_sim_feed, '_save_to_df') as mock_save_to_df, \

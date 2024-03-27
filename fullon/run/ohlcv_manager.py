@@ -51,6 +51,14 @@ class OhlcvManager:
                 self.stop_signals[thread].set()
                 try:
                     self.threads[thread].join(timeout=1)  # Wait for the thread to finish with a timeout
+                except KeyError:
+                    pass
+                    '''
+                    try:
+                        logger.error(f"Seems an ohlcv thread {thread} is not existing and cant be stopped")
+                    except ValueError:
+                        pass
+                    '''
                 except Exception as error:
                     logger.error(f"Error stopping ohlcv {thread}: {error}")
                 else:

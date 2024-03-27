@@ -105,7 +105,7 @@ def _fetch_data_from_db(feed: FullonFeed,
                                  compression=feed.compression,
                                  period=feed.feed.period,
                                  fromdate=fromdate.datetime,
-                                 todate=todate.datetime)
+                                 todate=todate.shift(microseconds=-1).datetime)
     return rows
 
 
@@ -153,7 +153,7 @@ def _save_to_pickle(dataframe: pandas.DataFrame,
     filename = pre_fix + f"to_{arrow.get(todate).format('YYYY_MM_DD_HH_mm')}.pkl"
     try:
         dataframe.to_pickle(filename)
-        logger.error(f"saved: {filename}")
+        logger.info(f"saved: {filename}")
     except (FileNotFoundError, OSError):
         dataframe.to_pickle("fullon/"+filename)
 
@@ -247,7 +247,7 @@ def set_target(data: pandas.DataFrame,
         data = data.drop(columns=[target])
         return future.dropna(), data
     except KeyError:
-        logger.error("Target not found in data")
+        logger.error("Target (%s) not found in data", target)
         return pandas.DataFrame(), data
 
 

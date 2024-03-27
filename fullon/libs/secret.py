@@ -9,7 +9,7 @@ from os import path
 
 logger = log.fullon_logger(__name__)
 
-SECRETS = ['DBPASSWD']
+SECRETS = ['DBPASSWD', 'APIFY_TOKEN']
 
 
 class SecretManager:
@@ -156,8 +156,8 @@ class SecretManager:
             str: The secret's payload as a string if successful, otherwise None.
 
         """
-
         # Build the resource name of the secret version.
+        secret_id = str(secret_id)
         name = f"projects/{self._project}/secrets/{secret_id}/versions/{version_id}"
         # Access the secret version.
         try:

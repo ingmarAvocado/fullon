@@ -7,6 +7,12 @@ logger = log.fullon_logger(__name__)
 
 class Database:
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
     def clean_base(self):
         try:
             con = psycopg2.connect(dbname="postgres", user=settings.DBUSER, password=settings.DBPASSWD, host=settings.DBHOST)
@@ -91,7 +97,7 @@ class Database:
                                    user=settings.DBUSER,
                                    password=settings.DBPASSWD,
                                    host=settings.DBHOST)
-            sql = "".join(lines) + 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+            sql = "".join(lines)
             with con.cursor() as cur:
                 cur.execute(sql)
             con.commit()

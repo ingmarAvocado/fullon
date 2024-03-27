@@ -15,6 +15,7 @@ from prompt_toolkit.completion import WordCompleter
 from run import avail_components as comp
 from typing import List
 import arrow
+import os
 
 logger = log.fullon_logger(__name__)
 
@@ -221,19 +222,24 @@ def tickers():
     """
     Prints all the tickers
     """
-    session = PromptSession()
-    sub_commands = COMPONENTS['tickers']
-    completer = WordCompleter(sub_commands, ignore_case=True)
+    # session = PromptSession()
+    # sub_commands = COMPONENTS['tickers']
+    # completer = WordCompleter(sub_commands, ignore_case=True)
+    os.system('clear')
     _ticks = _ctl.get_ticks_list()
+    res = None
     if _ticks:
         print("\n" + tabulate(_ticks, headers="keys", tablefmt="pretty"))
     else:
         print("\nNo tickers to display.")
     try:
-        input("Type anything to continue > ")
+        res = input("Type enter to reload, r to return to main menu > ")
     except (EOFError, KeyboardInterrupt):
-        pass
-    return
+        return
+    if res == 'r':
+        return
+    else:
+        return tickers()
 
 
 def users():
@@ -252,6 +258,10 @@ def users():
         input("Type anything to continue > ")
     except (EOFError, KeyboardInterrupt):
         pass
+
+
+def crawler():
+    return _ctl.print_crawler_menu()
 
 
 def top():

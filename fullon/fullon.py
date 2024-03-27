@@ -16,20 +16,20 @@ simulator.start()
 
 params2 = {
           "stop_loss": "None",
-          'take_profit': "14",
-          'trailing_stop': "13",  # 12
+          'take_profit': "10",
+          'trailing_stop': "2.5",  # 12
           "timeout": "None",
-          'rsi': "14",
+          'rsi': "16",
           'entry': "65",
-          'exit': "60",
+          'exit': "50",
           "leverage": "2",
-          "size_pct": "10",
+          "size_pct": "5",
           "prediction_steps": "1",
-          "threshold": "0.48"}
-params2 = {"size_pct": "10"}
+          "threshold": "0."}
+#params2 = {"size_pct": "10"}
 #params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
-BOT = {"bot_id": 9,
-       "periods": 250,
+BOT = {"bot_id": 10,
+       "periods": 1650,
        "warm_up": 50,
        "xls": False,
        "verbose": False,
@@ -39,17 +39,17 @@ feeds = {}
 #filename = "rsi2long2.csv"
 #feeds = {2: {'compression': 30}, 3: {'compression': 30}}
 #feeds = {1: {'compression': 480}}
-
+'''
 abot = Bot(BOT['bot_id'], BOT['periods'])
 params3 = {}
 for p, key in params2.items():
     try:
-       params3[p] = float(key)
+        params3[p] = float(key)
     except ValueError:
-       if key == "None":
-           params3[p] = None
-       else:
-           raise
+        if key == "None":
+            params3[p] = None
+        else:
+            raise
 
 abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params=params3, event=True)
 
@@ -63,9 +63,9 @@ simul.bot_simul(bot=BOT,
                 feeds=feeds,
                 params=params2,
                 filename=filename,
-                montecarlo=1,
+                montecarlo=6,
                 sharpe_filter=-10.00)
-'''
+
 stop_database()
 stop_ohlcv()
 simulator.stop()

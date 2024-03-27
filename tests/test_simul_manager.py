@@ -12,6 +12,7 @@ def simul():
     del simul
 
 
+@pytest.mark.order(1)
 def test_get_simul_bot_listz(simul):
     response = simul.get_simul_list(
         {
@@ -23,6 +24,7 @@ def test_get_simul_bot_listz(simul):
     assert (isinstance(response, list) and 'ERROR' not in response[0])
 
 
+@pytest.mark.order(2)
 def test_get_simul_bot_list1(simul):
     params = {
         "limit": "1.8",
@@ -33,6 +35,7 @@ def test_get_simul_bot_list1(simul):
     assert (isinstance(response, list) and 'ERROR' in response[0])
 
 
+@pytest.mark.order(3)
 def test_get_simul_bot_list2(simul):
     params = {
         "limit": "9:10)",
@@ -44,6 +47,7 @@ def test_get_simul_bot_list2(simul):
     assert (isinstance(response, list) and 'ERROR' in response[0])
 
 
+@pytest.mark.order(4)
 def test_get_simul_bot_list3(simul):
     params = {
         "limit": "1-3",
@@ -55,6 +59,7 @@ def test_get_simul_bot_list3(simul):
     assert (isinstance(response, list) and 'ERROR' in response[0])
 
 
+@pytest.mark.order(5)
 def test_get_simul_bot_list4(simul):
     params = {"timeout": "A,3", "take_profit": "9:2", "stop_loss": "4"}
     response = simul.get_simul_list(params)
@@ -62,6 +67,7 @@ def test_get_simul_bot_list4(simul):
     assert (isinstance(response, list) and 'ERROR' in response[0])
 
 
+@pytest.mark.order(6)
 def test_get_simul_bot_list5(simul):
     params = {"limit": "1-3", "take_profit": "9:2", "stop_loss": "4"}
     response = simul.get_simul_list(params)
@@ -69,6 +75,7 @@ def test_get_simul_bot_list5(simul):
     assert (isinstance(response, list) and 'ERROR' in response[0])
 
 
+@pytest.mark.order(7)
 def test_get_simul_bot_list6(simul):
     params = {"limit": "1-3", "take_profit": "9:A", "stop_loss": "4"}
     response = simul.get_simul_list(params)

@@ -1,5 +1,5 @@
 -- Database generated with pgModeler (PostgreSQL Database Modeler).
--- pgModeler version: 1.0.6
+-- pgModeler version: 1.1.1
 -- PostgreSQL version: 16.0
 -- Project Site: pgmodeler.io
 -- Model Author: ---
@@ -16,7 +16,7 @@ CREATE DATABASE fullon;
 -- object: public.cat_exchanges | type: TABLE --
 -- DROP TABLE IF EXISTS public.cat_exchanges CASCADE;
 CREATE TABLE public.cat_exchanges (
-	cat_ex_id uuid NOT NULL,
+	cat_ex_id serial NOT NULL,
 	name varchar(30) NOT NULL,
 	ohlcv_view text,
 	CONSTRAINT cat_exchange_pk PRIMARY KEY (cat_ex_id),
@@ -29,9 +29,9 @@ ALTER TABLE public.cat_exchanges OWNER TO postgres;
 -- object: public.exchanges | type: TABLE --
 -- DROP TABLE IF EXISTS public.exchanges CASCADE;
 CREATE TABLE public.exchanges (
-	ex_id uuid NOT NULL,
-	uid uuid NOT NULL,
-	cat_ex_id uuid NOT NULL,
+	ex_id serial NOT NULL,
+	uid integer NOT NULL,
+	cat_ex_id integer NOT NULL,
 	name varchar(50) NOT NULL,
 	test bool NOT NULL DEFAULT false,
 	active bool NOT NULL DEFAULT True,
@@ -46,7 +46,7 @@ ALTER TABLE public.exchanges OWNER TO postgres;
 -- object: public.users | type: TABLE --
 -- DROP TABLE IF EXISTS public.users CASCADE;
 CREATE TABLE public.users (
-	uid uuid NOT NULL,
+	uid serial NOT NULL,
 	mail varchar(80) NOT NULL,
 	password char(64) NOT NULL,
 	f2a varchar(16) NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE public.users (
 	phone varchar(12) NOT NULL,
 	id_num varchar(15) NOT NULL,
 	note text,
-	manager uuid,
+	manager integer,
 	"timestamp" timestamp NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
 	active bool NOT NULL DEFAULT True,
 	CONSTRAINT users_pk PRIMARY KEY (uid),
@@ -69,7 +69,7 @@ ALTER TABLE public.users OWNER TO postgres;
 -- object: public.cat_strategies | type: TABLE --
 -- DROP TABLE IF EXISTS public.cat_strategies CASCADE;
 CREATE TABLE public.cat_strategies (
-	cat_str_id uuid NOT NULL,
+	cat_str_id serial NOT NULL,
 	name varchar(50) NOT NULL,
 	take_profit varchar(5),
 	stop_loss varchar(5),
@@ -77,6 +77,7 @@ CREATE TABLE public.cat_strategies (
 	timeout varchar(8),
 	pre_load_bars smallint NOT NULL DEFAULT 200,
 	feeds smallint NOT NULL DEFAULT 2,
+	pairs bool DEFAULT False,
 	CONSTRAINT cat_strategies_pk PRIMARY KEY (cat_str_id),
 	CONSTRAINT "unique name" UNIQUE (name)
 );
@@ -88,7 +89,7 @@ ALTER TABLE public.cat_strategies OWNER TO postgres;
 -- DROP TABLE IF EXISTS public.strategies CASCADE;
 CREATE TABLE public.strategies (
 	bot_id integer,
-	cat_str_id uuid NOT NULL,
+	cat_str_id integer NOT NULL,
 	take_profit varchar(5),
 	stop_loss varchar(5),
 	trailing_stop varchar(5),
@@ -98,6 +99,8 @@ CREATE TABLE public.strategies (
 	size float,
 	size_currency varchar(5),
 	pre_load_bars smallint,
+	feeds smallint DEFAULT 2,
+	pairs bool DEFAULT False,
 	CONSTRAINT unique_bot_id UNIQUE (bot_id)
 );
 -- ddl-end --
@@ -108,7 +111,7 @@ ALTER TABLE public.strategies OWNER TO postgres;
 -- DROP TABLE IF EXISTS public.bots CASCADE;
 CREATE TABLE public.bots (
 	bot_id serial NOT NULL,
-	uid uuid NOT NULL,
+	uid integer NOT NULL,
 	name varchar(50) NOT NULL,
 	dry_run bool DEFAULT False,
 	active bool NOT NULL DEFAULT False,
@@ -125,7 +128,7 @@ ALTER TABLE public.bots OWNER TO postgres;
 CREATE TABLE public.symbols (
 	symbol_id serial NOT NULL,
 	symbol varchar(20) NOT NULL,
-	cat_ex_id uuid NOT NULL,
+	cat_ex_id integer NOT NULL,
 	updateframe varchar(2) NOT NULL DEFAULT '1h',
 	backtest smallint NOT NULL DEFAULT 30,
 	decimals smallint NOT NULL DEFAULT 8,
@@ -143,7 +146,7 @@ ALTER TABLE public.symbols OWNER TO postgres;
 -- object: public.cat_exchanges_params | type: TABLE --
 -- DROP TABLE IF EXISTS public.cat_exchanges_params CASCADE;
 CREATE TABLE public.cat_exchanges_params (
-	cat_ex_id uuid NOT NULL,
+	cat_ex_id integer NOT NULL,
 	name varchar(20) NOT NULL,
 	value varchar(20) NOT NULL,
 	CONSTRAINT unique_param_symbol UNIQUE (cat_ex_id,name)
@@ -155,7 +158,7 @@ ALTER TABLE public.cat_exchanges_params OWNER TO postgres;
 -- object: public.cat_strategies_params | type: TABLE --
 -- DROP TABLE IF EXISTS public.cat_strategies_params CASCADE;
 CREATE TABLE public.cat_strategies_params (
-	cat_str_id uuid NOT NULL,
+	cat_str_id integer NOT NULL,
 	name varchar(25) NOT NULL,
 	value varchar(25) NOT NULL,
 	CONSTRAINT unique_param_symbol1 UNIQUE (cat_str_id,name)
@@ -181,7 +184,7 @@ ALTER TABLE public.strategies_params OWNER TO postgres;
 CREATE TABLE public.bot_log (
 	bot_id integer NOT NULL,
 	feed_num smallint NOT NULL,
-	ex_id uuid NOT NULL,
+	ex_id integer NOT NULL,
 	symbol text NOT NULL,
 	"position" numeric NOT NULL,
 	message text NOT NULL,
@@ -197,10 +200,10 @@ ALTER TABLE public.bot_log OWNER TO postgres;
 CREATE TABLE public.orders (
 	order_id serial NOT NULL,
 	bot_id integer NOT NULL,
-	uid uuid NOT NULL,
-	ex_id uuid NOT NULL,
+	uid integer NOT NULL,
+	ex_id integer NOT NULL,
 	ex_order_id varchar(64),
-	cat_ex_id uuid NOT NULL,
+	cat_ex_id integer NOT NULL,
 	exchange varchar(50) NOT NULL,
 	symbol varchar(20) NOT NULL,
 	order_type varchar(15) NOT NULL,
@@ -249,8 +252,8 @@ CREATE TABLE public.trades (
 	trade_id serial NOT NULL,
 	ex_trade_id varchar(64) NOT NULL,
 	ex_order_id varchar(64) NOT NULL,
-	uid uuid NOT NULL,
-	ex_id uuid NOT NULL,
+	uid integer NOT NULL,
+	ex_id integer NOT NULL,
 	symbol varchar(20) NOT NULL,
 	order_type varchar(15) NOT NULL,
 	side varchar(4) NOT NULL,
@@ -297,7 +300,7 @@ USING btree
 -- DROP TABLE IF EXISTS public.bot_exchanges CASCADE;
 CREATE TABLE public.bot_exchanges (
 	bot_id integer NOT NULL,
-	ex_id uuid NOT NULL,
+	ex_id integer NOT NULL,
 	CONSTRAINT unique_record UNIQUE (bot_id,ex_id)
 );
 -- ddl-end --
@@ -307,8 +310,8 @@ ALTER TABLE public.bot_exchanges OWNER TO postgres;
 -- object: public.exchange_history | type: TABLE --
 -- DROP TABLE IF EXISTS public.exchange_history CASCADE;
 CREATE TABLE public.exchange_history (
-	ex_id uuid NOT NULL,
-	user_id uuid NOT NULL,
+	ex_id integer NOT NULL,
+	user_id integer NOT NULL,
 	currency varchar(15) NOT NULL,
 	balance double precision NOT NULL,
 	comment text,
@@ -319,18 +322,15 @@ CREATE TABLE public.exchange_history (
 ALTER TABLE public.exchange_history OWNER TO postgres;
 -- ddl-end --
 
--- object: loadossp | type: Generic SQL Object --
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ddl-end --
 
 -- object: public.dry_trades | type: TABLE --
 -- DROP TABLE IF EXISTS public.dry_trades CASCADE;
 CREATE TABLE public.dry_trades (
 	trade_id serial NOT NULL,
 	bot_id integer NOT NULL,
-	uid uuid NOT NULL,
-	ex_id uuid NOT NULL,
+	uid integer NOT NULL,
+	ex_id integer NOT NULL,
 	symbol varchar(20) NOT NULL,
 	side varchar(4) NOT NULL,
 	volume double precision NOT NULL,
@@ -367,7 +367,6 @@ USING btree
 );
 -- ddl-end --
 
--- object: add_aggregates | type: Generic SQL Object --
 CREATE OR REPLACE FUNCTION public.first_agg ( anyelement, anyelement )
 RETURNS anyelement LANGUAGE SQL IMMUTABLE STRICT AS $$
         SELECT $1;
@@ -392,12 +391,10 @@ CREATE AGGREGATE public.LAST (
         basetype = anyelement,
         stype    = anyelement
 );
--- ddl-end --
-
 -- object: public.feeds | type: TABLE --
 -- DROP TABLE IF EXISTS public.feeds CASCADE;
 CREATE TABLE public.feeds (
-	feed_id uuid NOT NULL,
+	feed_id serial NOT NULL,
 	bot_id integer NOT NULL,
 	symbol_id integer NOT NULL,
 	period varchar(10) NOT NULL,
@@ -421,6 +418,110 @@ CREATE TABLE public.simulations (
 );
 -- ddl-end --
 ALTER TABLE public.simulations OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.sites_follows | type: TABLE --
+-- DROP TABLE IF EXISTS public.sites_follows CASCADE;
+CREATE TABLE public.sites_follows (
+	fid serial NOT NULL,
+	uid integer NOT NULL,
+	site text NOT NULL,
+	account text NOT NULL,
+	ranking smallint NOT NULL DEFAULT 1,
+	contra bool NOT NULL DEFAULT False,
+	expertise text NOT NULL,
+	CONSTRAINT unique_fid PRIMARY KEY (fid),
+	CONSTRAINT "onefuid-oneuid" UNIQUE (uid,site,account)
+);
+-- ddl-end --
+ALTER TABLE public.sites_follows OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.cat_sites | type: TABLE --
+-- DROP TABLE IF EXISTS public.cat_sites CASCADE;
+CREATE TABLE public.cat_sites (
+	sites text NOT NULL,
+	CONSTRAINT one_site_only PRIMARY KEY (sites)
+);
+-- ddl-end --
+ALTER TABLE public.cat_sites OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.sites_posts | type: TABLE --
+-- DROP TABLE IF EXISTS public.sites_posts CASCADE;
+CREATE TABLE public.sites_posts (
+	post_id serial NOT NULL,
+	"timestamp" timestamp NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+	remote_id bigint NOT NULL,
+	account text NOT NULL,
+	account_id bigint NOT NULL,
+	site text NOT NULL,
+	content text NOT NULL,
+	media text,
+	media_ocr text,
+	urls text,
+	is_reply bool NOT NULL DEFAULT False,
+	reply_to bigint,
+	self_reply bool NOT NULL DEFAULT False,
+	views integer NOT NULL,
+	likes integer NOT NULL,
+	reposts integer NOT NULL,
+	replies integer NOT NULL,
+	followers integer NOT NULL,
+	pre_score numeric,
+	CONSTRAINT primary_key PRIMARY KEY (post_id),
+	CONSTRAINT remote_id_site_unique UNIQUE (remote_id,site)
+);
+-- ddl-end --
+ALTER TABLE public.sites_posts OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.post_analyzers | type: TABLE --
+-- DROP TABLE IF EXISTS public.post_analyzers CASCADE;
+CREATE TABLE public.post_analyzers (
+	aid serial NOT NULL,
+	title text NOT NULL,
+	prompt text NOT NULL,
+	CONSTRAINT analyzer_pk PRIMARY KEY (aid)
+);
+-- ddl-end --
+ALTER TABLE public.post_analyzers OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.engine_scores | type: TABLE --
+-- DROP TABLE IF EXISTS public.engine_scores CASCADE;
+CREATE TABLE public.engine_scores (
+	aid integer NOT NULL,
+	post_id smallint NOT NULL,
+	engine text NOT NULL,
+	score numeric NOT NULL,
+	CONSTRAINT one_post_one_engine UNIQUE (post_id,engine,aid)
+);
+-- ddl-end --
+ALTER TABLE public.engine_scores OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.llm_engines | type: TABLE --
+-- DROP TABLE IF EXISTS public.llm_engines CASCADE;
+CREATE TABLE public.llm_engines (
+	engine text NOT NULL,
+	CONSTRAINT llm_engines_pk PRIMARY KEY (engine)
+);
+-- ddl-end --
+ALTER TABLE public.llm_engines OWNER TO postgres;
+-- ddl-end --
+
+-- object: public.follows_analyzers | type: TABLE --
+-- DROP TABLE IF EXISTS public.follows_analyzers CASCADE;
+CREATE TABLE public.follows_analyzers (
+	uid integer NOT NULL,
+	aid integer NOT NULL,
+	fid integer NOT NULL,
+	account text NOT NULL
+
+);
+-- ddl-end --
+ALTER TABLE public.follows_analyzers OWNER TO postgres;
 -- ddl-end --
 
 -- object: user_id | type: CONSTRAINT --
@@ -547,6 +648,69 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE public.simulations ADD CONSTRAINT bot_id_bot_id FOREIGN KEY (bot_id)
 REFERENCES public.bots (bot_id) MATCH SIMPLE
 ON DELETE NO ACTION ON UPDATE NO ACTION;
+-- ddl-end --
+
+-- object: uid_to_uid | type: CONSTRAINT --
+-- ALTER TABLE public.sites_follows DROP CONSTRAINT IF EXISTS uid_to_uid CASCADE;
+ALTER TABLE public.sites_follows ADD CONSTRAINT uid_to_uid FOREIGN KEY (uid)
+REFERENCES public.users (uid) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: site_one_site | type: CONSTRAINT --
+-- ALTER TABLE public.sites_follows DROP CONSTRAINT IF EXISTS site_one_site CASCADE;
+ALTER TABLE public.sites_follows ADD CONSTRAINT site_one_site FOREIGN KEY (site)
+REFERENCES public.cat_sites (sites) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: site_name_site_name2 | type: CONSTRAINT --
+-- ALTER TABLE public.sites_posts DROP CONSTRAINT IF EXISTS site_name_site_name2 CASCADE;
+ALTER TABLE public.sites_posts ADD CONSTRAINT site_name_site_name2 FOREIGN KEY (site)
+REFERENCES public.cat_sites (sites) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: engine_pid_pid | type: CONSTRAINT --
+-- ALTER TABLE public.engine_scores DROP CONSTRAINT IF EXISTS engine_pid_pid CASCADE;
+ALTER TABLE public.engine_scores ADD CONSTRAINT engine_pid_pid FOREIGN KEY (post_id)
+REFERENCES public.sites_posts (post_id) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: llm_engines_post | type: CONSTRAINT --
+-- ALTER TABLE public.engine_scores DROP CONSTRAINT IF EXISTS llm_engines_post CASCADE;
+ALTER TABLE public.engine_scores ADD CONSTRAINT llm_engines_post FOREIGN KEY (engine)
+REFERENCES public.llm_engines (engine) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: aid_to_aid | type: CONSTRAINT --
+-- ALTER TABLE public.engine_scores DROP CONSTRAINT IF EXISTS aid_to_aid CASCADE;
+ALTER TABLE public.engine_scores ADD CONSTRAINT aid_to_aid FOREIGN KEY (aid)
+REFERENCES public.post_analyzers (aid) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: uids_follows_engines | type: CONSTRAINT --
+-- ALTER TABLE public.follows_analyzers DROP CONSTRAINT IF EXISTS uids_follows_engines CASCADE;
+ALTER TABLE public.follows_analyzers ADD CONSTRAINT uids_follows_engines FOREIGN KEY (uid)
+REFERENCES public.users (uid) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: aid_follows_engine | type: CONSTRAINT --
+-- ALTER TABLE public.follows_analyzers DROP CONSTRAINT IF EXISTS aid_follows_engine CASCADE;
+ALTER TABLE public.follows_analyzers ADD CONSTRAINT aid_follows_engine FOREIGN KEY (aid)
+REFERENCES public.post_analyzers (aid) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
+-- ddl-end --
+
+-- object: fid_follows_engine | type: CONSTRAINT --
+-- ALTER TABLE public.follows_analyzers DROP CONSTRAINT IF EXISTS fid_follows_engine CASCADE;
+ALTER TABLE public.follows_analyzers ADD CONSTRAINT fid_follows_engine FOREIGN KEY (fid)
+REFERENCES public.sites_follows (fid) MATCH SIMPLE
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 

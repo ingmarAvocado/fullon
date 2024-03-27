@@ -146,7 +146,7 @@ class TradeManager:
         try:
             data = exchange_conn.fetch_trades(symbol=symbol,
                                               since=then,
-                                              limit=5000)
+                                              limit=1000)
         except (EOFError, RuntimeError):
             return None
         if not data or test:
@@ -190,6 +190,9 @@ class TradeManager:
                     last_trade = dbase.get_trades(ex_id=exch.params.ex_id, last=True)
                     timestamp = arrow.get(last_trade[0].time)
                     break
+                tsleep = exch.get_sleep()
+                if not tsleep:
+                    tsleep = 1
                 time.sleep(exch.get_sleep()*2)  # this is just a trottle.
             else:
                 break
@@ -226,7 +229,7 @@ class TradeManager:
                         with Database() as dbase:
                             dbase.save_trades(trades=[trade])
         except KeyError:
-            logger.error(f"Seems key {exch.ex_id} is not in stopped signals anymore")
+            logger.debug(f"Seems key {exch.ex_id} is not in stopped signals anymore")
         return
 
     def update_user_trades(self, ex_id: str):

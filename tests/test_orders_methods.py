@@ -28,7 +28,7 @@ def order_struct(db_session):
             "command": "spread",
             "subcommand": "60:minutes",
             "leverage": 3,
-            "bot_id": "00000000-0000-0000-0000-000000000002"}
+            "bot_id": 2}
     orderBuy = OrderStruct.from_dict(orderBuy)
     yield orderBuy
 
@@ -40,6 +40,7 @@ def test_order_startup():
     del order
 
 
+@pytest.mark.order(1)
 def test_get_price_spread(test_order_startup, order_struct):
     """
     Test for the case when the order's command is 'spread'.
@@ -50,6 +51,7 @@ def test_get_price_spread(test_order_startup, order_struct):
             exchange=order_struct.exchange, symbol=order_struct.symbol)
 
 
+@pytest.mark.order(2)
 def test_set_price_twap(test_order_startup, order_struct):
     """
     Test for the case when the order's command is 'twap'.
@@ -60,6 +62,7 @@ def test_set_price_twap(test_order_startup, order_struct):
         mock_twap.assert_called_once()
 
 
+@pytest.mark.order(3)
 def test_set_price_vwap(test_order_startup, order_struct):
     """
     Test for the case when the order's command is 'vwap'.
@@ -70,6 +73,7 @@ def test_set_price_vwap(test_order_startup, order_struct):
         mock_vwap.assert_called_once()
 
 
+@pytest.mark.order(4)
 def test_can_place_order(test_order_startup, order_struct):
     """
     Test for the case when the order can be placed.
@@ -87,6 +91,7 @@ def test_can_place_order(test_order_startup, order_struct):
         mock_get_ticker.assert_called_once_with(exchange=order_struct.exchange, symbol=order_struct.symbol)
 
 
+@pytest.mark.order(5)
 def test_process_now_market(test_order_startup, order_struct):
     """
     Test for the case when the order's type is 'market'.
@@ -103,6 +108,7 @@ def test_process_now_market(test_order_startup, order_struct):
         assert res.order_id == "myid"
 
 
+@pytest.mark.order(6)
 def test_await_order_closure(test_order_startup, order_struct):
     """
     Test for the _await_order_closure method.
@@ -133,6 +139,7 @@ def test_await_order_closure(test_order_startup, order_struct):
         assert mock_cancel_replace.assert_not_called() is None
 
 
+@pytest.mark.order(7)
 def test_cancel_order(test_order_startup, order_struct):
     """
     Test for the cancel_order method.
@@ -164,6 +171,7 @@ def test_cancel_order(test_order_startup, order_struct):
             ex_id=order_struct.ex_id, oid=order_struct.order_id)
 
 
+@pytest.mark.order(8)
 def test_get_minimum_order(test_order_startup, order_struct):
     """
     Test for the get_minimum_order method.

@@ -6,7 +6,6 @@ from libs import log
 from libs.models import user_model as database
 from libs import database_helpers as dbhelpers
 from typing import Tuple, Dict, Any, Optional, List
-import uuid
 
 
 logger = log.fullon_logger(__name__)
@@ -24,6 +23,7 @@ class Database(database.Database):
         Returns:
             Optional[List[Dict[str, Any]]]: A list of dictionaries containing the user exchanges, or None if an error occurs.
         """
+        sql = ""
         try:
             sql = """SELECT public.cat_exchanges.name as ex_name, public.exchanges.ex_id, public.exchanges.cat_ex_id, public.exchanges.name as ex_named FROM public.cat_exchanges
             INNER JOIN public.exchanges ON public.cat_exchanges.cat_ex_id = public.exchanges.cat_ex_id WHERE public.exchanges.uid='%s'""" % (uid)
@@ -34,12 +34,9 @@ class Database(database.Database):
             formatted_rows = [dict(row) for row in rows]
             return formatted_rows
         except (Exception, psycopg2.DatabaseError) as error:
-            if "invalid input syntax for type uuid" in str(error):
-                pass
-            else:
-                logger.info(self.error_print(error=error,
-                                             method="get_user_exchanges",
-                                             query=sql))
+            logger.info(self.error_print(error=error,
+                                         method="get_user_exchanges",
+                                         query=sql))
             return []
 
     def install_exchange(self, name: str, ohlcv: str = "", params: List[Dict[str, Any]] = []) -> None:
@@ -65,8 +62,8 @@ class Database(database.Database):
         try:
             with self.con.cursor() as cur:
                 # Insert the exchange into the cat_exchanges table
-                sql = (f"INSERT INTO cat_exchanges(cat_ex_id, name, ohlcv_view) "
-                       f"VALUES (uuid_generate_v4(), %s, %s) ON CONFLICT (name) DO NOTHING")
+                sql = (f"INSERT INTO cat_exchanges(name, ohlcv_view) "
+                       f"VALUES (%s, %s) ON CONFLICT (name) DO NOTHING")
                 cur.execute(sql, (name, ohlcv))
                 self.con.commit()
 
@@ -109,7 +106,7 @@ class Database(database.Database):
         except BaseException:
             raise
 
-    def add_user_exchange(self, exchange: ExchangeStruct) -> str:
+    def add_user_exchange(self, exchange: ExchangeStruct) -> int:
         """
         Add a new user exchange.
 
@@ -117,23 +114,24 @@ class Database(database.Database):
             exchange (dict): A dictionary containing exchange details.
 
         Returns:
-            str: The ID of the added exchange.
+            int: The ID of the added exchange.
 
         Raises:
             psycopg2.DatabaseError: If an error occurs while inserting the exchange.
         """
-        exchange.ex_id = str(uuid.uuid4())
-        # SQL query to insert the exchange
+        # SQL query to insert the exchange and return the auto-incremented ID
         sql = """INSERT INTO exchanges
-                 (ex_id, uid, cat_ex_id, name, test, active)
-                 VALUES (%s, %s, %s, %s, %s, %s)"""
-        values = (exchange.ex_id, exchange.uid, exchange.cat_ex_id, exchange.name,
+                 (uid, cat_ex_id, name, test, active)
+                 VALUES (%s, %s, %s, %s, %s)
+                 RETURNING ex_id"""  # Assuming 'ex_id' is the auto-increment ID column
+        values = (exchange.uid, exchange.cat_ex_id, exchange.name,
                   exchange.test, exchange.active)
         try:
             with self.con.cursor() as cur:
                 cur.execute(sql, values)
+                ex_id = cur.fetchone()[0]  # Fetch the returned id
                 self.con.commit()
-            return exchange.ex_id
+            return ex_id  # Return the fetched id
         except (Exception, psycopg2.DatabaseError) as error:
             self.con.rollback()
             logger.warning(
@@ -143,7 +141,7 @@ class Database(database.Database):
                     query=sql))
             raise
 
-    def get_exchange_cat_id(self, name: str = "", ex_id: str = "") -> str:
+    def get_exchange_cat_id(self, name: str = "", ex_id: str = "") -> Optional[int]:
         """
         Gets the exchange cat_id from the exchange name or ex_id.
 
@@ -152,7 +150,7 @@ class Database(database.Database):
             ex_id (Optional[str], optional): The exchange ID. Defaults to None.
 
         Returns:
-            Optional[str]: The cat_id if found, otherwise None.
+            Optional[int]: The cat_id if found, otherwise None.
         """
         if name:
             sql = f"SELECT cat_ex_id from cat_exchanges WHERE name = '{name}'"
@@ -161,16 +159,16 @@ class Database(database.Database):
             sql = f"SELECT cat_ex_id from cat_exchanges WHERE ex_id = '{ex_id}'"
             param = (ex_id,)
         else:
-            return ''
+            return None
 
         try:
             with self.con.cursor() as cur:
                 cur.execute(sql, param)
                 row = cur.fetchone()
-                return row[0] if row else ''
+                return row[0] if row else None
         except (Exception, psycopg2.DatabaseError) as error:
             logger.warning(self.error_print(error=error, method="get_exchange_cat_id", query=sql))
-            return ''
+            return None
 
     def get_cat_exchanges(self,
                           exchange: Optional[str] = "",

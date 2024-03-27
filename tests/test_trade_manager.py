@@ -33,10 +33,12 @@ def db_ohlcv_instance(exchange_instance):
     del dbase
 
 
+@pytest.mark.order(1)
 def test_order_startup(trade_manager):
     assert trade_manager.started is True, "Trade manager didn't properly start"
 
 
+@pytest.mark.order(2)
 def test_update_trades_since_1(trade_manager,
                                exchange_instance,
                                db_ohlcv_instance,

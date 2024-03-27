@@ -25,7 +25,11 @@ class Strategy(strat.Strategy):
         ('take_profit', 20),
         ('rsi', 14),
         ('entry', 65),
-        ('exit', 60)
+        ('exit', 60),
+        ('prediction_steps', 1),
+        ('threshold', .45),
+        ('feeds', 3),
+        ('pairs', False)
     )
 
     next_open: arrow.Arrow
@@ -65,7 +69,7 @@ class Strategy(strat.Strategy):
                 res = self.close_position(feed=0, reason="strategy")
         if res:
             #self.next_open = self.time_to_next_bar(feed=1).shift(minutes=240*0)
-            self.next_open = self.time_to_next_bar(feed=1).shift(days=1)
+            self.next_open = self.time_to_next_bar(feed=2).shift(days=1)
             self.entry_signal[0] = ""
             time_difference = (self.next_open.timestamp() - self.curtime[0].timestamp())
             if time_difference <= 60:  # less than 60 seconds
@@ -92,6 +96,8 @@ class Strategy(strat.Strategy):
 
         preds['score'] = preds[[f'score_{key}' for key in self.regressors.keys()]].sum(axis=1)
         preds['entry'] = preds['score'] > self.p.threshold*len(self.regressors)
+        self.indicators_df['entry'] = preds['entry']
+        self.indicators_df['score'] = preds['score']
         # Get the probability predictions for the class of interest (assumed to be the second class)
         self.indicators_df['exit'] = False
 
@@ -133,7 +139,7 @@ class Strategy(strat.Strategy):
         """
         # Define the end date of the data and start date based on the oldest available data
         regressors = ['GradientBoostingClassifier', 'CatBoostClassifier']
-        todate = arrow.get(bt.num2date(self.datas[0].fromdate)).floor('week')  # floor month?
+        todate = arrow.get(bt.num2date(self.datas[0].fromdate)).floor('week')
         fromdate = PredictorTools.get_oldest_timestamp(feed=self.datas[1])
         filenames: dict = {}
         for regressor in regressors:
@@ -174,7 +180,7 @@ class Strategy(strat.Strategy):
             self.cerebro.runstop()
         self.scaler = scaler
         target, data = PredictorTools.set_target(data=data,
-                                                 target="go_short",
+                                                 target="go_long",
                                                  steps=self.p.prediction_steps)
         if target.empty:
             logger.error("Target was not set")
@@ -187,71 +193,62 @@ class Strategy(strat.Strategy):
             logger.error("One or more of the regressors came back empty")
             self.cerebro.runstop()
 
+    def resample_and_aggregate(self, data):
+        """Resample data to the given frequency and aggregate."""
+        agg_dict = {
+            'open': 'first',
+            'high': 'max',
+            'low': 'min',
+            'close': 'last',
+            'volume': 'sum'
+        }
+        target = f"{self.datas[2].feed.period}_{self.datas[2].compression}"
+        freq_index = {"Minutes_60": "1h",
+                      "Minutes_120": "2h",
+                      "Minutes_240": "4h",
+                      "Minutes_480": "8h",
+                      "Minutes_702": "12h",
+                      "Days_1": "1D"}
+        return data.resample(freq_index[target]).agg(agg_dict)
+
     def set_features(self, data: pandas.DataFrame) -> pandas.DataFrame:
         """
-        Calculates and sets features for a short momentum-based trading strategy on the given OHLCV data.
-        Parameters:
-        - data (pd.DataFrame): The OHLCV data.
-
-        Returns:
-        pd.DataFrame: The data with calculated features, tailored for identifying short opportunities.
+        Calculates RSIs for 1H, 4H, 8H, 12H, and 1D, then resamples and aggregates
+        data based on self.p.timeframe.
         """
 
-        # Compute RSI directly on hourly data
-        data['1h_rsi'] = ta.rsi(data['close'], length=self.p.rsi)
+        # Calculate RSI for all specified timeframes before resampling
+        timeframes = ['1H', '4H', '8H', '12H', '1D']
+        for tf in timeframes:
+            multiplier = 24 if tf == '1D' else int(tf[:-1])
+            effective_length = self.p.rsi * multiplier
+            data[f'{tf}_rsi'] = ta.rsi(data['close'], length=effective_length)
+            data[f'{tf}_rsi_entry'] = data[f'{tf}_rsi'] > self.p.entry
 
-        # Helper function to resample and calculate RSI for a given timeframe
-        def resample_and_calc_rsi(data, timeframe, label_prefix):
-            resampled_df = data.resample(timeframe).agg({
-                'open': 'first',
-                'high': 'max',
-                'low': 'min',
-                'close': 'last',
-                'volume': 'sum'
-            })
-            # Calculate RSI on resampled data
-            rsi = ta.rsi(resampled_df['close'], length=self.p.rsi)
-            # Create a temporary DataFrame to hold resampled RSI values with the original index
-            temp_df = pandas.DataFrame(index=data.index)
-            temp_df[label_prefix + '_rsi'] = rsi.reindex(data.index, method='ffill')
-            temp_df[label_prefix + '_close'] = resampled_df['close'].reindex(data.index, method='ffill')
-            return temp_df
+        # Resample and aggregate data based on self.p.timeframe
+        resampled_data = self.resample_and_aggregate(data)
 
-        # Define timeframes for resampling
-        timeframes = {
-            '4H': '4h',
-            '8H': '8h',
-            '12H': '12h',
-            'D': '1D'
-        }
-
-        # Process each timeframe
-        for label, tf in timeframes.items():
-            temp_df = resample_and_calc_rsi(data, tf, label)
-            data = pandas.concat([data, temp_df], axis=1)
-
-
-        print(data)
-        import ipdb
-        ipdb.set_trace()
-
-        data['rsi_sma'] = data['rsi'].rolling(window=10).mean()
+        # Merge RSIs calculated for all timeframes into the resampled data
+        # Note: This step assumes resampled_data and data share a compatible index post-resampling
+        # You might need to adjust based on how ta.rsi and your resampling affect the index
+        for tf in timeframes:
+            resampled_data = resampled_data.merge(
+                data[[f'{tf}_rsi', f'{tf}_rsi_entry']],
+                left_index=True, right_index=True, how='left'
+            )
+        data = resampled_data
         #data['moon'] = data.index.to_series().apply(moon.phase)
         data['change_pct'] = ((data['close'] - data['open']) / data['open']) * 100
         #data['roc'] = data['close'].pct_change(periods=19) * 100
-        # Modify this to suit the condition for shorting
-        data['go_long'] = data['change_pct'] > 1
-
-        # Further feature engineering and breakout checks
-        data = self.set_ta_features(data=data)  # Adjust this method for shorts
+        data['go_long'] = data['change_pct'] > 0
 
         # Drop unnecessary columns
-        columns_to_drop = ['open', 'high', 'low', 'volume', 'change_pct']
+        columns_to_drop = ['open', 'high', 'low', 'volume', 'change_pct',
+                           '1H_rsi', '4H_rsi', '8H_rsi', '12H_rsi', '1D_rsi']
+        #columns_to_drop = ['open', 'high', 'low', 'volume', 'change_pct']
         data = data.drop(columns=columns_to_drop)
-
         # Remove any remaining NaN values
         data = data.dropna()
-
         return data
 
     def event_in(self) -> Optional[arrow.Arrow]:

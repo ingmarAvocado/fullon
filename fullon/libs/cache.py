@@ -8,7 +8,7 @@ preparing the cache, and filtering cache entries based
 on timestamps and component types.
 """
 
-from libs.caches import bot_cache as cache
+from libs.caches import crawler_cache as cache
 
 '''
 try:

@@ -455,7 +455,7 @@ class Interface(Ccxt_Interface):
             since = int(str(since).replace('.', '') + "00000")
         elif len(str(since)) == 17:
             since = int(str(since).replace('.', '') + "000")
-        kraken_params = {'pair': symbol, 'since': since}
+        kraken_params = {'pair': symbol, 'since': since, 'count': 1000}
         trades = self.execute_ws("public_get_trades", [kraken_params])
         if not trades:
             return []

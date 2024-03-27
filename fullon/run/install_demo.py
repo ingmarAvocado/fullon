@@ -1,12 +1,32 @@
 from run import install_manager
 from run import user_manager
 from run import bot_manager
+from run.crawler_manager import CrawlerManager
 from libs.structs.symbol_struct import SymbolStruct
 from libs.structs.exchange_struct import ExchangeStruct
+from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
+from libs.structs.crawler_struct import CrawlerStruct
 from libs.database import Database
+from typing import Optional, Tuple
 
 
 def install():
+    install_symbols()
+    uid = install_admin_user()
+    if not uid:
+        print("Could not install admin user")
+        return
+    ex_id, cat_ex_id = install_exchanges(uid=uid)
+    if not ex_id or not cat_ex_id:
+        print("Could not install admin exchanges")
+    # install_secrets(uid=uid, cat_ex_id=cat_ex_id)
+    install_bots(uid=uid, ex_id=ex_id, cat_ex_id=cat_ex_id)
+    install_crawler_follows(uid=uid)
+    install_crawler_analyzers()
+    add_analyzer_follows()
+
+
+def install_symbols():
     # Instantiante install manager
 
     system = install_manager.InstallManager()
@@ -111,17 +131,12 @@ def install():
         "futures": "t"}
     system.install_symbol(symbol=SymbolStruct.from_dict(SYMBOL))
 
-    SYMBOL = {
-        "symbol": "SOL/USDC",
-        "exchange_name": "kraken",
-        "updateframe": "1h",
-        "backtest": "365",
-        "decimals": 6,
-        "base": "USD",
-        "ex_base": "",
-        "futures": "t"}
-    system.install_symbol(symbol=SymbolStruct.from_dict(SYMBOL))
 
+def install_admin_user() -> Optional[int]:
+    """
+    installs users
+    """
+    system = install_manager.InstallManager()
     # now lets add a user
     USER = {
         "mail": "admin@fullon",
@@ -133,10 +148,15 @@ def install():
         "phone": 666666666,
         "id_num": 3242}
     system.add_user(USER)
-
     user = user_manager.UserManager()
     uid = user.get_user_id(mail='admin@fullon')
+    return uid
 
+
+def install_exchanges(uid: int) -> Tuple[str, str]:
+    """
+    """
+    user = user_manager.UserManager()
     with Database() as dbase:
         cat_ex_id = dbase.get_cat_exchanges(exchange='kraken')[0][0]
 
@@ -147,26 +167,35 @@ def install():
         "test": "False",
         "active": "True"}
     ex_id = user.add_exchange(exch=ExchangeStruct.from_dict(exchange))
+    return (ex_id, cat_ex_id)
 
+
+def install_secrets(uid: int, cat_ex_id: str):
+    """
+    """
     user = user_manager.UserManager()
-    UID = user.get_user_id(mail='admin@fullon')
-
     key = input("Please give your exchange API key to fullon: ")
     secret = input("\nPlease give your exchange SECRET key to fullon: ")
 
-    user.set_secret_key(user_id=UID, exchange=cat_ex_id, key=key, secret=secret)
+    user.set_secret_key(user_id=uid, exchange=cat_ex_id, key=key, secret=secret)
 
     # -------------------------------------------------------
     # New bot # 1
 
+
+def install_bots(uid: int, ex_id: str, cat_ex_id: str):
+    """
+    """
+    user = user_manager.UserManager()
+
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'test pair',
         'dry_run': 'True',
         'active': 'False'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
     with Database() as dbase:
         cat_str_id = dbase.get_cat_str_id(name='trading101_pairs')
@@ -212,13 +241,13 @@ def install():
     # New bot #2
 
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'trading101',
         'dry_run': 'True',
         'active': 'False'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -251,13 +280,13 @@ def install():
     # New bot #3
 
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'FOREST LONG BTC/USD',
         'dry_run': 'True',
         'active': 'True'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -311,13 +340,13 @@ def install():
     # bot 4
 
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'FOREST LONG ETH/USD',
         'dry_run': 'True',
         'active': 'True'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -371,13 +400,13 @@ def install():
     # -------------------------------------------------------
     # New bot #5
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'FOREST LONG SOL/USD',
         'dry_run': 'True',
         'active': 'True'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -430,13 +459,13 @@ def install():
     # -------------------------------------------------------
     # New bot #6
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'FOREST SHORT BTC/USDC',
         'dry_run': 'True',
         'active': 'True'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -487,13 +516,13 @@ def install():
     # -------------------------------------------------------
     # New bot #7
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'FOREST SHORT ETH/USDC',
         'dry_run': 'True',
         'active': 'True'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -543,13 +572,13 @@ def install():
     # -------------------------------------------------------
     # New bot #8
     BOT = {
-        'user': UID,
+        'user': uid,
         'name': 'FOREST SHORT SOL/USD',
         'dry_run': 'True',
         'active': 'True'
     }
     bot_id = user.add_bot(bot=BOT)
-    exchange = {"exchange_id": f"{ex_id}"}
+    exchange = {"exchange_id": ex_id}
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
@@ -568,7 +597,7 @@ def install():
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 10,
+        "symbol_id": 8,
         "bot_id": bot_id,
         "period": 'Days',
         "compression": 1,
@@ -595,3 +624,140 @@ def install():
           }
     _bot['extended'] = extended
     bot.edit(bot=_bot)
+
+
+def install_crawler_follows(uid: int):
+    """
+    Upsert multiple profiles for a given UID using CrawlerManager.
+    """
+    crawler = CrawlerManager()
+    profiles = [
+        {"uid": uid, "site": "twitter", "account": "Anbessa100", "ranking": 9, "contra": False, "expertise":
+         "TA expert in bitcoin and prety good with little known alts, creative"},
+        {"uid": uid, "site": "twitter", "account": "CryptoDonAlt", "ranking": 7, "contra": False, "expertise":
+         "Solid bitcion trader and mayor alts"},
+        {"uid": uid, "site": "twitter", "account": "Melt_Dem", "ranking": 7, "contra": False, "expertise":
+         "crypto manager at coinshares"},
+        {"uid": uid, "site": "twitter", "account": "PeterLBrandt", "ranking": 7, "contra": False, "expertise":
+         "well known TA trader, good with markets in general, pretty good with Bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "Pentosh1", "ranking": 6, "contra": False, "expertise":
+         "Well known trader, good with Bitcoin and mayor alts"},
+        {"uid": uid, "site": "twitter", "account": "HoneybadgerC", "ranking": 6, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "trader1sz", "ranking": 6, "contra": False, "expertise":
+         "Solid TA trader of bitcoin and crypto"},
+        {"uid": uid, "site": "twitter", "account": "EmperorBTC", "ranking": 8, "contra": False, "expertise":
+         "Great TA trader and analyst of Bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "NicTrades", "ranking": 6, "contra": False, "expertise":
+         "well known TA trader, good with markets in general, pretty good with Bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "LSDinmycoffee", "ranking": 2, "contra": False, "expertise":
+         "well known TA trader, good with markets in general, pretty good with Bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "MacnBTC", "ranking": 5, "contra": False, "expertise":
+         "Alt crypto trader"},
+        {"uid": uid, "site": "twitter", "account": "CryptoCred", "ranking": 5, "contra": False, "expertise":
+         "Solid bitcion trader and mayor alts"},
+        {"uid": uid, "site": "twitter", "account": "Crypto_Core", "ranking": 6, "contra": False, "expertise":
+         "Solid bitcion trader and mayor alts"},
+        {"uid": uid, "site": "twitter", "account": "laughncow1", "ranking": 5, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "CryptoYoda1338", "ranking": 5, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "FatihSK87", "ranking": 5, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "InsiderBuySS", "ranking": 2, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "CryptoBadr", "ranking": 5, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "mBTCPiz", "ranking": 5, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "AngeloBTC", "ranking": 5, "contra": False, "expertise":
+         "Solid TA trader of crypto and bitcoin"},
+    ]
+
+    for profile in profiles:
+        crawler.upsert_profile(profile=profile)
+
+
+def install_crawler_analyzers():
+    """
+    install analyzers
+    """
+    analyzers = [{"title": "BTC/USD Longs 1",
+                  "prompt": """Automatically analyze the sentiment of the
+                           following post with a focus on its implications
+                           for long positions in BTC/USD trading.
+                           Determine whether the sentiment suggests a
+                           bullish outlook for Bitcoin by considering the
+                           presence and context of keywords such as
+                           'inflows,' 'outflows,' 'breakout,' 'breakdown,'
+                           'ATH' (all-time high), and other indicators of
+                           positive momentum or significant developments in
+                           the Bitcoin market. Evaluate the post for
+                           explicit and implicit messages that could
+                           influence investor confidence positively towards
+                           taking a long position in Bitcoin. Summarize the
+                           sentiment as bullish, neutral, or bearish, and
+                           highlight any specific phrases or terms in the post
+                           that significantly contribute to this sentiment
+                           assessment"""},
+                 {"title": "BTC/USD Shorts 1",
+                  "prompt": """Automatically analyze the sentiment of the
+                          following post with a focus on its implications for short
+                          positions in BTC/USD trading. Determine whether the sentiment
+                          suggests a bearish outlook for Bitcoin by examining the
+                          presence and context of keywords such as 'sell-off,'
+                          'downturn,' 'correction,' 'volatility,' 'bear market,'
+                          'regulatory concerns,' and other indicators of negative
+                          momentum or significant risks in the Bitcoin market. Evaluate
+                          the post for explicit and implicit messages that could
+                          influence investor confidence negatively towards taking a
+                          short position in Bitcoin. Summarize the sentiment as
+                          bullish, neutral, or bearish, specifically noting any
+                          phrases or terms in the post that critically contribute to
+                          this sentiment assessment."""},
+                 {"title": "ETH/USD Longs 1",
+                  "prompt": """Automatically analyze the sentiment of the
+                            following post with regard to its implications for
+                            long positions in ETH/USD trading. Ascertain whether
+                            the sentiment indicates a bullish outlook for Ethereum
+                            by focusing on the presence and context of keywords such
+                            as 'scaling solutions,' 'DeFi growth,' 'NFT boom,' 
+                            'network upgrade,' 'EIP implementation,' 'staking rewards,'
+                            and other signals of positive momentum or significant
+                            advancements in the Ethereum market. Investigate
+                            the post for both explicit and implicit messages
+                            that might boost investor confidence positively
+                            towards taking a long position in Ethereum.
+                            Conclude the sentiment as bullish, neutral, or bearish,
+                            while pinpointing any specific phrases or elements
+                            in the post that substantially influence this
+                            sentiment evaluation."""},
+                 {"title": "ETH/USD Shorts 1",
+                  "prompt": """Automatically analyze the sentiment of the
+                            following post with specific attention to its
+                            implications for short positions in ETH/USD trading.
+                            Identify whether the sentiment suggests a bearish
+                            outlook for Ethereum by focusing on the presence and
+                            context of keywords such as 'overvalued,' 
+                            'technical resistance,' 'regulatory scrutiny,'
+                            'network congestion,' 'gas fees,' 'security issues,'
+                            and other signals of potential challenges or negative
+                            momentum in the Ethereum market. Assess both explicit
+                            and implicit messages that might lead investors to
+                            consider a short position in Ethereum due to perceived
+                            risks or downward trends. Provide a sentiment summary
+                            categorized as bullish, neutral, or bearish, and underline
+                            particular phrases or elements within the post that
+                            significantly influence this sentiment analysis."""
+                            }]
+    crawler = CrawlerManager()
+    for alyz in analyzers:
+        analyzer = CrawlerAnalyzerStruct(title=alyz['title'], prompt=alyz['prompt'])
+        aid = crawler.add_analyzer(analyzer=analyzer)
+
+
+def add_analyzer_follows():
+    crawler = CrawlerManager()
+    profiles = crawler.get_profiles()
+    for profile in profiles:
+        crawler.add_follows_analyzer(uid=1, fid=profile.fid, aid=1, account=profile.account)

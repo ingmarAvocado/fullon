@@ -71,6 +71,18 @@ def default_secrets() -> None:
     del hush
 
 
+def view(key: int) -> None:
+    """
+    Views all of the available secret keys.
+
+    Returns:
+        str
+    """
+    hush = SecretManager()
+    secret = hush.access_secret_version(secret_id=str(key))
+    print(secret)
+
+
 def view_all() -> None:
     """
     Views all of the available secret keys.
@@ -113,7 +125,7 @@ def delete_secret(key: str) -> None:
     Args:
         key (str): The key of the secret to delete.
     """
-    hush = secret.SecretManager()
+    hush = SecretManager()
     hush.delete_secret(secret_id=key)
     del hush
 

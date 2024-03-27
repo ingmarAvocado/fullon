@@ -224,7 +224,7 @@ class Database(database.Database):
             raise
 
     def get_trades(self,
-                   ex_id: str,
+                   ex_id: int,
                    last: bool = False,
                    uncalculated: bool = False,
                    symbol: Optional[str] = None) -> List[TradeStruct]:

@@ -3,7 +3,8 @@
 CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="1.0.6" use-changelog="false" last-position="0,0" last-zoom="0.85" max-obj-count="21"
+<dbmodel pgmodeler-ver="1.1.1" use-changelog="false" max-obj-count="32"
+	 last-position="0,101" last-zoom="0.95" scene-rect="0,0,4569.01,2223.72"
 	 default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
@@ -13,15 +14,15 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <database name="fullon" is-template="false" allow-conns="true">
 </database>
 
-<schema name="public" layers="0" fill-color="#e1e1e1" sql-disabled="true" faded-out="true">
+<schema name="public" layers="0" fill-color="#e1e1e1" name-color="#000000" sql-disabled="true" faded-out="true">
 </schema>
 
 <table name="cat_exchanges" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="860" y="380"/>
+	<position x="1620" y="240"/>
 	<column name="cat_ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="serial" length="0"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="varchar" length="30"/>
@@ -40,15 +41,15 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="exchanges" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="620" y="720"/>
+	<position x="1380" y="580"/>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="serial" length="0"/>
 	</column>
 	<column name="uid" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="cat_ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="varchar" length="50"/>
@@ -73,9 +74,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="users" layers="0" collapse-mode="2" max-obj-count="15" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1060" y="1800"/>
+	<position x="2140" y="1480"/>
 	<column name="uid" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="serial" length="0"/>
 	</column>
 	<column name="mail" not-null="true">
 		<type name="varchar" length="80"/>
@@ -105,7 +106,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="text" length="0"/>
 	</column>
 	<column name="manager">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
 		<type name="timestamp" length="0"/>
@@ -121,12 +122,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="cat_strategies" layers="0" collapse-mode="2" max-obj-count="9" z-value="0">
+<table name="cat_strategies" layers="0" collapse-mode="2" max-obj-count="10" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2640" y="540"/>
+	<position x="3400" y="400"/>
 	<column name="cat_str_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="serial" length="0"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="varchar" length="50"/>
@@ -149,6 +150,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<column name="feeds" not-null="true" default-value="2">
 		<type name="smallint" length="0"/>
 	</column>
+	<column name="pairs" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
 	<constraint name="cat_strategies_pk" type="pk-constr" table="public.cat_strategies">
 		<columns names="cat_str_id" ref-type="src-columns"/>
 	</constraint>
@@ -157,15 +161,15 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="strategies" layers="0" collapse-mode="2" max-obj-count="13" z-value="0">
+<table name="strategies" layers="0" collapse-mode="2" max-obj-count="15" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2660" y="940"/>
+	<position x="3420" y="800"/>
 	<column name="bot_id">
 		<type name="integer" length="0"/>
 	</column>
 	<column name="cat_str_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="take_profit">
 		<type name="varchar" length="5" precision="2"/>
@@ -194,6 +198,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<column name="pre_load_bars">
 		<type name="smallint" length="0"/>
 	</column>
+	<column name="feeds" default-value="2">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="pairs" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
 	<constraint name="unique_bot_id" type="uq-constr" table="public.strategies">
 		<columns names="bot_id" ref-type="src-columns"/>
 	</constraint>
@@ -202,12 +212,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="bots" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1960" y="1140"/>
+	<position x="2720" y="1000"/>
 	<column name="bot_id" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
 	<column name="uid" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="varchar" length="50"/>
@@ -232,7 +242,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="symbols" layers="0" collapse-mode="2" max-obj-count="12" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1460" y="480"/>
+	<position x="2220" y="340"/>
 	<column name="symbol_id" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
@@ -240,7 +250,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="varchar" length="20"/>
 	</column>
 	<column name="cat_ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="updateframe" not-null="true" default-value="'1h'">
 		<type name="varchar" length="2"/>
@@ -274,9 +284,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="cat_exchanges_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="340" y="380"/>
+	<position x="1040" y="240"/>
 	<column name="cat_ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="varchar" length="20"/>
@@ -292,9 +302,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="cat_strategies_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3380" y="640"/>
+	<position x="4140" y="500"/>
 	<column name="cat_str_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
 		<type name="varchar" length="25"/>
@@ -310,7 +320,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="strategies_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3360" y="1000"/>
+	<position x="4120" y="860"/>
 	<column name="bot_id" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -328,7 +338,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="bot_log" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1480" y="880"/>
+	<position x="2140" y="720"/>
 	<column name="bot_id" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -336,7 +346,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="smallint" length="0"/>
 	</column>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="symbol" not-null="true">
 		<type name="text" length="0"/>
@@ -355,7 +365,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="orders" layers="0" collapse-mode="2" max-obj-count="24" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2640" y="1440"/>
+	<position x="3260" y="1340"/>
 	<column name="order_id" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
@@ -363,16 +373,16 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="integer" length="0"/>
 	</column>
 	<column name="uid" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="ex_order_id">
 		<type name="varchar" length="64"/>
 	</column>
 	<column name="cat_ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="exchange" not-null="true">
 		<type name="varchar" length="50"/>
@@ -422,7 +432,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </table>
 
 <index name="uid_ex_id" table="public.orders"
-	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="false">
 			<column name="uid"/>
@@ -436,7 +446,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </index>
 
 <index name="bot_symbol_index" table="public.orders"
-	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="false">
 			<column name="bot_id"/>
@@ -452,7 +462,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="trades" layers="0" collapse-mode="2" max-obj-count="25" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3100" y="1440"/>
+	<position x="3760" y="1320"/>
 	<column name="trade_id" not-null="true">
 		<type name="serial" length="64"/>
 	</column>
@@ -463,10 +473,10 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="varchar" length="64"/>
 	</column>
 	<column name="uid" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="symbol" not-null="true">
 		<type name="varchar" length="20"/>
@@ -525,7 +535,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </table>
 
 <index name="one oid" table="public.trades"
-	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 concurrent="false" unique="true" fast-update="false" buffering="false" nulls-not-distinct="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="false">
 			<column name="trade_id"/>
@@ -533,7 +543,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </index>
 
 <index name="uid_ex_id_trades" table="public.trades"
-	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="false">
 			<column name="uid"/>
@@ -546,12 +556,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="bot_exchanges" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1220" y="1220"/>
+	<position x="1820" y="1020"/>
 	<column name="bot_id" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<constraint name="unique_record" type="uq-constr" table="public.bot_exchanges">
 		<columns names="bot_id,ex_id" ref-type="src-columns"/>
@@ -561,12 +571,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="exchange_history" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="180" y="1220"/>
+	<position x="940" y="1060"/>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="user_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="currency" not-null="true">
 		<type name="varchar" length="15"/>
@@ -590,7 +600,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="dry_trades" layers="0" collapse-mode="2" max-obj-count="18" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3580" y="1440"/>
+	<position x="4220" y="1320"/>
 	<column name="trade_id" not-null="true">
 		<type name="serial" length="64"/>
 	</column>
@@ -598,10 +608,10 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="integer" length="0"/>
 	</column>
 	<column name="uid" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="ex_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="integer" length="0"/>
 	</column>
 	<column name="symbol" not-null="true">
 		<type name="varchar" length="20"/>
@@ -642,7 +652,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </table>
 
 <index name="one oid_cp" table="public.dry_trades"
-	 concurrent="false" unique="true" fast-update="false" buffering="false"
+	 concurrent="false" unique="true" fast-update="false" buffering="false" nulls-not-distinct="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="false">
 			<column name="trade_id"/>
@@ -650,7 +660,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 </index>
 
 <index name="uid_ex_id_trades_cp" table="public.dry_trades"
-	 concurrent="false" unique="false" fast-update="false" buffering="false"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
 	 index-type="btree" factor="0">
 		<idxelement use-sorting="false">
 			<column name="uid"/>
@@ -690,9 +700,9 @@ CREATE AGGREGATE public.LAST (
 <table name="feeds" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2100" y="600"/>
+	<position x="2860" y="440"/>
 	<column name="feed_id" not-null="true">
-		<type name="uuid" length="0"/>
+		<type name="serial" length="0"/>
 	</column>
 	<column name="bot_id" not-null="true">
 		<type name="integer" length="0"/>
@@ -717,7 +727,7 @@ CREATE AGGREGATE public.LAST (
 <table name="simulations" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2160" y="1760"/>
+	<position x="2840" y="1720"/>
 	<column name="num" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
@@ -736,6 +746,189 @@ CREATE AGGREGATE public.LAST (
 	<constraint name="serial_primary" type="pk-constr" table="public.simulations">
 		<columns names="num" ref-type="src-columns"/>
 	</constraint>
+</table>
+
+<table name="sites_follows" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1160" y="1480"/>
+	<column name="fid" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="uid" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="site" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="account" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="ranking" not-null="true" default-value="1">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="contra" not-null="true" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="expertise" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="unique_fid" type="pk-constr" table="public.sites_follows">
+		<columns names="fid" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="onefuid-oneuid" type="uq-constr" table="public.sites_follows">
+		<columns names="uid,site,account" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="cat_sites" layers="0" collapse-mode="2" max-obj-count="1" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="540" y="1140"/>
+	<column name="sites" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="one_site_only" type="pk-constr" table="public.cat_sites">
+		<columns names="sites" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="sites_posts" layers="0" collapse-mode="2" max-obj-count="22" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="140" y="1380"/>
+	<column name="post_id" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="remote_id" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="account" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="account_id" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="site" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="content" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="media">
+		<type name="text" length="0"/>
+	</column>
+	<column name="media_ocr">
+		<type name="text" length="0"/>
+	</column>
+	<column name="urls">
+		<type name="text" length="0"/>
+	</column>
+	<column name="is_reply" not-null="true" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="reply_to">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="self_reply" not-null="true" default-value="False">
+		<type name="bool" length="0"/>
+	</column>
+	<column name="views" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="likes" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="reposts" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="replies" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="followers" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="pre_score">
+		<type name="numeric" length="0"/>
+	</column>
+	<constraint name="primary_key" type="pk-constr" table="public.sites_posts">
+		<columns names="post_id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="remote_id_site_unique" type="uq-constr" table="public.sites_posts">
+		<columns names="remote_id,site" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="post_analyzers" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="640" y="1720"/>
+	<column name="aid" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
+	<column name="title" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="prompt" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="analyzer_pk" type="pk-constr" table="public.post_analyzers">
+		<columns names="aid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="engine_scores" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="120" y="2000"/>
+	<column name="aid" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="post_id" not-null="true">
+		<type name="smallint" length="0"/>
+	</column>
+	<column name="engine" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="score" not-null="true">
+		<type name="numeric" length="0"/>
+	</column>
+	<constraint name="one_post_one_engine" type="uq-constr" table="public.engine_scores">
+		<columns names="post_id,engine,aid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="llm_engines" layers="0" collapse-mode="2" max-obj-count="1" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="720" y="2080"/>
+	<column name="engine" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="llm_engines_pk" type="pk-constr" table="public.llm_engines">
+		<columns names="engine" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="follows_analyzers" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1100" y="1900"/>
+	<column name="uid" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="aid" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="fid" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="account" not-null="true">
+		<type name="text" length="0"/>
+	</column>
 </table>
 
 <constraint name="user_id" type="fk-constr" comparison-type="MATCH FULL"
@@ -846,6 +1039,60 @@ CREATE AGGREGATE public.LAST (
 	<columns names="bot_id" ref-type="dst-columns"/>
 </constraint>
 
+<constraint name="uid_to_uid" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.sites_follows">
+	<columns names="uid" ref-type="src-columns"/>
+	<columns names="uid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="site_one_site" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.cat_sites" table="public.sites_follows">
+	<columns names="site" ref-type="src-columns"/>
+	<columns names="sites" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="site_name_site_name2" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.cat_sites" table="public.sites_posts">
+	<columns names="site" ref-type="src-columns"/>
+	<columns names="sites" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="engine_pid_pid" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.sites_posts" table="public.engine_scores">
+	<columns names="post_id" ref-type="src-columns"/>
+	<columns names="post_id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="llm_engines_post" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.llm_engines" table="public.engine_scores">
+	<columns names="engine" ref-type="src-columns"/>
+	<columns names="engine" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="aid_to_aid" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.post_analyzers" table="public.engine_scores">
+	<columns names="aid" ref-type="src-columns"/>
+	<columns names="aid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="uids_follows_engines" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.follows_analyzers">
+	<columns names="uid" ref-type="src-columns"/>
+	<columns names="uid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="aid_follows_engine" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.post_analyzers" table="public.follows_analyzers">
+	<columns names="aid" ref-type="src-columns"/>
+	<columns names="aid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="fid_follows_engine" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.sites_follows" table="public.follows_analyzers">
+	<columns names="fid" ref-type="src-columns"/>
+	<columns names="fid" ref-type="dst-columns"/>
+</constraint>
+
 <relationship name="rel_exchanges_users" type="relfk" layers="0"
 	 src-table="public.exchanges"
 	 dst-table="public.users" reference-fk="user_id"
@@ -861,9 +1108,9 @@ CREATE AGGREGATE public.LAST (
 	 dst-table="public.users" reference-fk="client_manager"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1390.4" y="1921.84"/>
-	<position x="1390.4" y="1767"/>
-	<position x="1258.27" y="1767"/>
+		<position x="2469.4" y="1600.17"/>
+	<position x="2469.4" y="1447"/>
+	<position x="2337.6" y="1447"/>
 	</line>
 </relationship>
 
@@ -945,5 +1192,54 @@ CREATE AGGREGATE public.LAST (
 	 src-table="public.strategies"
 	 dst-table="public.bots" reference-fk="bot_id"
 	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_follow_accounts_users" type="relfk" layers="0"
+	 src-table="public.sites_follows"
+	 dst-table="public.users" reference-fk="uid_to_uid"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_follow_accounts_cat_sites" type="relfk" layers="0"
+	 src-table="public.sites_follows"
+	 dst-table="public.cat_sites" reference-fk="site_one_site"
+	 src-required="false" dst-required="true">
+	<label ref-type="name-label">
+		<position x="0" y="0"/>
+	</label>
+</relationship>
+
+<relationship name="rel_sites_posts_cat_sites" type="relfk" layers="0"
+	 src-table="public.sites_posts"
+	 dst-table="public.cat_sites" reference-fk="site_name_site_name2"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_engine_score_sites_posts" type="relfk" layers="0"
+	 src-table="public.engine_scores"
+	 dst-table="public.sites_posts" reference-fk="engine_pid_pid"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_engine_score_llm_engines" type="relfk" layers="0"
+	 src-table="public.engine_scores"
+	 dst-table="public.llm_engines" reference-fk="llm_engines_post"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_follows_engines_users" type="relfk" layers="0"
+	 src-table="public.follows_analyzers"
+	 dst-table="public.users" reference-fk="uids_follows_engines"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_follows_engines_post_analyzers" type="relfk" layers="0"
+	 src-table="public.follows_analyzers"
+	 dst-table="public.post_analyzers" reference-fk="aid_follows_engine"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_follows_engines_sites_follows" type="relfk" layers="0"
+	 src-table="public.follows_analyzers"
+	 dst-table="public.sites_follows" reference-fk="fid_follows_engine"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_engine_scores_post_analyzers" type="relfk" layers="0"
+	 src-table="public.engine_scores"
+	 dst-table="public.post_analyzers" reference-fk="aid_to_aid"
+	 src-required="false" dst-required="true"/>
 
 </dbmodel>

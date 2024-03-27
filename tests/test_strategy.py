@@ -17,6 +17,7 @@ class MockStratParams:
         self.timeout = timeout
         self.size = size
 
+
 @pytest.fixture
 def order():
     order = bt.Order
@@ -24,10 +25,11 @@ def order():
 '''
 @pytest.fixture
 def feed():
-    bot1 = Bot('00000000-0000-0000-0000-000000000001')
+    bot1 = Bot(1)
     feed = bot1.str_feeds[0]
     yield feed
 '''
+
 
 @pytest.fixture
 def open_trade_buy():
@@ -42,6 +44,7 @@ def open_trade_buy():
     trade.justopened = True
 
     yield trade
+
 
 @pytest.fixture
 def close_trade_buy():
@@ -58,6 +61,7 @@ def close_trade_buy():
     trade.justopened = False
     yield trade
 
+
 @pytest.fixture
 def open_trade_sell():
     class data:
@@ -71,6 +75,7 @@ def open_trade_sell():
     trade.justopened = True
 
     yield trade
+
 
 @pytest.fixture
 def close_trade_sell():
@@ -91,15 +96,15 @@ def close_trade_sell():
 @pytest.fixture
 def strat():
     class strat_feed:
-        ex_id = '00000000-0000-0000-0000-000000000001'
+        ex_id = 1
 
     class data:
         symbol = "BTC/USD"
         feed = strat_feed()
 
     class helper:
-        uid = '00000000-0000-0000-0000-000000000001'
-        bot_id = '00000000-0000-0000-0000-000000000002'
+        uid = 1
+        bot_id = 2
 
     cerebro = bt.Cerebro()
     broker = cerebro.getbroker()
@@ -117,17 +122,20 @@ def strat():
     setattr(strat, "size", {0: 10})
     yield strat
 
+
 @pytest.fixture
 def trade_updated(strat, trade):
     _trade = strat._update_trade_details(self=strat, trade=trade, datas_num=0)
     yield _trade
 
 
+@pytest.mark.order(1)
 def test_entry(strat):
     entry = strat.entry(self=strat, datas_num=0, price=10)
     assert entry == 1.0 #entry / price 
 
 
+@pytest.mark.order(2)
 def test_is_new_candle(strat):
     res = strat._is_new_candle(self=strat, feed=0)
     assert res is False

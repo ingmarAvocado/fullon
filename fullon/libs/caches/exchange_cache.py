@@ -27,7 +27,6 @@ class Cache(cache.Cache):
             List[Dict[str, str]]: A list of dictionaries representing the exchanges.
         """
         redis_key = 'cat_exchanges'
-
         # check if the data is in Redis cache
         if self.conn.exists(redis_key):
             exchanges_json = self.conn.get(redis_key)
@@ -36,7 +35,10 @@ class Cache(cache.Cache):
             # fetch data from the database
             with database.Database() as dbase:
                 rows = dbase.get_cat_exchanges(all=True)
-                exchanges = [{'name': exch[1], 'id': str(exch[0])} for exch in rows]
+                try:
+                    exchanges = [{'name': exch[1], 'id': str(exch[0])} for exch in rows]
+                except TypeError:
+                    return []
                 expires_at = int(time.time() + 24 * 60 * 60)
                 self.conn.set(redis_key, json.dumps(exchanges), ex=expires_at)
         return exchanges
@@ -100,7 +102,7 @@ class Cache(cache.Cache):
             res = []
         return res
 
-    def get_exchange_symbols(self, exchange: str) -> List[Dict[str, str]]:
+    def get_exchange_symbols(self, exchange: int) -> List[Dict[str, str]]:
         """
         Fetch a list of symbols from an exchanges from Redis cache or PostgreSQL.
         If the data is not in Redis cache, it will be fetched from PostgreSQL and cached in Redis.

@@ -34,11 +34,11 @@ class BotLauncher():
         for bot in list(self.processes.keys()):
             self.stop_bot(bot_id=bot)
 
-    def start_bot(self, bot_id: int) -> bool:
+    def start_bot(self, bot_id: int, no_check: bool = False) -> bool:
         stop_signal = Event()
         mainbot = Bot(bot_id=bot_id)
         if mainbot.id:
-            process = Process(target=mainbot.run_loop, args=(stop_signal,))
+            process = Process(target=mainbot.run_loop, args=(stop_signal, no_check,))
             process.start()
             self.processes[bot_id] = process
             self.stop_signals[bot_id] = stop_signal
@@ -92,11 +92,11 @@ def process_requests(request_queue: Queue,  mngr: object):
     launcher = BotLauncher()
     while True:
         try:
-            cmd, bot_id, response_queue = request_queue.get()
+            cmd, bot_id, response_queue, no_check = request_queue.get()
             res = None
             match cmd:
                 case 'start':
-                    res = launcher.start_bot(bot_id=bot_id)
+                    res = launcher.start_bot(bot_id=bot_id, no_check=no_check)
                 case ControlSignals.STOP.value:
                     launcher.stop_all()
                     mngr.shutdown()
@@ -146,7 +146,7 @@ def stop():
         logger.info("Stopping Bot laucher queue")
         try:
             with response_queue_pool.get_queue() as response_queue:
-                request_queue.put((ControlSignals.STOP.value, '', response_queue))
+                request_queue.put((ControlSignals.STOP.value, '', response_queue, False))
             sleep(1)
         except FileNotFoundError:
             pass
@@ -163,7 +163,7 @@ def stop():
 
 class Launcher():
 
-    def start(self, bot_id: int) -> bool:
+    def start(self, bot_id: int, no_check: bool = False) -> bool:
         """
         Start a bot instance identified by its bot_id.
 
@@ -174,11 +174,10 @@ class Launcher():
             bool: True if bot started successfully, otherwise False.
         """
         global request_queue, response_queue_pool
-
         try:
             with response_queue_pool.get_queue() as response_queue:
                 if not self.ping(bot_id=bot_id):
-                    request_queue.put(('start', bot_id, response_queue))
+                    request_queue.put(('start', bot_id, response_queue, no_check))
                     res = response_queue.get()
                     logger.info("Bot %s started", bot_id)
                     return res
@@ -201,7 +200,7 @@ class Launcher():
         try:
             with response_queue_pool.get_queue() as response_queue:
                 if request_queue:
-                    request_queue.put(('stop', bot_id, response_queue))
+                    request_queue.put(('stop', bot_id, response_queue, False))
                     res = response_queue.get()
                     if res:
                         logger.info("bot id stopped: %s", bot_id)
@@ -225,7 +224,7 @@ class Launcher():
         try:
             with response_queue_pool.get_queue() as response_queue:
                 if request_queue:
-                    request_queue.put(('ping', bot_id, response_queue))
+                    request_queue.put(('ping', bot_id, response_queue, False))
                     return response_queue.get()
         except Exception as e:
             logger.error(f"Failed to ping bot {bot_id}: {e}")
@@ -240,7 +239,7 @@ class Launcher():
         try:
             with response_queue_pool.get_queue() as response_queue:
                 if request_queue:
-                    request_queue.put(('stop_all', '', response_queue))
+                    request_queue.put(('stop_all', '', response_queue, False))
                     response_queue.get()
                     logger.warning("All bots stopped")
         except Exception as e:
@@ -257,11 +256,52 @@ class Launcher():
         try:
             with response_queue_pool.get_queue() as response_queue:
                 if request_queue:
+                    request_queue.put(('get_bots', '', response_queue, False))
+                    res = response_queue.get()
+                    return res
+        except EOFError:
+            pass
+        except (ValueError, AttributeError):
+            pass
+        except Exception as e:
+            try:
+                logger.error(f"Failed to get list of bots: {str(e)}")
+            except ValueError:
+                pass
+        return []
+
+    '''
+    def get_bots(self) -> list:
+        """
+        Retrieve a list of all active bot instances.
+
+        Returns:
+            list: List of active bots.
+        """
+        global request_queue, response_queue_pool
+        try:
+            if response_queue_pool is None:
+                logger.error("response_queue_pool is None")
+                return []
+            response_queue = response_queue_pool.get_queue()
+            if response_queue is None:
+                logger.error("get_queue returned None")
+                return []
+
+            with response_queue:
+                if request_queue:
                     request_queue.put(('get_bots', '', response_queue))
                     res = response_queue.get()
                     return res
         except EOFError:
             pass
+        except (ValueError, AttributeError):
+            try:
+                logger.error("No value or attribute for response_queue")
+                pass
+            except (ValueError, EOFError):
+                pass
         except Exception as e:
-            logger.error(f"Failed to get list of bots: {e}")
+            logger.error(f"Failed to get list of bots: {str(e)}")
         return []
+        '''

@@ -208,19 +208,24 @@ class Bot:
         """
         # Determine the number of data feeds in the Cerebro object
         num_feeds = len(cerebro.datas)
-        # If there is an odd number of data feeds, raise an error
-        if num_feeds % 2 != 0:
-            msg = f"Number of data feeds must be even, current num feeds {num_feeds}"
+        if self.str_params['feeds'] != num_feeds:
+            msg = f"Number of feeds ({num_feeds}) do not match "
+            msg += f"strategy requirement ({self.str_params['feeds']})"
             logger.error(msg)
             return False
-        # Determine the number of pairs of data feeds
-        num_pairs = num_feeds // 2
-        # Loop over each pair of data feeds and pair them up
-        for i in range(num_pairs):
-            # Set the 'feed2' attribute of the first feed to be the second feed in the pair
-            cerebro.datas[i].feed2 = cerebro.datas[i + num_pairs]
-            # Set the 'feed2' attribute of the second feed to be the first feed in the pair
-            cerebro.datas[i + num_pairs].feed2 = cerebro.datas[i]
+        # If there is an odd number of data feeds, raise an error
+        if self.str_params['pairs'] is True:
+            if num_feeds % 2 != 0:
+                msg = f"Number of data feeds must be even, current num feeds {num_feeds}"
+                logger.error(msg)
+                return False
+            # Determine the number of pairs of data feeds
+            num_pairs = num_feeds // 2
+            for i in range(num_pairs):
+                # Set the 'feed2' attribute of the first feed to be the second feed in the pair
+                cerebro.datas[i].feed2 = cerebro.datas[i + num_pairs]
+                # Set the 'feed2' attribute of the second feed to be the first feed in the pair
+                cerebro.datas[i + num_pairs].feed2 = cerebro.datas[i]
         return True
 
     def _sim_feeds_can_start(self, feed: object, fromdate: arrow.Arrow) -> bool:
@@ -283,7 +288,9 @@ class Bot:
             bool: `True` if the OHLCV process for the feed is 'Synced' and its timestamp is not older than 120 seconds, `False` otherwise.
         """
         res = store.get_process(tipe='ohlcv', key=f'{feed.exchange_name}:{feed.symbol}')
-        return res and 'Synced' in res['message'] and arrow.get(res['timestamp']).shift(seconds=120) > arrow.utcnow()
+        if res:
+            return res and 'Synced' in res['message'] and arrow.get(res['timestamp']).shift(seconds=120) > arrow.utcnow()
+        return False
 
     def check_ticker(self, feed, store) -> bool:
         """
@@ -297,7 +304,9 @@ class Bot:
             bool: `True` if the ticker for the feed is running and its timestamp is not older than 120 seconds, `False` otherwise.
         """
         res = store.get_ticker(exchange=feed.exchange_name, symbol=feed.symbol)
-        return arrow.get(res[1]).shift(seconds=600) > arrow.utcnow()
+        if res:
+            return arrow.get(res[1]).shift(seconds=600) > arrow.utcnow()
+        return False
 
     def check_account(self, store) -> bool:
         """
@@ -372,11 +381,6 @@ class Bot:
                 compression = ofeeds[num]['compression']
             except KeyError:
                 pass
-            try:
-                period = ofeeds[num]['period']
-            except KeyError:
-                pass
-            # Adjust the start date if the feed has compression > 1
             if compression > 1:
                 fromdate, _ = self.backload_from(bars=self.bars+warm_up)
             else:
@@ -557,7 +561,7 @@ class Bot:
             broker = FullonBroker(feed=self.str_feeds[0])
         return broker
 
-    def run_loop(self, stop_signal, test: Optional[bool] = False) -> None:
+    def run_loop(self, stop_signal, no_check: bool = False, test: Optional[bool] = False) -> None:
         """
         Run the bot's main loop until the stop_signal is set.
 
@@ -566,6 +570,9 @@ class Bot:
             stop_signal (Optional[threading.Event]): An event object to signal the loop to stop. Defaults to None.
         """
         setproctitle(f"Fullon Bot {self.id}")
+        if no_check is True:
+            time.sleep(5)
+            return
         if not self._feeds_can_start(stop_signal=stop_signal):
             logger.error("Feeds can't start, exiting bot startup")
             return

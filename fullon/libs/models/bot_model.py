@@ -5,9 +5,7 @@ from libs import log
 from libs import database_helpers as dbhelpers
 from libs.models import trades_model as database
 from typing import List, Dict, Optional, Tuple, Any
-import uuid
 import json
-from decimal import Decimal
 
 logger = log.fullon_logger(__name__)
 
@@ -528,12 +526,9 @@ class Database(database.Database):
         Raises:
             psycopg2.DatabaseError: If an error occurs while inserting the feed.
         """
-        feed_id = uuid.uuid4()
-        if not feed_id:
-            raise ValueError("No feed id provided")
         sql = """
-            INSERT INTO public.feeds (feed_id, bot_id, symbol_id, period, compression, "order")
-            VALUES (uuid_generate_v4(), %s, %s, %s, %s, %s)
+            INSERT INTO public.feeds (bot_id, symbol_id, period, compression, "order")
+            VALUES (%s, %s, %s, %s, %s)
         """
         data = (feed['bot_id'], feed['symbol_id'], feed['period'], feed['compression'], feed['order'])
         cur = None
