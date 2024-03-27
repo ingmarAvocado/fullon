@@ -52,7 +52,7 @@ class Database:
         except (psycopg2.DatabaseError, psycopg2.OperationalError):
             return False
 
-    def get_connection(self) -> None:
+    def get_connection(self, count=20) -> None:
         try:
             self.con = psycopg2.connect(
                 dbname=settings.DBNAME_OHLCV,
@@ -67,6 +67,11 @@ class Database:
             else:
                 logger.error("Failed to establish a valid database connection.")
         except psycopg2.DatabaseError as e:
+            if 'too many clients' in str(e):
+                if count == 0:
+                    logger.error(f"Database connection failed: {e}")
+                    raise
+                return self.get_connection(count=count-1)
             logger.error(f"Database connection failed: {e}")
             raise
 

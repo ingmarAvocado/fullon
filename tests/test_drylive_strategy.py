@@ -26,7 +26,7 @@ def order():
 '''
 @pytest.fixture
 def feed():
-    bot1 = Bot('00000000-0000-0000-0000-000000000001')
+    bot1 = Bot('1')
     feed = bot1.str_feeds[0]
     yield feed
 '''
@@ -96,15 +96,15 @@ def close_trade_sell():
 @pytest.fixture
 def strat():
     class strat_feed:
-        ex_id = '00000000-0000-0000-0000-000000000001'
+        ex_id = '1'
 
     class data:
         symbol = "BTC/USD"
         feed = strat_feed()
 
     class helper:
-        uid = '00000000-0000-0000-0000-000000000001'
-        bot_id = '00000000-0000-0000-0000-000000000002'
+        uid = '1'
+        bot_id = '2'
 
     cerebro = bt.Cerebro()
     broker = cerebro.getbroker()
@@ -202,15 +202,15 @@ def test_notify_trade(mock_save_dry_trade, mock_bt_trade_to_struct, strat, open_
     strat.p = MockStratParams(size_pct=10, leverage=1, take_profit=10, stop_loss=10, timeout=10, size=1)
     strat.datas = [MagicMock()]
     strat.datas[0]._name = '0'
-    strat.helper.id = '00000000-0000-0000-0000-000000000002'
+    strat.helper.id = '2'
     strat.take_profit = [10]
     strat.stop_loss = [10]
     strat.timeout = [10]
 
     # Create a sample trade structure.
     trade_struct = {
-        'uid': '00000000-0000-0000-0000-000000000001',
-        'ex_id': '00000000-0000-0000-0000-000000000001',
+        'uid': '1',
+        'ex_id': '1',
         'symbol': 'BTC/USD',
         'side': 'Buy',
         'volume': 10,
@@ -233,7 +233,7 @@ def test_notify_trade(mock_save_dry_trade, mock_bt_trade_to_struct, strat, open_
 
     # Assert that the save_dry_trade method was called with the correct arguments.
     mock_save_dry_trade.assert_called_once_with(
-        bot_id='00000000-0000-0000-0000-000000000002',
+        bot_id='2',
         trade=trade_struct,
         reason='strategy'
     )

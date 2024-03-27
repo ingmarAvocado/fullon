@@ -118,7 +118,7 @@ def test__load_feeds(bot, mocker):
 '''
 def test_start_bot():
     # Test that the bot is instantiated with a valid UUID
-    bot1 = bot.Bot('00000000-0000-0000-0000-000000000002')
+    bot1 = bot.Bot('2')
     assert isinstance(bot1, bot.Bot), "The bot instance is not of type 'bot.Bot'"
 
     # Test that the bot has a valid UUID attribute
@@ -131,7 +131,7 @@ def test_start_bot():
     assert isinstance(bot1.str_feeds, list), "the bots feeds are not a list"
     assert len(bot1.str_feeds) > 0, "the bot feeds is empty"
 
-    bot1 = bot.Bot('00000000-0000-0000-0000-000000000000')
+    bot1 = bot.Bot('1')
     assert (bot1.id is None), "The bot instance can't handle unknown bot_id"
 
 
@@ -150,7 +150,7 @@ def get_date_from_bars(bars: int, period: str, compression: int = 1) -> arrow.ar
 
 
 def test_live_strategy():
-    bot1 = bot.Bot('00000000-0000-0000-0000-000000000002')
+    bot1 = bot.Bot('2')
     cerebro = bt.Cerebro()
     strategy.STRATEGY_TYPE = "testlive"
     module = importlib.import_module(
@@ -185,7 +185,7 @@ def test_live_strategy():
 
 
 def test_simul_strategy():
-    bot1 = bot.Bot('00000000-0000-0000-0000-000000000001', 432)
+    bot1 = bot.Bot('1', 432)
     test_params = {'sma1': '45', 'sma2': '13', 'zshort': '-3.0', 'zlong': '3.0', 'zexitlow': '-1.5', 'zexithigh': '1.5', 'stop_loss': 1.0, 'take_profit': 1.0}
     feeds = {}
     bot1.run_simul_loop(feeds=feeds,

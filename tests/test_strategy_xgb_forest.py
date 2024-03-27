@@ -20,7 +20,7 @@ class MockStratParams:
 @pytest.fixture
 def strat():
     class strat_feed:
-        ex_id = '00000000-0000-0000-0000-000000000001'
+        ex_id = 1
         period = 'minutes'
         exchange_name = "kraken"
 
@@ -32,8 +32,8 @@ def strat():
         period = TimeFrame.Minutes
 
     class helper:
-        uid = '00000000-0000-0000-0000-000000000001'
-        bot_id = '00000000-0000-0000-0000-000000000000'
+        uid = 1
+        bot_id = 1
 
     cerebro = bt.Cerebro()
     broker = cerebro.getbroker()

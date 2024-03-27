@@ -71,6 +71,7 @@ def user_ex(store):
                       cat_ex_id=params.cat_ex_id)
 
 
+@pytest.mark.order(1)
 def test_new_process(store):
     # Test new_process for tick type
     result_tick = store.new_process(tipe=tipe_tick,
@@ -89,12 +90,14 @@ def test_new_process(store):
     #assert result_ohlcv == 1
 
 
+@pytest.mark.order(2)
 def test_get_process(store, setup_new_process):
     result = store.get_process(tipe=tipe_tick, key=key_kraken)
     date = arrow.get(result['timestamp'])
     assert isinstance(date, arrow.Arrow)
 
 
+@pytest.mark.order(3)
 def test_update_process_1(store, setup_new_process):
     # Test update_process for tick type
     result_tick = store.update_process(tipe=tipe_tick,
@@ -109,6 +112,7 @@ def test_update_process_1(store, setup_new_process):
     assert result_ohlcv is True
 
 
+@pytest.mark.order(4)
 def test_update_process_2(store, setup_new_process):
     """ Assuming the store and setup_new_process fixtures create t
     he necessary processes"""
@@ -123,6 +127,7 @@ def test_update_process_2(store, setup_new_process):
     assert result is True
 
 
+@pytest.mark.order(5)
 def test_get_top_1(store, setup_new_process):
     result = store.get_top()
     assert len(result) > 0
@@ -132,6 +137,7 @@ def test_get_top_1(store, setup_new_process):
             assert field in res
 
 
+@pytest.mark.order(6)
 def test_get_top_2(store, setup_new_process):
     comp_ohlcv = "ohlcv"
     result = store.get_top(deltatime=0.0001, comp=comp_ohlcv)
@@ -145,6 +151,7 @@ def test_get_top_2(store, setup_new_process):
     assert len(result) == 0
 
 
+@pytest.mark.order(7)
 def test_get_top_3(store, setup_new_process):
     comp_ohlcv = "ohlcv"
     result = store.get_top(deltatime=None, comp=comp_ohlcv)
@@ -158,6 +165,7 @@ def test_get_top_3(store, setup_new_process):
     assert len(result) == 0
 
 
+@pytest.mark.order(8)
 def test_get_top_4(store, setup_new_process):
     comp = None
     result = store.get_top(deltatime=0.0001, comp=comp)

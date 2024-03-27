@@ -11,6 +11,7 @@ def sim():
     del sim
 
 
+@pytest.mark.order(1)
 def test_calculate_final_summary(sim):
     # Test this beast
     summaries = {

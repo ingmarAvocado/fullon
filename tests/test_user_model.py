@@ -9,6 +9,7 @@ def dbase():
         yield dbase
 
 
+@pytest.mark.order(1)
 def test_users_list(dbase):
     users = dbase.get_user_list(page=1, page_size=2, all=False)
     assert isinstance(users, list)

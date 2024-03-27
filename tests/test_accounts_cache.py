@@ -61,6 +61,7 @@ def user_ex(store):
                       cat_ex_id=params.cat_ex_id)
 
 
+@pytest.mark.order(1)
 def test_get_full_account_1(mock_store, user_ex):
     expected_datas = {'BTC': 0.001}
     expected_datas = json.dumps(expected_datas)
@@ -71,12 +72,14 @@ def test_get_full_account_1(mock_store, user_ex):
     assert float(result) >= 0.0000
 
 
+@pytest.mark.order(2)
 def test_get_full_account_2(store, user_ex):
     result = store.get_full_account(exchange=user_ex.ex_id,
                                     currency='BTD')
     assert result == {}
 
 
+@pytest.mark.order(3)
 def test_get_position_1(mock_store, user_ex):
     expected_datas = {'ETHUSDT': {
                                     'cost':  1699.8,
@@ -98,6 +101,7 @@ def test_get_position_1(mock_store, user_ex):
     assert result.cost >= 0
 
 
+@pytest.mark.order(4)
 def test_get_position_2(store, user_ex):
     result = store.get_position(symbol='XRPING',
                                 ex_id=user_ex.ex_id)
@@ -107,6 +111,7 @@ def test_get_position_2(store, user_ex):
     assert result.price >= 0
 
 
+@pytest.mark.order(5)
 def test_all_positions_1(mock_store):
     # Mock data setup, assuming each key represents a different account or exchange ID
     expected_datas = {
@@ -135,6 +140,7 @@ def test_all_positions_1(mock_store):
         # Add more assertions as needed for volume, fee, price, etc.
 
 
+@pytest.mark.order(6)
 def test_all_positions_2(mock_store):
     # Mock data setup, assuming each key represents a different account or exchange ID
     expected_datas = {}

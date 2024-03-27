@@ -125,7 +125,7 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 #time.sleep(1)
 #del exch
 ohlcv = OhlcvManager()
-ohlcv.run_ohlcv_loop(symbol='SOL/USD', exchange='kraken')
+ohlcv.run_ohlcv_loop(symbol='ETH/BTC', exchange='kraken')
 ohlcv.run_loop()
 #exch.get_positions()
 #exch.connect_websocket()
@@ -252,8 +252,8 @@ manager.start_bot(7)
 #res = manager.bots_list()
 #manager.bots_live_list()
 '''
+time.sleep(60000)
 print("minitest complete")
-time.sleep(1)
 '''
 try:
     am.stop_all()

@@ -10,6 +10,7 @@ def store():
     return Cache(reset=True)
 
 
+@pytest.mark.order(1)
 @pytest.mark.parametrize("exchange_name", exchange_list)
 def test_get_symbols(store, exchange_name):
     res = store.get_symbols(exchange=exchange_name)

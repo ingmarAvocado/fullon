@@ -2,7 +2,6 @@ import pytest
 from prompt_toolkit.input import create_pipe_input
 from libs.ctl.ctl_users_lib import CTL
 from unittest.mock import patch
-import uuid
 
 
 # Mock function for PromptSession.prompt
@@ -24,6 +23,7 @@ def ctl(server):
         del _ctl
 
 
+@pytest.mark.order(1)
 @patch('libs.ctl.ctl_users_lib.PromptSession', autospec=True)
 def test_select_user_exchange(mock_prompt_session, ctl):
     # Mock the prompt function
@@ -34,25 +34,12 @@ def test_select_user_exchange(mock_prompt_session, ctl):
         inp.send_text("admin@fullon\n")
         uid = ctl.select_user()
 
-    # Check if uid is a valid UUID
-    assert isinstance(uid, str)
-    assert is_valid_uuid(uid)  # Helper function to validate UUID
+    # Check if uid is a valid int
+    assert isinstance(uid, int)
 
     # Use create_pipe_input again for the second test
     with create_pipe_input() as inp:
         inp.send_text("kraken1\n")
         result = ctl.select_user_exchange(uid=uid)
 
-    # Check if result is a valid UUID
-    assert isinstance(result, str)
-    assert is_valid_uuid(result)  # Helper function to validate UUID
-
-
-# Helper function to check if a string is a valid UUID
-def is_valid_uuid(uid_str):
-    try:
-        uuid.UUID(uid_str)
-        return True
-    except ValueError:
-        return False
-
+    assert isinstance(result, int)

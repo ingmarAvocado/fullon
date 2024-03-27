@@ -46,7 +46,7 @@ def test_save_bot_log(dbase):
     position = 0.0001
     feed_num = 0
     symbol = 'BTC/USD'
-    ex_id = '00000000-0000-0000-0000-000000000000'
+    ex_id = '0'
     res = dbase.save_bot_log(bot_id=bot_id,
                              message=message,
                              position=position,

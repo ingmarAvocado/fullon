@@ -32,7 +32,7 @@ class Database():
         except AttributeError:
             pass
 
-    def get_connection(self, retries: int = 3, delay: int = 1):
+    def get_connection(self, retries: int = 10, delay: int = 1):
         for _ in range(retries):
             try:
                 self.con = psycopg2.connect(
@@ -69,30 +69,6 @@ class Database():
         error = error + "\nQuery " +query
         return error
 
-    def create_uuid_extension(self):
-        sql = 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
-        try:
-            with self.con.cursor() as cur:
-                cur.execute(sql)
-                cur.close()
-        except psycopg2.DatabaseError:
-            self.con.rollback()
-            raise ValueError("Can't install extension uuid")
-        return True
-
-    #gets exchanges read to be loaded to the bot
-    def generate_uuid(self):
-        sql = "select uuid_generate_v4()"
-        cur = self.con.cursor()
-        try:
-            cur.execute(sql)
-            row = cur.fetchone()
-            cur.close()
-            return row[0] if row else  False
-        except (Exception, psycopg2.DatabaseError) as error:
-            logger.warning(self.error_print(error = error, method = "generate_uuid", query = sql))
-            sys.exit()
-
     #gets an id from a table, probided a table a return field a validating field and the value of the validating field
     def get_id(self, table, ret_field, field, name):
         try:
@@ -106,4 +82,3 @@ class Database():
             error = "Error cant get_id, postgres says: " +str(error)
             logger.info(error)
             raise
-        return None

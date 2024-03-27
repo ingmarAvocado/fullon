@@ -187,12 +187,6 @@ class Exchange:
                 return self._run_default(attr, params)
             except (KeyboardInterrupt, EOFError):
                 return None
-            '''
-            except RuntimeError as error:
-                logger.error("Can't release queue %s", str(error))
-                return None
-            '''
-
         return default
 
     def _run_default(self, attr: str, params: Dict[str, Any],

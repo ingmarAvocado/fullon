@@ -20,7 +20,7 @@ from libs.settings_config import fullon_settings_loader  # pylint: disable=unuse
 from libs.bot_launcher import start as start_launcher, stop as stop_launcher
 from libs.exchange import start_all, stop_all
 from libs.database_ohlcv import start as startohlcv, stop as stopohlcv
-from libs.database import start as startdb, stop as stopdb
+from libs.database import start as startdb, stop as stopdb, WorkerError
 from run import rpcdaemon_manager as rpc
 from setproctitle import setproctitle
 
@@ -65,13 +65,16 @@ def kill_processes(name):
             os.kill(int(pid), signal.SIGTERM)
         except ProcessLookupError:
             pass
-
+        except PermissionError:
+            logger.error("Permission error: can't kill pid %s", pid)
+    '''
     time.sleep(1)
     for pid in pids:
         try:
             os.kill(int(pid), signal.SIGKILL)
         except ProcessLookupError:
             pass
+    '''
 
 
 def start_pmanager() -> None:
@@ -101,11 +104,14 @@ def print_colored_line(char: str, color: str) -> None:
 
 
 def kill_hard():
-    logger.warning(colored.red("Quitting Fullon... stopping threads..."))
-    stop_launcher()
-    stop_all()
-    for process in ['Fullon', 'fullon']:
-        kill_processes(process)
+    try:
+        logger.warning(colored.red("Quitting Fullon... stopping threads..."))
+        stop_launcher()
+        stop_all()
+        for process in ['Fullon', 'fullon_daemon.py']:
+            kill_processes(process)
+    except WorkerError:
+        pass
     # pid = os.getpid()
     # os.kill(pid, signal.SIGTERM)
     # time.sleep(1)
@@ -134,7 +140,7 @@ def main(cli_args: argparse.Namespace) -> None:
 
     if cli_args.stop:
         kill_processes('Fullon')
-        kill_processes('fullon')
+        kill_processes('fullon_daemon')
         return
     # Set up signal handling for graceful shutdown on SIGINT or CTRL-C
     #signal(SIGINT, handler)

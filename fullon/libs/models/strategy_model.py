@@ -4,8 +4,8 @@ from libs import log
 from libs import database_helpers as dbhelpers
 from libs.models import exchange_model as database
 from libs.structs.strategy_struct import StrategyStruct
+from libs.structs.cat_strategy_struct import CatStrategyStruct
 from typing import List, Dict, Any, Optional
-import uuid
 
 
 logger = log.fullon_logger(__name__)
@@ -25,8 +25,9 @@ class Database(database.Database):
             return None
 
         sql = """
-        SELECT take_profit, stop_loss, trailing_stop,
-               timeout, size_pct, size, size_currency, leverage, pre_load_bars
+        SELECT take_profit, stop_loss, trailing_stop, timeout,
+               size_pct, size, size_currency, leverage, pre_load_bars,
+               feeds, pairs
         FROM strategies
         WHERE bot_id = %s
         """
@@ -286,8 +287,9 @@ class Database(database.Database):
         insert_strategy_sql = """
             INSERT INTO strategies (
                 bot_id, cat_str_id, take_profit, stop_loss,
-                trailing_stop, timeout, leverage, size_pct, size, size_currency, pre_load_bars
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                trailing_stop, timeout, leverage, size_pct,
+                size, size_currency, pre_load_bars, feeds, pairs
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         insert_params_sql = "INSERT INTO strategies_params(bot_id, name, value) VALUES(%s, %s, %s)"
         try:
@@ -304,7 +306,10 @@ class Database(database.Database):
                     strategy.get('size_pct', 10),
                     strategy.get('size'),
                     strategy.get('size_currency', 'USD'),
-                    strategy.get('pre_load_bars')
+                    strategy.get('pre_load_bars'),
+                    strategy.get('feeds'),
+                    strategy.get('pairs')
+
                 ))
                 params = self.get_cat_strategies_params(cat_str_id=strategy['cat_str_id'])
                 if params:
@@ -375,9 +380,9 @@ class Database(database.Database):
 
         try:
             sql = (
-                "INSERT INTO CAT_STRATEGIES(cat_str_id, name, take_profit,\
-                    stop_loss, trailing_stop, timeout, pre_load_bars)"
-                " VALUES (uuid_generate_v4(), %s, %s, %s, %s, %s, %s) ON CONFLICT (name) DO NOTHING"
+                "INSERT INTO CAT_STRATEGIES(name, take_profit,\
+                    stop_loss, trailing_stop, timeout, pre_load_bars, feeds, pairs)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (name) DO NOTHING"
             )
             with self.con.cursor() as cur:
                 cur.execute(sql, (
@@ -386,7 +391,9 @@ class Database(database.Database):
                     base_params.get('stop_loss'),
                     base_params.get('trailing_stop'),
                     base_params.get('timeout'),
-                    base_params.get('pre_load_bars', 200)
+                    base_params.get('pre_load_bars', 200),
+                    base_params.get('feeds', 2),
+                    base_params.get('pairs', False)
                     ))
         except (Exception, psycopg2.DatabaseError) as error:
             raise psycopg2.DatabaseError("Error installing strategy: " + str(error)) from error
@@ -466,7 +473,7 @@ class Database(database.Database):
             with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute(sql, (page_size, offset))
                 for row in cur.fetchall():
-                    strat = StrategyStruct.from_dict(dict(row))
+                    strat = CatStrategyStruct.from_dict(dict(row))
                     strats.append(strat)
         except (Exception, psycopg2.DatabaseError) as error:
             error_msg = self.error_print(error=error, method="get_cat_strategies", query=sql)

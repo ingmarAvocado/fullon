@@ -88,7 +88,7 @@ class Interface:
             return False
 
     @staticmethod
-    def get_user_key(uid: str, exchange: str) -> tuple[str, str]:
+    def get_user_key(uid: int, exchange: str) -> tuple[str, str]:
         """
         Retrieve the user's API key for a specific exchange using the secret manager.
 
@@ -97,7 +97,8 @@ class Interface:
         :return: The API key for the specified user and exchange, or None if not found.
         """
         hush = SecretManager()
-        payload = hush.access_secret_version(secret_id=uid)
+        exchange = str(exchange)
+        payload = hush.access_secret_version(secret_id=str(uid))
         key = ''
         secret = ''
         if payload:
@@ -188,17 +189,20 @@ class Interface:
             logger.error("Order Not Found")
             retvalue = False
         except ccxt.NetworkError as error:
-            logger.error("Network error exchange(%s): %s,  sleeping", self.exchange, str(error))
+            logger.error("Network error exchange(%s): %s, retrying in 5 seconds", self.exchange, str(error))
             logger.error(f"Call {api_call}")
             if retries < 140:
                 time.sleep(5)
                 return self.execute_ws(api_call=api_call, vals=vals, retries=retries+1)
             retvalue = False
-        except ccxt.NotSupported as e:
+        except ccxt.NotSupported:
             logger.error("API call not supported")
             retvalue = False
         except ccxt.ExchangeError as error:
-            logger.error("Exchange Error, sleeping: ", str(error))
+            logger.error("Exchange Error, sleeping: %s", str(error))
+            retvalue = False
+        except ccxt.base.errors.ExchangeError:
+            logger.error("Exchange Error, sleeping: %s", str(error))
             retvalue = False
         return retvalue
 

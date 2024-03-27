@@ -2,9 +2,8 @@
 Comments
 """
 
-from tabulate import tabulate
 from libs import log
-from libs.ctl.ctl_users_lib import CTL
+from libs.ctl.ctl_crawler_lib import CTL
 from clint.textui import colored
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
@@ -177,20 +176,17 @@ class CTL(CTL):
         :rtype: Dict
         """
         # Instantiate a PromptSession object
-
-        _, symbol, symbol_id = self.select_symbol()
-
         session = PromptSession()
-
         _feeds = {}
-
         for feed in range(0, feeds):
             while True:
+                _, _, symbol_id = self.select_symbol()
                 periods = ['Minutes', 'Days', 'Weeks', 'Months']
                 if feed == 0:
                     periods = ['Ticks']
                 completer = WordCompleter(periods, ignore_case=True)
-                period = session.prompt(f"(Symbols Shell Feed) Pick feed {feed} period > ", completer=completer)
+                period = session.prompt(f"(Symbols Shell Feed) Pick feed {feed} period > ",
+                                        completer=completer)
                 if period in periods:
                     _feeds[feed] = {'period': period} # Fixed assignment with colon
                     break
@@ -201,7 +197,8 @@ class CTL(CTL):
             else:
                 while True:
                     try:
-                        compression = int(session.prompt(f"(Symbols Shell Feed) Pick feed {feed} compression > "))
+                        compression = int(session.prompt(f"(Symbols Shell Feed) Pick feed {feed} compression > ",
+                                                         completer=None))
                         _feeds[feed]['compression'] = compression
                         break # Added break to exit the loop once a valid compression is entered
                     except ValueError:

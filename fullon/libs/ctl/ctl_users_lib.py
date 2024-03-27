@@ -1,14 +1,11 @@
 """
 Comments
 """
-
-from tabulate import tabulate
 from libs import log
 from libs.ctl.ctl_base_lib import CTL
-from clint.textui import colored
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
-from typing import Optional, Tuple
+from typing import Optional
 
 logger = log.fullon_logger(__name__)
 

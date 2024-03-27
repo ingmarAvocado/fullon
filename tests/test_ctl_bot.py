@@ -36,11 +36,13 @@ def bot():
     del _bot
 
 
+@pytest.mark.order(1)
 def test_add_bot(ctl):
     pass
     #ctl.add_bot()
 
 
+@pytest.mark.order(2)
 def test_prep_bots(ctl, bot):
     #we would need to save in cache some bots first
     bots = bot.bots_live_list()
@@ -48,6 +50,7 @@ def test_prep_bots(ctl, bot):
     assert isinstance(_bots, list)
 
 
+@pytest.mark.order(3)
 def test_display_bots(ctl, bot):
     pass
     #all_feeds: dict = self.RPC.bots('all_feeds')
@@ -55,6 +58,7 @@ def test_display_bots(ctl, bot):
     #ctl.display_bots(bots=_bots)
 
 
+@pytest.mark.order(4)
 def test_change_bot_feed(ctl, bot):
     _bot = bot.bot_details(bot_id=1)
     #ctl._change_bot_feed(feed=_bot['feeds']['0'])

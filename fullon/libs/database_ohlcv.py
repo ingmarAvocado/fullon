@@ -72,7 +72,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
                     msg = f"Error in method{method_name} with params {method_params}"
                     logger.error(msg)
         except KeyboardInterrupt:
-            logger.error("KeyboardInterrupt received. Shutting down.")
+            #logger.error("KeyboardInterrupt received. Shutting down.")
             break
         except (BrokenPipeError, EOFError, ConnectionResetError) as error:
             #logger.error(f"Connection-related error: {error}")

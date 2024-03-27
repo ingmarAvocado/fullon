@@ -10,6 +10,8 @@ exchange_list = ['kraken']
 def store():
     return cache.Cache(reset=True)
 
+
+@pytest.mark.order(1)
 @pytest.mark.parametrize("exchange_name", exchange_list)
 def test_update_tickers(store, exchange_name):
     tick1 = {
@@ -56,23 +58,26 @@ def test_update_tickers(store, exchange_name):
     assert result != 0
 
 
+@pytest.mark.order(2)
 @pytest.mark.parametrize("exchange_name", exchange_list)
 def test_get_price_1(store, exchange_name):
     ticker = store.get_price(exchange=exchange_name, symbol="BTC/USD")
     assert (isinstance(ticker, float) is True) is True
 
 
+@pytest.mark.order(3)
 def test_get_price_2(store):
     ticker = store.get_price(exchange='blah blah', symbol="BTC/USD")
     assert ticker is 0
 
 
+@pytest.mark.order(4)
 def test_get_price_3(store):
     ticker = store.get_price(symbol="BTC/USD")
     assert (isinstance(ticker, float) is True) is True
 
 
-
+@pytest.mark.order(5)
 @pytest.mark.parametrize("exchange_name", exchange_list)
 def test_get_tickers(store, exchange_name):
     rows = store.get_tickers()
@@ -81,11 +86,13 @@ def test_get_tickers(store, exchange_name):
     assert (len(rows) > 0) is True
 
 
+@pytest.mark.order(6)
 def test_get_ticker_1(store):
     ticker, stamp = store.get_ticker(exchange='blah', symbol="BTC/USD")
     assert stamp is None and ticker is 0
 
 
+@pytest.mark.order(7)
 @pytest.mark.parametrize("exchange_name", exchange_list)
 def test_get_ticker_2(store, exchange_name):
     ticker, stamp = store.get_ticker(exchange=exchange_name, symbol="BTC/USD")

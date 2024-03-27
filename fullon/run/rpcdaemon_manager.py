@@ -26,6 +26,7 @@ handler['bot'] = system_manager.BotManager()
 handler['install'] = system_manager.InstallManager()
 handler['user'] = system_manager.UserManager()
 handler['bot_status'] = system_manager.BotStatusManager()
+handler['crawler'] = system_manager.CrawlerManager()
 
 COMPONENTS = comp.get_components()
 
@@ -51,6 +52,7 @@ def daemon_startup():
     except (EOFError, SyntaxError) as error:
         logger.error("Can't install strategies: %s", str(error))
         return False
+    handler['install'].install_crawlers()
     handler['install'].install_cache()
     logger.info("Cache component ready")
     return True
@@ -83,6 +85,9 @@ def stop_component(component: str) -> str:
             case "bot_status":
                 handler['bot_status'].stop()
                 response = "bot status stopped"
+            case 'crawler':
+                handler['crawler'].stop()
+                response = "CrawlerStopped"
     except KeyboardInterrupt:
         response = "keyboard interrupt"
     return response
@@ -114,6 +119,9 @@ def component_on(component):
         case "bot_status":
             if handler['bot_status'].started:
                 return True
+        case "crawler":
+            if handler['crawler'].started:
+                return True
     return False
 
 
@@ -143,6 +151,13 @@ def start_tickers() -> str:
     if not component_on('tick'):
         handler['tick'].run_loop()
         return "Ticker Launched"
+    return "Ticker already running"
+
+
+def start_crawler() -> str:
+    """
+    """
+    handler['crawler'].run_loop()
     return "Ticker already running"
 
 
@@ -178,6 +193,9 @@ def start_full():
     if not component_on('bots'):
         logger.info("Starting Bots")
         logger.info(start_bots())
+    if not component_on('bots'):
+        logger.info("Starting Crawler")
+        logger.info(start_crawler())
     return "Full services started"
 
 
@@ -219,6 +237,7 @@ def stop_services():
     stop_component(component='tick')
     stop_component(component='ohlcv')
     stop_component(component='account')
+    stop_component(component='crawler')
     return "Services stopped"
 
 
@@ -492,6 +511,45 @@ def users(cmd, params: dict = {}):
     return results
 
 
+def crawler(cmd, params: dict = {}):
+    """
+    Execute user commands with given parameters.
+
+    Args:
+        cmd: The command to execute, can be 'list' or 'exchange'.
+        params: The parameters to use for the command execution.
+
+    Returns:
+        The result of the command execution or an error message.
+
+    Raises:
+        KeyError: An error occurred accessing the command.
+    """
+    results = f"Error: could not execute {cmd} with params {params}"
+    debug = f"lets execute {cmd} with params {params}"
+    logger.info(debug)
+    match cmd:
+        case 'profiles':
+            page = params.get('page')
+            page_size = params.get('page_size')
+            sieve = params.get('sieve')
+            if page is None or page_size is None:
+                results = "Error: Missing 'page' or 'page_size' parameter for 'list' command."
+            else:
+                results = handler['crawler'].get_profiles(site=sieve,
+                                                          page=page,
+                                                          page_size=page_size)
+        case 'list':
+            results = handler['crawler'].get_sites()
+        case 'add':
+            results = handler['crawler'].upsert_profile(profile=params)
+        case 'del':
+            results = handler['crawler'].del_profile(fid=params.get('fid'))
+        case 'edit':
+            results = handler['crawler'].upsert_profile(profile=params.get('profile'))
+    return results
+
+
 def bots(cmd, params: dict = {}):
     """
     Executes a command related to bot operations.
@@ -716,8 +774,8 @@ def rpc_server(stop_event, logs=True):
         server.register_function(get_system_status)
         server.register_function(get_top)
         server.register_function(bots)
+        server.register_function(crawler)
         logger.warning("Fullon Daemon Started")
         server.timeout = 0.5
         while not stop_event.is_set():
             server.handle_request()
-        logger.warning("Fullon Daemon Stopped")

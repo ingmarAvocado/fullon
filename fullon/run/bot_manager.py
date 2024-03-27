@@ -75,7 +75,10 @@ class BotManager:
         Continually checks the state of the bot processes and relaunches any that have died.
         """
         while not self.relauncher_event.is_set():  # Changed from `self.started.is_set()` to `self.monitor_signal.is_set()`
-            bots = self.launcher.get_bots()
+            try:
+                bots = self.launcher.get_bots()
+            except ValueError:
+                pass
             for bot_id in bots:
                 if not self.is_running(bot_id=bot_id):
                     logger.warning(f"Detected dead bot {bot_id}. Relaunching...")

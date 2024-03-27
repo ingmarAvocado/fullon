@@ -10,33 +10,39 @@ def bot_manager():
     del bm
 
 
+@pytest.mark.order(1)
 def test_bots_list(bot_manager):
     bot_list = bot_manager.bots_list(10, 1)
     assert isinstance(bot_list, list) is True
     assert len(bot_list) > 1
 
 
+@pytest.mark.order(2)
 def test_bot_details(bot_manager):
     details = bot_manager.bot_details(bot_id=1)
     assert len(details) > 4
     assert isinstance(details['feeds']['0'], dict)
 
 
+@pytest.mark.order(3)
 def test_edit_bot(bot_manager):
     bot = bot_manager.bot_details(bot_id=1)
     res = bot_manager.edit(bot=bot)
 
 
+@pytest.mark.order(4)
 def test_start_bot(bot_manager):
     bot = bot_manager.start_bot(bot_id=1)
     assert bot is True
 
 
+@pytest.mark.order(5)
 def test_start_bot2(bot_manager):
     bot = bot_manager.start_bot(bot_id=1)
     assert bot is False
 
 
+@pytest.mark.order(6)
 def test_stop_bot2(bot_manager):
     bot = bot_manager.stop_bot(bot_id=1)
     assert bot is True

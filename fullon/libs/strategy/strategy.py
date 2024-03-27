@@ -38,7 +38,8 @@ class Strategy(bt.Strategy):
         ('size_currency', 'USD'),
         ('leverage', 1),
         ('pre_load_bars', 100),
-        ('feeds', 1),
+        ('feeds', 2),
+        ('pairs', False),
         ('stop_signal', None)
     )
 
@@ -96,6 +97,11 @@ class Strategy(bt.Strategy):
         self.first = True
         self.order_cmd = "process_now"
         self.on_exchange = False
+
+        if len(self.datas) < self.p.feeds:
+            logger.error("Bot %s doesnt have enough feeds, needs %s has %s ",
+                         self.helper.id, self.p.feeds, len(self.datas))
+            exit()
 
         for param in ['take_profit', 'stop_loss', 'trailing_stop', 'timeout']:
             if getattr(self.p, param) == 'false':
@@ -177,7 +183,7 @@ class Strategy(bt.Strategy):
 
     def _check_datas_lengths(self):
         lengths = []
-        for num, datas in enumerate(self.datas):
+        for num, _ in enumerate(self.datas):
             if self.datas[num].timeframe == bt.TimeFrame.Ticks:
                 lengths.append(len(self.datas[num].result))
         first_length = lengths[0]

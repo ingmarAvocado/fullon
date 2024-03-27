@@ -6,13 +6,18 @@ from libs.database import start as startdb, stop as stopdb, Database
 import ipdb
 from multiprocessing import Event
 settings.LOGLEVEL = 'logging.DEBUG'
-#from run.install_manager import InstallManager
+from run.install_manager import InstallManager
 logger = log.fullon_logger(__name__)
 startohlcv()
 startdb()
 exchange.start_all()
 signal = Event()
-bot1 = Bot(3)
+
+#ins = InstallManager()
+#ins.install_strategies()
+
+
+bot1 = Bot(1)
 bot1.dry_run = True
 print("starting")
 try:
@@ -21,7 +26,6 @@ except KeyboardInterrupt:
     print("hola")
 
 print("minitest complete")
-
 exchange.stop_all()
 stopdb()
 stopohlcv()

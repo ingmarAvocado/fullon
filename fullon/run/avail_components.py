@@ -12,6 +12,7 @@ def get_components():
                   'strategies': ['reload', 'delete'],
                   'symbols': ['list', 'add', 'delete', 'list_exchange'],
                   'tickers': ['list'],
+                  'crawler': ['accounts'],
                   'top': [],
                   'help': [],
                   'users': ['list', 'details'],

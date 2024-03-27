@@ -1,6 +1,7 @@
 from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager
 from multiprocessing.queues import Queue
+from queue import Empty  # Import Empty exception from queue module
 from time import sleep
 from setproctitle import setproctitle
 import psycopg2
@@ -70,7 +71,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
                         response_queue.put(None)  # Indicate failure to the requester
                         break
         except KeyboardInterrupt:
-            logger.error("KeyboardInterrupt received. Shutting down.")
+            logger.debug("KeyboardInterrupt received. Shutting down.")
             break
         except (BrokenPipeError, EOFError, ConnectionResetError) as error:
             #logger.warning(f"Connection-related error: {error}")
@@ -175,11 +176,10 @@ class Database:
             with response_queue_pool.get_queue() as response_queue:
                 if not request_queue:
                     raise WorkerError("Database queue not initialized")
-
                 request_queue.put((attr, params, response_queue))
                 try:
-                    result = response_queue.get()
-                except EOFError:
+                    result = response_queue.get(timeout=25)
+                except (EOFError, Empty, KeyboardInterrupt):
                     return
                 if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
                     raise WorkerError(f"Error in worker process: {result[1]}")

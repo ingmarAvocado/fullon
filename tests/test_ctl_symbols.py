@@ -32,6 +32,7 @@ def ctl(server):
         del _ctl
 
 
+@pytest.mark.order(1)
 @patch('libs.ctl.ctl_symbols_lib.PromptSession', autospec=True)
 def test_select_symbol(mock_prompt_session, ctl):
     # Mock the prompt function
@@ -45,6 +46,7 @@ def test_select_symbol(mock_prompt_session, ctl):
     assert result[1] is "BTC/USD"  # Check the expected result
 
 
+@pytest.mark.order(2)
 @patch('libs.ctl.ctl_symbols_lib.PromptSession', autospec=True)
 def test_select_feed(mock_prompt_session, ctl):
     mock_prompt_session.return_value.prompt.side_effect = mock_prompt
@@ -56,6 +58,7 @@ def test_select_feed(mock_prompt_session, ctl):
     assert results[0]['period'] is 'Ticks'
 
 
+@pytest.mark.order(3)
 @patch('libs.ctl.ctl_symbols_lib.PromptSession', autospec=True)
 def test_add_symbol(mock_prompt_session, ctl):
     mock_prompt_session.return_value.prompt.side_effect = mock_prompt

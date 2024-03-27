@@ -58,6 +58,7 @@ def dbohlcv_session():
     print("Ohlcv Database Queue Stopped")
     stopohlcv()
 
+
 @pytest.fixture(scope="session", autouse=True)
 def db_session():
     startdb()

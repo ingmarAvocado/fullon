@@ -2,7 +2,8 @@
 Parent instance of fullon structs.
 """
 from dataclasses import dataclass, asdict
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
+
 
 @dataclass
 class Struct:

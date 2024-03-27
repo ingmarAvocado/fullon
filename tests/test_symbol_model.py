@@ -6,16 +6,18 @@ from libs.structs.trade_struct import TradeStruct
 from run.user_manager import UserManager
 import datetime
 import pytest
-import uuid
+
 
 @pytest.fixture(scope="module")
 def dbase():
     return database.Database()
 
+
 @pytest.fixture(scope="module")
 def uid():
     user = UserManager()
     return user.get_user_id(mail='admin@fullon')
+
 
 @pytest.fixture(scope="module")
 def params():
@@ -25,14 +27,15 @@ def params():
         params = dbase.get_exchange(user_id=uid)[0]
     return params
 
+
 @pytest.fixture
 def mock_trade():
     return TradeStruct(
         trade_id='',
         ex_trade_id="test_ex_trade_id",
         ex_order_id="test_ex_order_id",
-        uid=str(uuid.uuid4()),  # convert UUID to string
-        ex_id=str(uuid.uuid4()),  # convert UUID to string
+        uid=4,  # convert UUID to string
+        ex_id=4,  # convert UUID to string
         symbol="test_symbol",
         order_type="test_order_type",
         side="buy",
@@ -54,6 +57,7 @@ def mock_trade():
     )
 
 
+@pytest.mark.order(1)
 def test_get_symbols(dbase):
     symbols = dbase.get_symbols()
     assert len(symbols) > 0
@@ -67,6 +71,7 @@ def test_get_symbols(dbase):
     assert isinstance(symbols[0].ohlcv_view, str)
 
 
+@pytest.mark.order(2)
 def test_get_symbols2(dbase):
     symbols = dbase.get_symbols(exchange='kraken')
     assert len(symbols) > 0
@@ -80,6 +85,7 @@ def test_get_symbols2(dbase):
     assert isinstance(symbols[0].ohlcv_view, str)
 
 
+@pytest.mark.order(3)
 def test_get_symbol(dbase, params):
     symbol = 'BTC/USD'
     cat_ex_id = params.cat_ex_id
@@ -96,6 +102,7 @@ def test_get_symbol(dbase, params):
     assert isinstance(symbol_data.base, str)
 
 
+@pytest.mark.order(4)
 def test_get_symbol2(dbase, params):
     symbol = 'BTC/USD'
     cat_ex_id = params.cat_ex_id
@@ -112,6 +119,7 @@ def test_get_symbol2(dbase, params):
     assert isinstance(symbol_data.base, str)
 
 
+@pytest.mark.order(5)
 def test_get_symbol_by_id(dbase):
     symbol_id = 1
     symbol_data = dbase.get_symbol_by_id(symbol_id=symbol_id)
@@ -123,6 +131,7 @@ def test_get_symbol_by_id(dbase):
     assert isinstance(symbol_data.base, str)
 
 
+@pytest.mark.order(6)
 def test_save_get_delete_trades(dbase, mock_trade):
     # Saving the trade
     save_result = dbase.save_trades(trades=[mock_trade])

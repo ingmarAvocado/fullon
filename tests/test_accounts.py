@@ -10,8 +10,8 @@ import time
 
 logger = log.fullon_logger(__name__)
 
-EX_IDS_FALSE = ["00000000-0000-0000-0000-000000000001"]
-EX_IDS_TRUE = ["00000000-0000-0000-0000-000000000002"]
+EX_IDS_FALSE = [1]
+EX_IDS_TRUE = [4]
 
 
 @pytest.fixture(scope="module")
@@ -33,6 +33,7 @@ def store():
     del store
 
 
+@pytest.mark.order(1)
 def wait(store, name):
     res = False
     for attempts in range(0, 40):
@@ -44,6 +45,7 @@ def wait(store, name):
     return res
 
 
+@pytest.mark.order(2)
 def test_update_user_account(account, store):
     """ description """
     exch = store.get_exchanges()[0]
@@ -53,6 +55,7 @@ def test_update_user_account(account, store):
     assert res is True
 
 
+@pytest.mark.order(3)
 def test_run_account_loop(account, store):
     # Run the account loop
     account.run_account_loop()

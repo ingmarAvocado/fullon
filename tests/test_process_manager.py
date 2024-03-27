@@ -11,6 +11,7 @@ def process_manager():
     del pmanager
 
 
+@pytest.mark.order(1)
 def test_get_top(process_manager):
     res = process_manager.get_top()
     print(res)

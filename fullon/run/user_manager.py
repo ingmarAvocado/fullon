@@ -134,9 +134,8 @@ class UserManager:
             bool: The result of adding the exchange to the bot.
         """
         logger.info("Adding exchange to a bot...")
-        dbase = Database()
-        result = dbase.add_exchange_to_bot(bot_id=bot_id, exchange=exchange)
-        del dbase
+        with Database() as dbase:
+            result = dbase.add_exchange_to_bot(bot_id=bot_id, exchange=exchange)
         return bool(result)
 
     def list_user_strats(self, bot_id: int) -> str:
@@ -172,7 +171,7 @@ class UserManager:
             users = dbase.get_user_list(page=page, page_size=page_size, all=all)
         return users
 
-    def get_user_id(self, mail: str) -> Optional[str]:
+    def get_user_id(self, mail: str) -> Optional[int]:
         """
         returns user uid
 
@@ -182,7 +181,7 @@ class UserManager:
 
         Returns:
 
-            str: id of user or empty string if not found
+            str: int of user or empty string if not found
         """
         uid = ""
         try:
@@ -192,7 +191,7 @@ class UserManager:
             uid = None
         return uid
 
-    def get_user_exchanges(self, uid: str) -> List[Dict]:
+    def get_user_exchanges(self, uid: int) -> List[Dict]:
         """
         Lists all users.
 
@@ -203,7 +202,7 @@ class UserManager:
             exchanges: List[Dict[str, Any]] = dbase.get_user_exchanges(uid=uid)
         return exchanges
 
-    def user_details(self, uid: str) -> Dict[str, Dict[str, Dict[str, Union[str, int]]]]:
+    def user_details(self, uid: int) -> Dict[str, Dict[str, Dict[str, Union[str, int]]]]:
         """
         Retrieves user details.
 
@@ -238,16 +237,17 @@ class UserManager:
                     bot_id_str = str(bot.bot_id)
                     details["bots"][bot_id_str] = {
                         "bot_id": bot.bot_id,
-                        "dry_run": bot.dry_run                    }
+                        "dry_run": bot.dry_run
+                        }
 
         return details
 
-    def set_secret_key(self, user_id: str, exchange: str, key: str, secret: str) -> bool:
+    def set_secret_key(self, user_id: int, exchange: str, key: str, secret: str) -> bool:
         """
         Adds a new user key to secret database.
 
         Args:
-            user_id (str): The user id
+            user_id (int): The user id
             exchange (str): the exchange
             secret (str): the api secret
             key (str): the api key
@@ -257,7 +257,8 @@ class UserManager:
 
         """
         hush = SecretManager()
-        payload = hush.access_secret_version(user_id)
+        _user_id = str(user_id)
+        payload = hush.access_secret_version(_user_id)
         sec_key = f'{key}:{secret}'
         if not payload:
             """ new key """
@@ -266,17 +267,17 @@ class UserManager:
             """ there where keys """
             payload = json.loads(payload)
             payload[exchange] = sec_key
-        if hush.add_secret_version(secret_id=user_id, payload=json.dumps(payload)):
+        if hush.add_secret_version(secret_id=_user_id, payload=json.dumps(payload)):
             del hush
             return True
         return False
 
-    def del_secret_key(self, user_id: str, exchange: str) -> bool:
+    def del_secret_key(self, user_id: int, exchange: str) -> bool:
         """
         Removes a user key to secret database.
 
         Args:
-            user_id (str): The user id
+            user_id (int): The user id
             exchange (str): the exchange
             key (str): the api key
 
@@ -285,7 +286,8 @@ class UserManager:
 
         """
         hush = SecretManager()
-        payload = hush.access_secret_version(user_id)
+        _user_id = str(user_id)
+        payload = hush.access_secret_version(_user_id)
         if payload:
             """ there where keys """
             payload = json.loads(payload)
@@ -293,10 +295,10 @@ class UserManager:
                 if payload[exchange]:
                     del payload[exchange]
                     if len(payload) > 0:
-                        hush.add_secret_version(secret_id=user_id,
+                        hush.add_secret_version(secret_id=_user_id,
                                                 payload=json.dumps(payload))
                     else:
-                        hush.delete_secret(secret_id=user_id)
+                        hush.delete_secret(secret_id=_user_id)
                     del hush
                     return True
             except KeyError:

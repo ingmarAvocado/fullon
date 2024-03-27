@@ -2,7 +2,7 @@ import sys
 import psycopg2
 #import urllib, json
 from libs import log
-from libs.models import symbol_model as database
+from libs.models import crawler_model as database
 from typing import Dict, Any, Optional, List, Tuple
 
 
@@ -11,7 +11,7 @@ logger = log.fullon_logger(__name__)
 
 class Database(database.Database):
 
-    def get_user_id(self, mail: str) -> Optional[str]:
+    def get_user_id(self, mail: str) -> Optional[int]:
         """
         Retrieve the user ID for a given email address.
 
@@ -19,7 +19,7 @@ class Database(database.Database):
             mail (str): The email address of the user.
 
         Returns:
-            Optional[str]: The user ID if found, otherwise None.
+            Optional[int]: The user ID if found, otherwise None.
         """
         sql = f"SELECT uid FROM users WHERE mail='{mail}'"
 
@@ -61,19 +61,21 @@ class Database(database.Database):
 
     def add_user(self, user: Dict[str, Any]) -> None:
         """
-        Add a new user to the database.
+        Add a new user to the database securely using parameterized queries.
 
         Args:
             user (Dict[str, Any]): A dictionary containing user information.
         """
-        user['user_id'] = f"'{user['user_id']}'" if 'user_id' in user else "uuid_generate_v4()"
-        sql = f"""INSERT INTO users 
-                  VALUES ({user['user_id']}, '{user['mail']}', '{user['password']}', '{user['f2a']}', '{user['role']}',
-                          '{user['name']}', '{user['lastname']}', {user['phone']}, {user['id_num']})
-               """
+        sql = """INSERT INTO users (mail, password, f2a, role, name, lastname, phone, id_num, note, manager, active)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        values = (
+            user.get('mail'), user.get('password'), user.get('f2a'), user.get('role'),
+            user.get('name'), user.get('lastname'), user.get('phone'), user.get('id_num'), user.get('note'),
+            user.get('manager'), user.get('active', True)
+        )
         try:
             with self.con.cursor() as cur:
-                cur.execute(sql)
+                cur.execute(sql, values)
                 self.con.commit()
         except (Exception, psycopg2.DatabaseError) as error:
             self.con.rollback()

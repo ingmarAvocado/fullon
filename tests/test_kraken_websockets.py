@@ -21,6 +21,7 @@ def websocket_instance(exchange_struct):
     del ws
 
 
+@pytest.mark.order(1)
 def test_on_trade(websocket_instance, caplog):
     # Test trade message
     trades = [
@@ -42,6 +43,7 @@ def test_on_trade(websocket_instance, caplog):
         assert websocket_instance.cache_trade_reply > 0
 
 
+@pytest.mark.order(2)
 def test_on_ticker(websocket_instance, caplog):
     # Test trade message
     data = [340, {'a': ['28499.40000', 0, '0.23590943'],
@@ -59,6 +61,7 @@ def test_on_ticker(websocket_instance, caplog):
         assert websocket_instance.cache_ticker_reply > 0
 
 
+@pytest.mark.order(3)
 def test_run(websocket_instance, caplog):
     pairs = ["XBT/USD", "ETH/USD"]
     subscription = {
@@ -76,6 +79,7 @@ def test_run(websocket_instance, caplog):
     assert len(caplog.records) > 0
 
 
+@pytest.mark.order(4)
 def test_on_my_open_orders(websocket_instance, caplog):
     # Test open orders message
     open_orders = [

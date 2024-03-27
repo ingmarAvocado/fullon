@@ -22,3 +22,4 @@ class StrategyStruct(Struct):
     size_currency: str = ""
     pre_load_bars: Optional[int] = 0
     feeds: Optional[int] = 2
+    pairs: bool = False

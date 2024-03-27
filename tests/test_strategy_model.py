@@ -21,6 +21,7 @@ def bot_test_id():
     yield 2
 
 
+@pytest.mark.order(1)
 def test_get_base_str_params(dbase, bot_test_id):
     strat = dbase.get_base_str_params(bot_id=bot_test_id)
     if strat:
@@ -29,12 +30,14 @@ def test_get_base_str_params(dbase, bot_test_id):
         assert strat is None
 
 
+@pytest.mark.order(2)
 def test_get_str_params(dbase, bot_test_id):
     strat = dbase.get_str_params(bot_id=bot_test_id)
     strat = dict(strat)
     assert isinstance(strat, dict)
 
 
+@pytest.mark.order(3)
 def test_update_base_str_params(dbase, bot_test_id):
     strat = dbase.get_bot_params(bot_id=bot_test_id)
     _ = strat.pop('dry_run', None)
@@ -45,6 +48,7 @@ def test_update_base_str_params(dbase, bot_test_id):
     assert result is True
 
 
+@pytest.mark.order(4)
 def test_update_str_params(dbase, bot_test_id):
     strat = dbase.get_str_params(bot_id=bot_test_id)
     strat = dict(strat)
@@ -52,6 +56,7 @@ def test_update_str_params(dbase, bot_test_id):
     assert result is True
 
 
+@pytest.mark.order(5)
 def test_get_cat_strategies(dbase):
     strats = dbase.get_cat_strategies(page=1, page_size=2, all=False)
     assert isinstance(strats, list)
@@ -61,12 +66,14 @@ def test_get_cat_strategies(dbase):
     assert len(strats) > 1
 
 
+@pytest.mark.order(6)
 def test_get_user_strategies(dbase, uid):
     strats = dbase.get_user_strategies(uid=uid)
     assert isinstance(strats, list)
     assert len(strats) > 0
 
 
+@pytest.mark.order(7)
 def test_install_strategy(dbase):
     strname = 'pytest'
     base_params = {'take_profit': 2.5, 'trailing_stop': None, 'timeout': 30, 'stop_loss': 1.5, 'pre_load_bars': 30, 'feeds': 2} 
@@ -75,12 +82,14 @@ def test_install_strategy(dbase):
     assert res is None
 
 
+@pytest.mark.order(8)
 def test_get_strategies_bot(dbase):
     cat_str_name = "trading101"
     res = dbase.get_strategies_bots(cat_str_name=cat_str_name)
     assert isinstance(res[0].name, str)
 
 
+@pytest.mark.order(9)
 def test_delete_cat_strategy(dbase):
     cat_str_name = "pytest"
     res = dbase.del_cat_strategy(cat_str_name=cat_str_name)

@@ -8,6 +8,7 @@ def user_manager():
     return UserManager()
 
 
+@pytest.mark.order(1)
 def test_add_exchange(user_manager, monkeypatch, db_session):
     mock_exchange = {'key': 'value'}
     mock_result = 1
@@ -18,6 +19,7 @@ def test_add_exchange(user_manager, monkeypatch, db_session):
         mock_run_default.assert_called_once()
 
 
+@pytest.mark.order(2)
 def test_add_params_to_strategy(user_manager):
     mock_strategy = "strategy_name"
     mock_params = {'key': 'value'}
@@ -29,6 +31,7 @@ def test_add_params_to_strategy(user_manager):
         mock_run_default.assert_called_once()
 
 
+@pytest.mark.order(3)
 def test_add_feed_to_bot(user_manager):
     mock_feed = {'bot_id': 1, 'key': 'value'}
     mock_result = True
@@ -39,6 +42,7 @@ def test_add_feed_to_bot(user_manager):
         mock_run_default.assert_called_once()
 
 
+@pytest.mark.order(4)
 def test_add_bot(user_manager):
     mock_bot = {'key': 'value'}
     mock_result = 1
@@ -49,6 +53,7 @@ def test_add_bot(user_manager):
         mock_run_default.assert_called_once()
 
 
+@pytest.mark.order(5)
 def test_add_bot_exchange(user_manager):
     mock_bot_id = 1
     mock_exchange = {'key': 'value'}
@@ -60,6 +65,7 @@ def test_add_bot_exchange(user_manager):
         mock_run_default.assert_called_once()
 
 
+@pytest.mark.order(6)
 def test_user_set_secret_key(user_manager):
     user_id = 'pytest'
     key = "key1"
@@ -98,21 +104,25 @@ def test_user_set_secret_key(user_manager):
     assert res is True
 
 
+@pytest.mark.order(7)
 def test_get_user_id(user_manager):
     user = user_manager.get_user_id(mail='admin@fullon')
-    assert isinstance(user, str)
+    assert isinstance(user, int)
 
 
+@pytest.mark.order(8)
 def test_user_list(user_manager):
     users = user_manager.list_users(page=1, page_size=10, all=False)
     assert isinstance(users, list)
 
 
+@pytest.mark.order(9)
 def test_get_user_exchange(user_manager):
     uid = user_manager.get_user_id(mail='admin@fullon')
     res = user_manager.get_user_exchanges(uid=uid)
 
 
+@pytest.mark.order(10)
 def test_del_strategy(user_manager):
     res = user_manager.del_bot_strategy(bot_id=0)
     assert res is False

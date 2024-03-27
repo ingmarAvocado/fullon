@@ -9,6 +9,7 @@ from libs import settings, cache, log
 from libs.database import Database
 from libs.database_ohlcv import Database as Database_ohlcv
 from libs.exchange import Exchange, WorkerError
+from run.crawler_manager import CrawlerManager
 from run import install_demo
 
 logger = log.fullon_logger(__name__)
@@ -27,7 +28,7 @@ class InstallManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        return self
+        pass
 
     def make_backup(self, name: Optional[str] = None, full: bool = False) -> str:
         """
@@ -118,8 +119,9 @@ class InstallManager:
         """
         Installs all available strategies by scanning the 'strategies/' directory and installing each strategy.
         """
-        base_params_list = ['take_profit', 'stop_loss', 'trailing_stop', 'timeout',
-                            'size_pct', 'size_currency', 'leverage', 'pre_load_bars', 'feeds']
+        base_params_list = ['take_profit', 'stop_loss', 'trailing_stop',
+                            'timeout', 'size_pct', 'size_currency', 'leverage',
+                            'pre_load_bars', 'feeds', 'pairs']
         pathworks = False
         strats = []
         with Database() as dbase:  # Replace 'Database' with your actual database class
@@ -166,6 +168,68 @@ class InstallManager:
                 for dirname in dirnames:
                     if dirname not in ["simulator", "ccxt", "__pycache__"]:
                         dbase.install_exchange(name=dirname)
+
+    def install_crawlers(self) -> None:
+        """
+        Checks the crawler folder, adds each folder as a site. Each folder has the plugin to crawl that site.
+        Excludes the 'analyzers' folder and '__pycache__' directories from being added as a site.
+        """
+        target = 'fullon/libs/crawler'  # Change this to your specific folder path
+        try:
+            # Attempt to get a list of subfolders in the specified folder, excluding 'analyzers' and '__pycache__'
+            sites = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('analyzers', '__pycache__')]
+        except FileNotFoundError:
+            target = 'libs/crawler'  # Alternate folder path
+            try:
+                sites = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('analyzers', '__pycache__')]
+            except FileNotFoundError:
+                logger.error("Could not find the crawler directory at [fullon]/libs/crawler or /libs/crawler.")
+                return
+
+        crawl = CrawlerManager()
+        _sites = crawl.get_sites()
+
+        # Whatever is on _sites but not in sites needs to be removed
+        for site in _sites:
+            if site not in sites:
+                crawl.del_site(site=site)
+
+        # Whatever is in sites but not on _sites needs to be added
+        for site in sites:
+            if site not in _sites:
+                crawl.add_site(site=site)
+        self.install_llm_engines()
+        logger.info("Site catalog updated.")
+
+    def install_llm_engines(self) -> None:
+        """
+        Checks crawler folder, adds each folder as a site. each folder has the plugin the crawl that site.
+        """
+        target = 'fullon/libs/crawler/llm_engines'  # Change this to your specific folder path
+        try:
+            # Attempt to get a list of subfolders in the specified folder, excluding 'analyzers' and '__pycache__'
+            engines = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('__pycache__')]
+        except FileNotFoundError:
+            target = 'libs/crawler/llm_engines'  # Alternate folder path
+            try:
+                engines = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('__pycache__')]
+            except FileNotFoundError:
+                logger.error("Could not find the engines directory at [fullon]/libs/crawler/llm_engines or /libs/crawler/llm_engines")
+                return
+
+        crawl = CrawlerManager()
+        _engines = crawl.get_llm_engines()
+
+        # Whatever is on _sites but not in sites needs to be removed
+        for engine in _engines:
+            if engine not in engines:
+                crawl.add_llm_engine(engine=engine)
+
+        # Whatever is in sites but not on _sites needs to be added
+        for engine in engines:
+            if engine not in _engines:
+                crawl.add_llm_engine(engine=engine)
+        logger.info("LLM catalog updated.")
 
     def install_symbol(self, symbol: SymbolStruct) -> int:
         """
