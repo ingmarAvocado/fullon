@@ -1,4 +1,7 @@
 from libs.settings_config import fullon_settings_loader
+from libs import settings
+print(dir(settings))
+exit()
 from libs import exchange, exchange_methods, log,  strategy, settings
 from libs import cache
 from libs.bot import Bot
@@ -125,8 +128,10 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 #time.sleep(1)
 #del exch
 ohlcv = OhlcvManager()
-ohlcv.run_ohlcv_loop(symbol='ETH/BTC', exchange='kraken')
-ohlcv.run_loop()
+ohlcv.run_ohlcv_loop(symbol='BTC/USD', exchange='kraken')
+#ohlcv.run_loop()
+time.sleep(2000)
+#ohlcv.stop_all()
 #exch.get_positions()
 #exch.connect_websocket()
 #exch.socket_con0nected()
@@ -252,8 +257,10 @@ manager.start_bot(7)
 #res = manager.bots_list()
 #manager.bots_live_list()
 '''
-time.sleep(60000)
+time.sleep(1)
 print("minitest complete")
+ohlcv.stop_all()
+time.sleep(3)
 '''
 try:
     am.stop_all()

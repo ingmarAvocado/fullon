@@ -214,7 +214,7 @@ class Strategy(bt.Strategy):
                 position = self.getposition(datas)
                 self.pos[num] = position.size
                 self.pos_price[num] = position.price
-                self.tick[num] = datas.close[0]
+                self.tick[num] = datas.open[0]
                 self.price_pct[num] = None
                 if self.pos[num] > 0:
                     self.price_pct[num] = round((self.tick[num] - self.pos_price[num]) / self.pos_price[num] * 100, 2)  # if long

@@ -5,10 +5,7 @@ This script contains the Crawleranager class that manages the fetching of inform
 the Web and saves it on the database, will be used later by sentiment manager.
 """
 import threading
-
-from pandas_ta import thermo
 from libs import log
-from libs.caches.crawler_cache import Cache
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
 from libs.models.crawler_model import Database
@@ -17,8 +14,8 @@ import sys
 import importlib
 from time import sleep
 import arrow
-from itertools import groupby
-from operator import attrgetter
+from decimal import Decimal
+
 
 logger = log.fullon_logger(__name__)
 
@@ -199,19 +196,15 @@ class CrawlerManager:
             success = dbase.del_analyzer(aid)
         return success
 
-    def add_follows_analyzer(self,
-                             uid: int,
-                             aid: int,
-                             fid: int,
-                             account: str) -> bool:
+    def add_follows_analyzer(self, uid: int, aid: int, fid: int, account: str) -> bool:
         """
         Adds a new analyzer/follows to the database.
 
         Args:
-            uid
-            aid
-            fid
-            account
+            uid (int): user id
+            aid (int): analyzer id
+            fid (int): follow id
+            account (str): account string
 
         Returns:
             Bool if it works
@@ -219,18 +212,14 @@ class CrawlerManager:
         with Database() as dbase:
             return dbase.add_follows_analyzer(uid=uid, aid=aid, fid=fid, account=account)
 
-    def delete_follows_analyzer(self,
-                                uid: int,
-                                aid: int,
-                                fid: int,
-                                ) -> bool:
+    def delete_follows_analyzer(self, uid: int, aid: int, fid: int) -> bool:
         """
         Adds a new analyzer/follows to the database.
 
         Args:
-            uid
-            aid
-            fid
+            uid (int): user id
+            aid (int): analyzer id
+            fid (int): follow id
 
         Returns:
             Bool if it works
@@ -238,8 +227,7 @@ class CrawlerManager:
         with Database() as dbase:
             return dbase.delete_follows_analyzer(uid=uid, aid=aid, fid=fid)
 
-
-    def _load_module_for_site(self, site: str):
+    def _load_module(self, site: str = '', engine: str = '') -> Optional[object]:
         """
         Dynamically loads a module named after the site. Attempts to load from 'libs.crawler'
         and falls back to 'fullon.libs.crawler' if the initial attempt fails.
@@ -250,8 +238,15 @@ class CrawlerManager:
         Returns:
             An instance of the Crawler class from the loaded module if successful, None otherwise.
         """
-        primary_module_name = f'libs.crawler.{site}.crawler'
-        fallback_module_name = f'fullon.libs.crawler.{site}.crawler'
+        if site:
+            primary_module_name = f'libs.crawler.{site}.crawler'
+            fallback_module_name = f'fullon.libs.crawler.{site}.crawler'
+        elif engine:
+            primary_module_name = f'libs.crawler.llm_engines.{engine}.engine'
+            fallback_module_name = f'fullon.libs.crawler.llm_engines.{engine}.engine'
+        else:
+            logger.error("Need parameter site or engine")
+            return
         try:
             module = self._import_module(primary_module_name)
         except ImportError as primary_error:
@@ -259,16 +254,24 @@ class CrawlerManager:
                 module = self._import_module(fallback_module_name)
             except ImportError as fallback_error:
                 # Log the error. Replace 'print' with your logging approach.
-                print(f"Error importing module '{primary_module_name}': {primary_error}")
-                print(f"Attempted fallback to '{fallback_module_name}', but also failed: {fallback_error}")
-                return None
+                msg = f"Error importing module '{primary_module_name}': {primary_error}"
+                msg = f"Attempted fallback to '{fallback_module_name}', but also failed: {fallback_error}"
+                logger.error(msg+msg)
+                return
         if module:
             try:
-                crawler_instance = module.Crawler(site=site)  # Instantiate the Crawler class
-                return crawler_instance
+                if site:
+                    return module.Crawler(site=site)  # Instantiate the Crawler class
+                if engine:
+                    return module.Engine()  # instantiate an Engine
             except AttributeError:
-                print(f"The module '{module.__name__}' does not contain a 'Crawler' class.")
-                return None
+                msg = ''
+                if site:
+                    msg = f"The module '{module.__name__}' does not contain a 'Crawler' class."
+                if engine:
+                    msg = f"The module '{module.__name__}' does not contain a 'Engine' class."
+                logger.error(msg)
+        return
 
     def _import_module(self, module_name: str):
         """
@@ -297,18 +300,26 @@ class CrawlerManager:
                 for engine in engines:
                     posts = dbase.get_unscored_posts(aid=analyzer.aid,
                                                      engine=engine)
-                    print(">>>",posts)
                     if posts:
+                        llm_engine = self._load_module(engine=engine)
                         post_groups = {}
                         for post in posts:
-                            post_groups[post.remote_id] = {'content': post.content, 'post_id': post.post_id}
+                            post_groups[post.remote_id] = post
                         for post in posts:
                             if post.self_reply:
-                                parent_content = post_groups[post.reply_to]['content']
+                                parent_content = post_groups[post.reply_to].content
                                 new_content = parent_content + post.content
-                                post_groups[post.reply_to]['content'] = new_content
+                                post_groups[post.reply_to].content = new_content
+                                break
                         for post in post_groups.values():
-                            print(post)
+                            score: int = llm_engine.score_post(post=post)
+                            if score:
+                                dbase.add_engine_score(post_id=post.post_id,
+                                                       aid=analyzer.aid,
+                                                       engine=engine,
+                                                       score=Decimal(score))
+                                print("CONCLUIR")
+                                return
                             #here we can call scoring API with the content to score
 
     def _fetch_posts(self, site: str) -> None:
@@ -324,7 +335,7 @@ class CrawlerManager:
         """
         stop_signal = threading.Event()
         self.stop_signals[site] = stop_signal
-        module = self._load_module_for_site(site)
+        module = self._load_module(site)
         if not module and not hasattr(module, 'get_posts'):
             msg = f"Couldnt not load module {module}"
             logger.error(msg)

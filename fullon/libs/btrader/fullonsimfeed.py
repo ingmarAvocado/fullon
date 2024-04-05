@@ -98,8 +98,8 @@ class FullonSimFeed(FullonFeed):
         bool: Returns True if the file was successfully saved, False otherwise.
         """
         pre_fix = f"pickle/{self._table}_{self.compression}_{self.feed.period}"
-        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH_mm')}"
-        filename += f"_to_{self.last_date.format('YYYY_MM_DD_HH_mm')}.pkl"
+        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH')}"
+        filename += f"_to_{self.last_date.format('YYYY_MM_DD_HH')}.pkl"
         try:
             self.dataframe.to_pickle(filename)
             print(f"saved: {filename}")
@@ -115,8 +115,8 @@ class FullonSimFeed(FullonFeed):
             pd.DataFrame: The loaded data.
         """
         pre_fix = f"pickle/{self._table}_{self.compression}_{self.feed.period}"
-        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH_mm')}"
-        filename += f"_to_{self.last_date.format('YYYY_MM_DD_HH_mm')}.pkl"
+        filename = pre_fix + f"_{arrow.get(fromdate).format('YYYY_MM_DD_HH')}"
+        filename += f"_to_{self.last_date.format('YYYY_MM_DD_HH')}.pkl"
         rows = []
         try:
             with open(filename, 'rb') as file:
@@ -191,7 +191,7 @@ class FullonSimFeed(FullonFeed):
     def _resample(self):
         # Determine the resampling rule based on the compression and feed period
         if self.compression != 1 and self.feed.period.lower() == 'minutes':
-            resampling_rule = f'{self.compression}T'
+            resampling_rule = f'{self.compression}min'  # Updated from 'T' to 'min'
         elif self.feed.period.lower() in ['days']:
             time_unit = 'D'
             resampling_rule = f'{self.compression}{time_unit}'

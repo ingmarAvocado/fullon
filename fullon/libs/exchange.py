@@ -33,7 +33,6 @@ def stop_exchange(exchange_pool):
     uids = list(exchange_pool.keys())
     for uid in uids:
         del exchange_pool[uid]
-        sleep(1)
 
 
 def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
@@ -49,7 +48,12 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
     setproctitle(f"Fullon queue for {exchange}")
     try:
         while True:
-            request = request_queue.get()
+            try:
+                request = request_queue.get()
+            except (BrokenPipeError, EOFError):
+                with Cache() as store:
+                    store.push_global_error(msg=exchange, component='exchange')
+                break
             if request == "StopThisRun":
                 break
             try:
@@ -105,7 +109,8 @@ def stop(exchange: str) -> None:
         sleep(1)
         processes[exchange].join(timeout=1)
         del processes[exchange]
-    except (KeyboardInterrupt, BrokenPipeError, KeyError):
+        del request_queues[exchange]
+    except (KeyboardInterrupt, BrokenPipeError, KeyError, ConnectionRefusedError):
         pass
 
 
@@ -117,7 +122,6 @@ def stop_all():
         exchanges = store.get_cat_exchanges()
     for exchange in exchanges:
         stop(exchange['name'])
-    response_queue_pool = None
 
 
 def start_all():

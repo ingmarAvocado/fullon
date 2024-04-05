@@ -71,6 +71,7 @@ class simul:
                    'Duration': summary['Average Duration (hours)'],
                    'MedReturn': summary['Median Return'], 'NegStdDev': summary['Negative Returns Standard Deviation'],
                    'PosStdDev': summary['Positive Returns Standard Deviation'],
+                   'Max Drawdown %': summary['Max Drawdown %'],
                    'SharpeRatio': summary['Sharpe Ratio']}
             transformed_data.append(row)
 
@@ -114,7 +115,7 @@ class simul:
             pd.DataFrame: A DataFrame containing aggregated statistics for Monte Carlo simulations.
         """
         # Identifying the parameter columns (excluding the performance metrics columns)
-        param_cols = [col for col in res_df.columns if col not in ['TTrades', 'Win rate %', 'Fees', 'Profit', 'ROI', 'AvgReturn', 'Duration', 'MedReturn', 'NegStdDev', 'PosStdDev', 'SharpeRatio']]
+        param_cols = [col for col in res_df.columns if col not in ['TTrades', 'Win rate %', 'Fees', 'Profit', 'ROI', 'AvgReturn', 'Duration', 'MedReturn', 'NegStdDev', 'PosStdDev', 'Max Drawdown %', 'SharpeRatio']]
         # Grouping by the unique combinations of simulation parameters
         params_len = len(param_cols)
         grouped = res_df.groupby(param_cols)
@@ -174,7 +175,6 @@ class simul:
                 if int(bot['xls']):
                     filename= f"results_feed_{feed}.xls"
                     df.to_excel(filename, engine='openpyxl')
-
     def parse(self,
               results: List[Union[str, List[Dict[str, Any]]]],
               bot: Dict[str, int],
@@ -216,7 +216,6 @@ class simul:
                 #if detail['feed'].compression != 1 and detail:
                 period = detail['feed'].period.lower()[:3]+detail['feed'].period[-1]
                 periods += f"{period}, "
-
             except (KeyError, IndexError):
                 pass
         compressions = compressions.rstrip(", ")
@@ -247,21 +246,28 @@ class simul:
             loss_roi_pct = []
             all_roi_pct = []
             durations = []
+            all_assets = []
+            starting_assets: float = 0
+
 
             # Iterate over grouped_df and add roi_pct of closing trade to the lists and calculate durations
-            for _, group in grouped_df:
+            for num, group in grouped_df:
                 try:
                     closing_trade_roi_pct = group.iloc[1]['roi_pct']
                     duration = group.iloc[1]['timestamp'] - group.iloc[0]['timestamp']
                     durations.append(duration)
                     all_roi_pct.append(closing_trade_roi_pct)
+                    all_assets.extend(group['assets'].tolist())
                     if closing_trade_roi_pct > 0:
                         profitable_roi_pct.append(closing_trade_roi_pct)
                     elif closing_trade_roi_pct < 0:
                         loss_roi_pct.append(closing_trade_roi_pct)
+                    if num == 1:
+                        starting_assets = group.iloc[0]['assets']-group.iloc[0]['fee']
                 except IndexError:
                     logger.error("IndexError evaluating simul results, try removing pickle/* and try again")
-                    exit()
+                    logger.error("or seems last trade was not closed")
+                    pass
 
             # Calculating metrics
             total_fees = round(df['fee'].sum(),2)
@@ -286,7 +292,7 @@ class simul:
                 sharpe_ratio = 0 #np.nan  # or some other value indicating an error or undefined result
 
             if sharpe_ratio < sharpe_filter:
-                return
+                return {}
             total_return = round(df['roi'].sum(), 2)
             roi = df.at[df.shape[0]-1, 'assets'] - 10000
             roi = round(100 - (10000 - roi) / 10000 * 100, 2)
@@ -299,7 +305,16 @@ class simul:
             profit_factor = "placeholder"
             recovery_factor = "placeholder"
 
-            # Create summary dictionary
+            all_assets_series = pd.Series(all_assets)
+
+            # Calculate the max drawdown from the cumulative asset values
+            if starting_assets != 0:
+                max_drawdown = (starting_assets - all_assets_series.min()) / starting_assets * 100
+            else:
+                # Handle the case where starting_assets is 0 to avoid division by zero
+                max_drawdown = 0
+
+                        # Create summary dictionary
             summary = {
                 'Strategy': detail['strategy'],
                 'Symbol': detail['feed'].symbol,
@@ -323,6 +338,7 @@ class simul:
                 'Negative Returns Standard Deviation': neg_std_dev,
                 'Positive Returns Standard Deviation': pos_std_dev,
                 'Average Duration (hours)': round(average_duration/60/60, 2),
+                'Max Drawdown %': max_drawdown,
                 'Profit Factor': profit_factor,
                 'Recovery Factor': recovery_factor,
                 'Sharpe Ratio': sharpe_ratio,
@@ -338,6 +354,7 @@ class simul:
         # two feeds with results (like when pairs trading)
         # but right now i am making two summaries, make it so that even if i have two feeds i return one (by doing matematics on each summary i guess)
         return summaries
+
 
     @staticmethod
     def round_floats_in_dict(d, decimal_places=2):
@@ -375,7 +392,7 @@ class simul:
             'Win Rate (%)', 'Average Return %', 'Median Return',
             'Negative Returns Standard Deviation',
             'Positive Returns Standard Deviation',
-            'Average Duration (hours)', 'Sharpe Ratio'
+            'Average Duration (hours)', 'Max Drawdown %', 'Sharpe Ratio'
         ]
         final_summary.update(
             {key: sum(summaries[i][key] for i in summaries) / n

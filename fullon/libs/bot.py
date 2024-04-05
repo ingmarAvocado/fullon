@@ -122,8 +122,7 @@ class Bot:
 
         strs = dbase.get_str_params(bot_id=self.id)
         if not strs:
-            logger.error("Can't continue without params, make sure your bot has params")
-            exit()
+            logger.warning("Could't find params for this bot, are you sure this is ok")
         params = {}
         for s in strs:
             name = s[0]
@@ -373,15 +372,17 @@ class Bot:
             self.simulresults[num] = []
             # Set the timeframe for the feed
             timeframe = self._set_timeframe(period=feed.period)
+            not_tick = True
             if feed.period.lower() == "ticks":
                 self.str_feeds[num].period = "minutes"
                 feed.period = "minutes"
+                not_tick = False
             compression = feed.compression
             try:
                 compression = ofeeds[num]['compression']
             except KeyError:
                 pass
-            if compression > 1:
+            if not_tick:
                 fromdate, _ = self.backload_from(bars=self.bars+warm_up)
             else:
                 # Set the start date for the backtest

@@ -26,11 +26,8 @@ class Crawler():
         """
         init apify keys
         """
-        #hush = SecretManager()
-        #self.token = hush.access_secret_version(secret_id='APIFY_TOKEN')
-        #self.actor = hush.access_secret_version(secret_id=f'APIFY_ACTOR_{site}')
-        self.token = ''
-        self.actor = "61RPP7dywgiy0JPD0"
+        self.token = settings.APIFY_TOKEN
+        self.actor = settings.APIFY_ACTOR_TWITTER
 
     def image_ocr(self, image_path: str) -> str:
         """Returns OCR string extracted from image path

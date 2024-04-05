@@ -7,6 +7,7 @@ from libs.database import start as start_database, stop as stop_database
 from libs.database_ohlcv import start as start_ohlcv, stop as stop_ohlcv
 from libs.simul_launcher import simulator
 from libs.bot import Bot
+import psutil
 settings.NOISE = False
 settings.LOG_LEVEL = 'INFO'
 start_database()
@@ -26,11 +27,11 @@ params2 = {
           "size_pct": "5",
           "prediction_steps": "1",
           "threshold": "0."}
-#params2 = {"size_pct": "10"}
+params2 = {"size_pct": "10"}
 #params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
-BOT = {"bot_id": 10,
-       "periods": 1650,
-       "warm_up": 50,
+BOT = {"bot_id": 16,
+       "periods": 12*30,
+       "warm_up": 1,
        "xls": False,
        "verbose": False,
        "visual": False}
@@ -63,8 +64,9 @@ simul.bot_simul(bot=BOT,
                 feeds=feeds,
                 params=params2,
                 filename=filename,
-                montecarlo=6,
+                montecarlo=1,
                 sharpe_filter=-10.00)
+
 
 stop_database()
 stop_ohlcv()
@@ -237,3 +239,22 @@ params2 = {
 
 
 '''
+
+
+def kill_processes_by_cmdline(search_term):
+    """Kill processes where the command line contains the given search term."""
+    for proc in psutil.process_iter(attrs=['cmdline']):
+        # Check if search_term is in the cmdline; this returns a list of command line arguments
+        try:
+            if any(search_term in cmd for cmd in proc.info['cmdline']):
+                try:
+                    print(f"Killing process: {proc.pid} - {' '.join(proc.info['cmdline'])}")
+                    proc.kill()  # Terminate the process
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    pass  # Process already terminated or access denied
+        except TypeError:
+            pass
+
+# Use part of the command that uniquely identifies your script
+search_term = "fullon.py"
+kill_processes_by_cmdline(search_term)

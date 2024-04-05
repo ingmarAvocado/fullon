@@ -10,11 +10,11 @@ import json
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from socketserver import ThreadingMixIn
 import psutil
-from libs.exchange import start_all  # pylint: disable=no-name-in-module
-from libs import settings, log
+from libs import exchange, settings, log
 from libs.structs.symbol_struct import SymbolStruct
 from run import system_manager
 from run import avail_components as comp
+
 
 logger = log.fullon_logger(__name__)
 
@@ -55,6 +55,7 @@ def daemon_startup():
     handler['install'].install_crawlers()
     handler['install'].install_cache()
     logger.info("Cache component ready")
+    exchange.start_all()
     return True
 
 
@@ -206,6 +207,7 @@ def stop_full():
     stop_component(component='account')
     stop_component(component='ohlcv')
     stop_component(component='tick')
+    exchange.stop_all()
     return "Full services stopped"
 
 
@@ -319,17 +321,19 @@ def services(cmd, subcmd):
                     result = stop_services()
                 case 'restart':
                     stop_services()
+                    exchange.stop_all()
+                    exchange.start_all()
                     start_services()
                     result = "Services restarted"
         case 'full':
             match subcmd:
                 case 'start':
-                    result = start_all()
+                    result = start_full()
                 case 'stop':
                     result = stop_full()
                 case 'restart':
                     stop_full()
-                    start_all()
+                    start_full()
                     result = "Services and bots restarted"
     return result
 

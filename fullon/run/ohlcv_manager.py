@@ -52,13 +52,10 @@ class OhlcvManager:
                 try:
                     self.threads[thread].join(timeout=1)  # Wait for the thread to finish with a timeout
                 except KeyError:
-                    pass
-                    '''
                     try:
                         logger.error(f"Seems an ohlcv thread {thread} is not existing and cant be stopped")
                     except ValueError:
                         pass
-                    '''
                 except Exception as error:
                     logger.error(f"Error stopping ohlcv {thread}: {error}")
                 else:
@@ -150,8 +147,7 @@ class OhlcvManager:
         else:
             since = time.time() - (symbol.backtest * 24 * 60 * 60) # timestamp 'symbol.backtest' days ago
         trade_manager = TradeManager()
-        #while not stop_signal.is_set():
-        while True:
+        while not stop_signal.is_set():
             last = trade_manager.update_trades_since(exchange=symbol.exchange_name,
                                                      symbol=symbol.symbol,
                                                      since=since,
@@ -160,6 +156,7 @@ class OhlcvManager:
                 return None
             since = last
             now = time.time()
+            self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Started")
             if since:
                 time_difference = now - since
                 if time_difference < 55:
@@ -182,7 +179,7 @@ class OhlcvManager:
                 dbase.save_symbol_trades(data=trades)
 
     @staticmethod
-    def _update_process(exchange_name: str, symbol: str) -> bool:
+    def _update_process(exchange_name: str, symbol: str, message="Synced") -> bool:
         """
         Update the process status in cache. This function generates a new process ID 
         and updates the cache with a new message status.
@@ -201,7 +198,7 @@ class OhlcvManager:
                                     key=key,
                                     pid=f"thread:{getpid()}",
                                     params=[key],
-                                    message="Synced")
+                                    message=message)
         return bool(res)
 
     def run_ohlcv_loop(self, symbol: str, exchange: str, test: bool = False) -> None:
@@ -264,14 +261,25 @@ class OhlcvManager:
                 self.fetch_individual_trades_ws(symbol=symbol_struct)
                 if test:
                     break
-                pause_time = arrow.now().shift(minutes=1).floor('minute')
+                now = arrow.now()
+                pause_until = now.shift(minutes=1).floor('minute')
+                pause_duration = (pause_until - now).total_seconds()
                 log_message = (
                     f"Updating trade database for {exch.exchange}:{symbol_struct.symbol}. "
-                    f"Pausing until ({pause_time.naive})"
+                    f"Pausing until ({pause_until.format()})"
                 )
                 logger.info(log_message)
                 self._update_process(exchange_name=exchange, symbol=symbol)
-                pause.until(pause_time.naive)
+                check_interval = 0.3  # How often to check for the stop signal, in seconds
+                total_checks = int(pause_duration / check_interval)
+                for _ in range(total_checks):
+                    if stop_signal.is_set():
+                        logger.info("Stop signal received. Exiting pause loop.")
+                        break
+                    time.sleep(check_interval)
+                # some times it escapes the loop a few milis before the minute and it creates havoc. this
+                # makes sure it doesnt happen
+                pause.until(pause_until.timestamp())
         del exch
         # Remove the stop signal from the dictionary when the loop is stopped
         with self.database_handler(symbol=symbol_struct) as dbase:

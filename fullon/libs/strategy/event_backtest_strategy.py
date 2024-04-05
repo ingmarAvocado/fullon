@@ -13,8 +13,10 @@ from __future__ import (
 
 from libs import log
 from libs.strategy import backtest_strategy as strategy
+import arrow
 from backtrader import TimeFrame
 import pandas
+from typing import Optional
 
 
 logger = log.fullon_logger(__name__)
@@ -69,8 +71,8 @@ class Strategy(strategy.Strategy):
         else:
             filter_date = pandas.to_datetime(self.curtime[0].format('YYYY-MM-DD HH:mm:ss'))
             self.indicators_df = self.indicators_df[self.indicators_df.index > filter_date]
-            self.risk_management()
             self._check_end_simul()
+            self.risk_management()
             self._end_next()
 
     def update_trade_vars(self, feed: int = 0) -> None:
@@ -159,11 +161,10 @@ class Strategy(strategy.Strategy):
         # Define a time list with the last date
 
         #if self.curtime[0].timestamp() >= arrow.get('2023-06-23T19:37:00+00:00').timestamp():
-        times = [self.datas[0].last_date]
+        times = [self.last_trading_date]
 
         # Define a dictionary to store the events with their dates
-        event = {}
-        event[self.datas[0].last_date] = 'end'
+        event: dict = {self.last_trading_date: 'end'}
 
         # Get the next strategy open event date from the strategy and append to the
         # time list and event dictionary
@@ -186,10 +187,10 @@ class Strategy(strategy.Strategy):
         both feeds to the closest event date.
         """
         # Define a time list with the last date
-        times = [self.datas[0].last_date]
+        times = [self.last_trading_date]
 
         # Define a dictionary to store the events with their dates
-        event = {self.datas[0].last_date: 'end'}
+        event = {self.last_trading_date: 'end'}
 
         for num, data in enumerate(self.datas):
             if data.timeframe == TimeFrame.Ticks:
@@ -227,13 +228,13 @@ class Strategy(strategy.Strategy):
         for num, _ in enumerate(self.datas):
             self.datas[num].event_timeout = times[0]
 
-    def event_in(self) -> str:  # pylint: disable=no-self-use
+    def event_in(self) -> Optional[arrow.Arrow]:  # pylint: disable=no-self-use
         '''
         Returns the date of the first of an in event occurrence by the child if there is any.
         '''
         return ""
 
-    def event_out(self) -> str:  # pytint: disable=no-self-use
+    def event_out(self) -> Optional[arrow.Arrow]:  # pytint: disable=no-self-use
         '''
         Returns the date of the first of an out event occurrence by the child if there is any.
         '''

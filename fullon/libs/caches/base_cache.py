@@ -11,7 +11,7 @@ on timestamps and component types.
 import sys
 import redis
 from libs import settings, log
-from typing import List
+from typing import List, Optional
 
 logger = log.fullon_logger(__name__)
 
@@ -85,7 +85,6 @@ class Cache:
         Raises:
             SystemExit: If the connection to the cache server fails.
         """
-        self.conn = None
         self.conn = redis.Redis(connection_pool=Cache.connection_pool)
 
         if not self.test():
@@ -118,3 +117,49 @@ class Cache:
             key (str): String containing key to return
         """
         return self.conn.keys(key)
+
+    def push_global_error(self, msg: str, component: str) -> None:
+        """
+        Push the ID of an open order to a Redis list.
+
+        Args:
+            error (str): The error text.
+            component (str): Component Error.
+
+        Returns:
+            None
+        """
+        msg = f"{msg}:{component}"
+        redis_key = f"global_error"
+        self.conn.rpush(redis_key, msg)
+
+    def pop_global_error(self):
+        """
+        Pop the next global error from the Redis list.
+
+        Returns:
+            bool: False if an error was popped successfully, True otherwise.
+
+        Raises:
+            TimeoutError: If the global error queue is empty and the timeout period has expired.
+        """
+        redis_key = "global_error"
+        try:
+            result = self.conn.blpop(redis_key, timeout=0.5)
+            if result is not None:
+                _, error = result
+                if error:
+                    # Handle the error here, for example, log it or process it
+                    # Since you mentioned returning False if an error is popped,
+                    # you can continue with that logic.
+                    return error
+            # If result is None, it means the timeout expired without any errors to pop.
+        except redis.exceptions.TimeoutError:
+            # You might want to handle a timeout specifically if needed.
+            pass
+        except KeyboardInterrupt:
+            # It's not typical to handle KeyboardInterrupt in such functions,
+            # unless you have a specific reason to do so.
+            pass
+        # If the function hasn't returned False by now, it means no error was popped or an exception occurred.
+        return False

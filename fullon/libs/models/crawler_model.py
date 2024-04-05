@@ -474,11 +474,14 @@ class Database(database.Database):
         with self.con.cursor() as cur:
             try:
                 cur.execute(sql, (post_id, aid, engine, score),)
+                logger.debug("Score added for post_id %s", (post_id))
+                self.con.commit()
                 return True
             except (Exception, psycopg2.DatabaseError) as error:
+                print("shit")
                 self.con.rollback()
                 logger.error("Error adding engine score: {}".format(error))
-                return False
+        return False
 
     def get_engine_scores(self, post_id: int, engine: str) -> List[Tuple[int, str, Decimal]]:
         """

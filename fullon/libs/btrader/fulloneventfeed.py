@@ -145,7 +145,7 @@ class FullonEventFeed(FullonSimFeed):
         if self.pos > 0:  # If Long
             df_ohlcv = df_ohlcv[df_ohlcv['close'] < df_ohlcv['PreviousTrailingStop']]
         else:  # If Short
-            df_ohlcv = df_ohlcv[df_ohlcv['close'] > df_ohlcv['PreviousTrailingStop']]        
+            df_ohlcv = df_ohlcv[df_ohlcv['close'] > df_ohlcv['PreviousTrailingStop']]       
         return df_ohlcv
 
     def get_max_price(self, start: arrow.Arrow, end: arrow.Arrow) -> Tuple[float, arrow.Arrow]:

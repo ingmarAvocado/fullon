@@ -269,10 +269,10 @@ class FullonFeed(DataBase):
             return
         todate = arrow.utcnow().datetime
         # Here i must call with compression 1 and minutes, why? resampler
-        # but fullon_resampler makes its own query to timescaledb, so 
+        # but fullon_resampler makes its own query to timescaledb, so
         # loads from database directy rather than here, however doesnt
         # work if this doesnt load some data, to try to feed into the resampler,
-        # so we send at least to periods of data. For now we use 2 full days, 
+        # so we send at least to periods of data. For now we use 2 full days,
         # but if one of the feeds is into the weekly this might not work as it
         # will need  2 weeks
         with DataBase_ohclv(exchange=self.feed.exchange_name,

@@ -17,7 +17,7 @@ class CrawlerPostStruct(Struct):
     account: str = ''
     is_reply: bool = False
     self_reply: bool = False
-    account_id: Optional[int] = None
+    account_id: int = 0
     reply_to: Optional[int] = None
     remote_id: Optional[int] = None
     pre_score: Optional[Decimal] = None
