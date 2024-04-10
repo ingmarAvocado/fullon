@@ -6,6 +6,7 @@ __pycache__/
 fullon/pickle/
 fullon/tmp/
 fullon/fullon_history.txt
+fullon/conf/fullon.conf
 fullon/conf/fullon_hush.json
 fullon/backups/
 fullon/catboostinfo
