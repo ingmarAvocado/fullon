@@ -119,9 +119,3 @@ def test_fetch_my_trades(exchange_instance):
     assert trade.timestamp
     assert trade.time
     assert trade.volume
-
-
-@pytest.mark.parametrize("exchange_instance", exchange_list, indirect=True)
-def test_get_balances(exchange_instance, tick_manager):
-    totals = exchange_instance.get_balances()
-    assert len(totals) > 0

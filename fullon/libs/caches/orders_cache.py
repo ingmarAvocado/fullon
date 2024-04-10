@@ -15,19 +15,18 @@ from libs import log
 from libs.caches import account_cache as cache
 from libs.structs.order_struct import OrderStruct
 from typing import Dict, Any, Optional, List
+import os
 
 logger = log.fullon_logger(__name__)
 
-'''
 try:
     EXCHANGES_DIR = os.listdir('exchanges/')
 except FileNotFoundError:
     EXCHANGES_DIR = os.listdir('fullon/exchanges/')
-'''
-EXCHANGES_DIR = ['kraken', 'kucoin_futures']
 
 
 class Cache(cache.Cache):
+
     """
     A class for managing caching operations with Redis.
     Attributes:

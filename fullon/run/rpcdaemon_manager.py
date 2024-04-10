@@ -18,6 +18,7 @@ from run import avail_components as comp
 
 logger = log.fullon_logger(__name__)
 
+
 handler: dict = {}
 handler['tick'] = system_manager.TickManager()
 handler['ohlcv'] = system_manager.OhlcvManager()
@@ -66,29 +67,13 @@ def rpc_test():
 
 def stop_component(component: str) -> str:
     """ description """
-    response = ""
     try:
-        match component:
-            case "tick":
-                handler['tick'].stop_all()
-                response = "Tick stopped"
-            case "ohlcv":
-                handler['ohlcv'].stop_all()
-                response = "ohlcv stopped"
-            case "account":
-                handler['account'].stop_all()
-                response = "account stopped"
-            case "bot":
-                handler['bot'].stop_all()
-                del handler['bot']
-                handler['bot'] = system_manager.BotManager()
-                response = "bot stopped"
-            case "bot_status":
-                handler['bot_status'].stop()
-                response = "bot status stopped"
-            case 'crawler':
-                handler['crawler'].stop()
-                response = "CrawlerStopped"
+        response = ""
+        handler[component].stop_all()
+        response = f"{component} stopped"
+        if component == 'bot':
+            del handler['bot']
+            handler['bot'] = system_manager.BotManager()
     except KeyboardInterrupt:
         response = "keyboard interrupt"
     return response
@@ -104,25 +89,8 @@ def get_top() -> str:
 
 def component_on(component):
     """ description """
-    match component:
-        case "tick":
-            if handler['tick'].started:
-                return True
-        case "ohlcv":
-            if handler['ohlcv'].started:
-                return True
-        case "account":
-            if handler['account'].started:
-                return True
-        case "bot":
-            if handler['bot'].started:
-                return True
-        case "bot_status":
-            if handler['bot_status'].started:
-                return True
-        case "crawler":
-            if handler['crawler'].started:
-                return True
+    if handler[component].started:
+        return True
     return False
 
 
@@ -158,8 +126,10 @@ def start_tickers() -> str:
 def start_crawler() -> str:
     """
     """
-    handler['crawler'].run_loop()
-    return "Ticker already running"
+    if not component_on('crawler'):
+        handler['crawler'].run_loop()
+        return "Crawler Launched"
+    return "Crawler already started"
 
 
 def start_bot_status() -> str:
@@ -194,7 +164,7 @@ def start_full():
     if not component_on('bots'):
         logger.info("Starting Bots")
         logger.info(start_bots())
-    if not component_on('bots'):
+    if not component_on('crawler'):
         logger.info("Starting Crawler")
         logger.info(start_crawler())
     return "Full services started"
@@ -202,18 +172,15 @@ def start_full():
 
 def stop_full():
     """ description """
-    stop_component(component='bot')
-    stop_component(component='bot_status')
-    stop_component(component='account')
-    stop_component(component='ohlcv')
-    stop_component(component='tick')
+    for component in list(handler.keys()).copy():
+        stop_component(component=component)
     exchange.stop_all()
     return "Full services stopped"
 
 
 def check_services() -> bool:
     """ description """
-    services = ['ohlcv', 'tick', 'account', 'bot_status']
+    services = ['ohlcv', 'tick', 'account', 'bot_status', 'crawler']
     for service in services:
         if not component_on(service):
             return False
@@ -230,6 +197,8 @@ def start_services():
         logger.info(start_ohlcv())
     if not component_on('bot_status'):
         logger.info(start_bot_status())
+    if not component_on('crawler'):
+        logger.info(start_crawler())
     return "Services started"
 
 
@@ -335,6 +304,16 @@ def services(cmd, subcmd):
                     stop_full()
                     start_full()
                     result = "Services and bots restarted"
+        case 'crawler':
+            match subcmd:
+                case 'start':
+                    result = start_crawler()
+                case 'stop':
+                    result = stop_component('crawler')
+                case 'restart':
+                    result = stop_component('crawler')
+                    start_crawler()
+                    result = "Crawler Started"
     return result
 
 
@@ -602,7 +581,7 @@ def bots(cmd, params: dict = {}):
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
             else:
                 if check_services():
-                    handler['bot'].start_bot(bot_id=params['bot_id'])
+                    handler['bot'].start(bot_id=params['bot_id'])
                     results = f"Bot {params['bot_id']} launched"
                 else:
                     results = f"Can't launch bots, services not started"
@@ -628,7 +607,7 @@ def bots(cmd, params: dict = {}):
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
             else:
                 if component_on('bot'):
-                    handler['bot'].start_bot(bot_id=params['bot_id'], test=True)
+                    handler['bot'].start(bot_id=params['bot_id'], test=True)
                     results = f"Bot test {params['bot_id']} launched"
                 else:
                     results = f"Error: Can't launch test bot, services not started"

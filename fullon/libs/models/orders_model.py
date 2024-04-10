@@ -20,8 +20,8 @@ class Database(database.Database):
             self.con.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
-            error="Error cant update executed orders says: " +str(error)
-            logger.info(error)            
+            error="Error cant update executed orders says: " + str(error)
+            logger.info(error)
             raise
         return None
 
@@ -33,8 +33,8 @@ class Database(database.Database):
             self.con.commit()
             cur.close()
         except (Exception, psycopg2.DatabaseError) as error:
-            error="Error cant update executed orders says: " +str(error)
-            logger.info(error)            
+            error = "Error cant update executed orders says: " + str(error)
+            logger.info(error)
             raise
         return None
 
@@ -59,19 +59,17 @@ class Database(database.Database):
                 return []
         except (Exception, psycopg2.DatabaseError) as error:
             error="Error cant get_all_open_orders postgres says: " +str(error)
-            logger.info(error)            
+            logger.info(error)
             raise
 
-    def save_order(self, bot_id, uid, ex_id, exchange, cat_ex_id, symbol, order_type, side, amount, price=None, plimit=None, command=None, futures = None, reason = None):          
+    def save_order(self, bot_id, uid, ex_id, exchange, cat_ex_id, symbol, order_type, side, amount, tick, price=None, plimit=None, command=None, futures=None, reason=None):
         if not price:
             price = 'NULL'
         if not plimit:
             plimit = 'NULL'
-        tick = self.cache.get_ticker(exchange=exchange, symbol=symbol)
-        tick = tick[0]
         cur = self.con.cursor()
         futures = 'f' if not futures else 't'
-        sql = """INSERT INTO ORDERS(bot_id, uid, ex_id,  cat_ex_id, exchange, symbol, order_type, side, volume, price, plimit, tick, futures, status, command, reason) 
+        sql = """INSERT INTO ORDERS(bot_id, uid, ex_id,  cat_ex_id, exchange, symbol, order_type, side, volume, price, plimit, tick, futures, status, command, reason)
             VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %s, %s, %s, %s, '%s' ,'New', '%s', '%s') """ %(bot_id, uid, ex_id, cat_ex_id, exchange, symbol, order_type, side, amount, price, plimit, tick, futures, command, reason)
         try:
             #print (sql)
@@ -82,13 +80,13 @@ class Database(database.Database):
             return True
         except (Exception, psycopg2.DatabaseError) as error:
             error="Error cant save order says: " +str(error)
-            logger.info(error)            
+            logger.info(error)
             raise
         return None
 
     def get_order(self, ex_order_id=None):
-        sql=("select * from orders where order_id = '%s'" %(ex_order_id))
-        try:            
+        sql = ("select * from orders where order_id = '%s'" %(ex_order_id))
+        try:
             cur = self.con.cursor()
             cur.execute(sql)
             row =  cur.fetchone()

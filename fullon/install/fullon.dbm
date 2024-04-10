@@ -4,7 +4,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
 <dbmodel pgmodeler-ver="1.1.1" use-changelog="false" max-obj-count="32"
-	 last-position="0,101" last-zoom="0.95" scene-rect="0,0,4569.01,2223.72"
+	 last-position="619,101" last-zoom="0.95" scene-rect="0,0,4569.01,2223.72"
 	 default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
@@ -751,7 +751,7 @@ CREATE AGGREGATE public.LAST (
 <table name="sites_follows" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1160" y="1480"/>
+	<position x="1160" y="1420"/>
 	<column name="fid" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
@@ -793,7 +793,7 @@ CREATE AGGREGATE public.LAST (
 	</constraint>
 </table>
 
-<table name="sites_posts" layers="0" collapse-mode="2" max-obj-count="22" z-value="0">
+<table name="sites_posts" layers="0" collapse-mode="2" max-obj-count="24" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
 	<position x="140" y="1380"/>
@@ -854,6 +854,9 @@ CREATE AGGREGATE public.LAST (
 	<column name="pre_score">
 		<type name="numeric" length="0"/>
 	</column>
+	<column name="score">
+		<type name="numeric" length="0"/>
+	</column>
 	<constraint name="primary_key" type="pk-constr" table="public.sites_posts">
 		<columns names="post_id" ref-type="src-columns"/>
 	</constraint>
@@ -904,7 +907,7 @@ CREATE AGGREGATE public.LAST (
 <table name="llm_engines" layers="0" collapse-mode="2" max-obj-count="1" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="720" y="2080"/>
+	<position x="740" y="2100"/>
 	<column name="engine" not-null="true">
 		<type name="text" length="0"/>
 	</column>

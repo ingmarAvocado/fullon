@@ -33,10 +33,7 @@ class Interface:
         self.params = ExchangeStruct()
         if params:
             self.params = params
-        if self.params.ex_id != '':
-            key, secret = self.get_user_key(
-                uid=self.params.uid, exchange=self.params.cat_ex_id)
-
+        key, secret = self.get_user_key(ex_id=self.params.ex_id)
         self.ws = getattr(ccxt, exchange)({
             'apiKey': key,
             'secret': secret,
@@ -88,7 +85,7 @@ class Interface:
             return False
 
     @staticmethod
-    def get_user_key(uid: int, exchange: str) -> tuple[str, str]:
+    def get_user_key(ex_id: str) -> tuple[str, str]:
         """
         Retrieve the user's API key for a specific exchange using the secret manager.
 
@@ -96,17 +93,17 @@ class Interface:
         :param exchange: The name of the exchange for which the API key is required.
         :return: The API key for the specified user and exchange, or None if not found.
         """
-        hush = SecretManager()
-        exchange = str(exchange)
-        payload = hush.access_secret_version(secret_id=str(uid))
-        key = ''
-        secret = ''
-        if payload:
-            try:
-                key, secret = json.loads(payload)[exchange].split(":")
-            except KeyError:
-                pass
-        return (key, secret)
+        # Construct the attribute name based on the input number
+        attr_name = f"ex_id_{ex_id}".upper()
+        # Use getattr to dynamically get the attribute value
+        value = getattr(settings, attr_name, None)
+        if value is not None:
+            # Assuming the value format is always "key:secret"
+            key, secret = value.split(':')
+            return key, secret
+        else:
+            # Handle the case where the attribute does not exist
+            return '', ''
 
     def set_leverage(self, symbol, leverage):
         return 1

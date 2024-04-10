@@ -10,7 +10,7 @@ from libs.bot_launcher import Launcher
 from libs.simul_launcher import simulator
 from run.user_manager import UserManager
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 logger = log.fullon_logger(__name__)
 
@@ -29,8 +29,9 @@ class BotManager:
     def __del__(self):
         self.stop_all()
 
-    def stop_bot(self, bot_id: int) -> bool:
+    def stop(self, bot_id: int) -> bool:
         """
+        Stops a running bot
         """
         res = self.launcher.stop(bot_id=bot_id)
         if res:
@@ -48,21 +49,14 @@ class BotManager:
             self.relauncher.join(timeout=1)
             self.launcher.stop_all()
 
-    def start_bot(self, bot_id: int) -> bool:
+    def start(self, bot_id: int) -> bool:
         """
         Start the specified bot
 
         Args:
             bot_id (int): The id of the bot to start
         """
-        if not self.started:
-            self.started = True
-            with Cache() as store:
-                store.del_status()
-            self.relauncher_event = Event()
-            self.relauncher = Thread(target=self.relaunch_dead_bots)
-            self.relauncher.daemon = True
-            self.relauncher.start()
+        self.start_bot_monitor()
         return self.launcher.start(bot_id=bot_id)
 
     def is_running(self, bot_id: int) -> bool:
@@ -70,11 +64,12 @@ class BotManager:
         res = self.launcher.ping(bot_id=bot_id)
         return res
 
-    def relaunch_dead_bots(self) -> None:
+    def monitor_bots(self) -> None:
         """
         Continually checks the state of the bot processes and relaunches any that have died.
         """
         while not self.relauncher_event.is_set():  # Changed from `self.started.is_set()` to `self.monitor_signal.is_set()`
+            bots = []
             try:
                 bots = self.launcher.get_bots()
             except ValueError:
@@ -82,13 +77,26 @@ class BotManager:
             for bot_id in bots:
                 if not self.is_running(bot_id=bot_id):
                     logger.warning(f"Detected dead bot {bot_id}. Relaunching...")
-                    self.start_bot(bot_id)
+                    self.start(bot_id)
             for _ in range(0, 10):
                 if self.relauncher_event.is_set():
                     return
                 time.sleep(1)
 
-    def run_bot_loop(self) -> None:
+    def start_bot_monitor(self):
+        """
+        starts bot monitor, so it can restart one in case they die
+        """
+        if not self.started:
+            self.started = True
+            with Cache() as store:
+                store.del_status()
+            self.relauncher_event = Event()
+            self.relauncher = Thread(target=self.monitor_bots)
+            self.relauncher.daemon = True
+            self.relauncher.start()
+
+    def run_loop(self) -> None:
         """
         Description:
             This method starts a new process for each bot in the bot list that is set to active.
@@ -99,9 +107,10 @@ class BotManager:
         bots = []
         with Database() as dbase:
             bots = dbase.get_bot_list(active=True)
+        self.start_bot_monitor()
         if bots:
             for bot in bots:
-                self.start_bot(bot_id=bot.bot_id)
+                self.start(bot_id=bot.bot_id)
         logger.info("Bots started")
 
     def delete(self, bot_id: str) -> bool:

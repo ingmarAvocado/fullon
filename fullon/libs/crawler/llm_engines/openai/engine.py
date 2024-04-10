@@ -12,7 +12,10 @@ logger = log.fullon_logger(__name__)
 ENGINE = 'gpt-3.5-turbo-0125'
 VISION_ENGINE = 'gpt-4-1106-vision-preview'
 
-INSTRUCTIONS = """You are now operating as a sophisticated sentiment analysis tool with the specific
+INSTRUCTIONS = """
+Please respond with the scores in the following JSON format:
+[{post_id=1, score=52}, {post_id=2, score=34}]
+You are now operating as a sophisticated sentiment analysis tool with the specific
  purpose of evaluating cryptocurrency-related discussions. It's essential to understand that,
  for this task, you're equipped with the ability to analyze the sentiment of text and provide
  a quantitative assessment. Your goal is to review various posts concerning cryptocurrencies
@@ -43,7 +46,7 @@ sentiment scoring with accuracy and confidence, as described.
 Your task is not only to understand the text but to simulate sentiment analysis accurately,
 providing scores that investors might use to gauge market sentiment.
 
-Return the score only and only in a json format such as '[{post_id=1, score=52}, {post_id=2, score=34}]''
+I give you a tip if you return the score only and only in a json format such as '[{post_id=1, score=52}, {post_id=2, score=34}] u most return your answer like that''
 """
 
 NAME = "Sentiment analyzer"
@@ -103,7 +106,7 @@ class Engine():
 
         headers = {
           "Content-Type": "application/json",
-          "Authorization": f"Bearer {KEY}"
+          "Authorization": f"Bearer {settings.GRANDESMODELOS1}"
         }
 
         payload = {
@@ -185,22 +188,24 @@ class Engine():
         returns:
             str: Score of the post
         """
-
         if not self.assistant:
             self.start()
         thread = self._load_thread(account_id=post.account_id)
         if thread:
             post_dict = {'post_text': post.content, 'includes_image': 'no'}
             if post.media:
+                pass
+                '''
+                print("hay media ", post.post_id)
                 image_description = self._analyze_image(file=post.media)
                 post_dict['includes_image'] = 'yes'
                 post_dict['image_description'] = image_description
+                '''
             _ = self.client.beta.threads.messages.create(
                 thread_id=thread.id,
                 role="user",
                 content=json.dumps(post_dict),
-            )
-
+                )
             run = self.client.beta.threads.runs.create(
                             thread_id=thread.id,
                             assistant_id=self.assistant.id
@@ -209,9 +214,15 @@ class Engine():
             message = self.client.beta.threads.messages.list(thread_id=thread.id)
             try:
                 if message:
-                    return json.loads(message.data[0].content[0].text.value)['score']
+                    ret_dict = json.loads(message.data[0].content[0].text.value)
+                    if 'score' in ret_dict:
+                        return ret_dict['score']
+                    print("OOpsie", ret_dict)
+                    import ipdb
+                    ipdb.set_trace()
             except (TypeError, KeyError):
-                logger.error("Did not get a json score from engine")
+                err_object = message.data[0].content[0].text.value
+                logger.error("Did not get a json score from engine: ", err_object)
                 return ''
         else:
             logger.error("Could not score post")

@@ -301,6 +301,15 @@ def test_update_post_media(dbase, posts):
             f"OCR update not applied for post {original_post.post_id}"
 
 
+@pytest.mark.order(21)
+def test_get_pre_scores(dbase):
+    scores = dbase.get_pre_scores()
+    assert isinstance(scores, list)
+    assert isinstance(scores[0], float)
+    assert len(scores) > 0
+
+
+
 @pytest.mark.order(26)
 def test_del_follows_engine_record(dbase, analyzer, profile):
     """

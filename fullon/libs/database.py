@@ -1,7 +1,9 @@
+"""
+Sets up database queues
+"""
 from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager
 from multiprocessing.queues import Queue
-from queue import Empty  # Import Empty exception from queue module
 from time import sleep
 from setproctitle import setproctitle
 import psycopg2
@@ -13,7 +15,7 @@ from enum import Enum
 # Setup logging
 logger = log.fullon_logger(__name__)
 request_queue: Optional[Queue] = None
-response_queue_pool: Optional[QueuePool] = QueuePool()
+response_queue_pool: Optional[QueuePool] = None
 processes: Dict = {}
 _started: bool = False
 WORKERS = settings.DBWORKERS
@@ -37,7 +39,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
         int: woker #
         mngr: An instance of multiprocessing.Manager.
     """
-    title = f"Fullon database queue #{num} for {settings.DBNAME}"
+    title = f"Fullon database worker #{num} for {settings.DBNAME}"
     setproctitle(title)
     dbase_instance = MainDatabase()
     while True:
@@ -71,7 +73,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
                         response_queue.put(None)  # Indicate failure to the requester
                         break
         except KeyboardInterrupt:
-            logger.debug("KeyboardInterrupt received. Shutting down.")
+            logger.error("KeyboardInterrupt received. Shutting down.")
             break
         except (BrokenPipeError, EOFError, ConnectionResetError) as error:
             #logger.warning(f"Connection-related error: {error}")
@@ -88,7 +90,9 @@ def start():
     """
     Starts the request processing by initializing Queues and kicking off the separate process.
     """
-    global request_queue, processes, _started, WORKERS
+    global request_queue, processes, _started, WORKERS, response_queue_pool
+    if not response_queue_pool:
+        response_queue_pool = QueuePool(procname="Database Ohlcv")
     setproctitle("Fullon OHLCV Launcher")
     if not _started:
         _started = True
@@ -118,7 +122,7 @@ def stop():
             processes[num].terminate()
         del processes[num]
         request_queue = None
-        response_queue_pool = QueuePool()
+        response_queue_pool = None
         _started = False
 
 
@@ -173,13 +177,15 @@ class Database:
         """
         global request_queue, response_queue_pool
         try:
+            # print("DB QUEUE", request_queue.qsize(), len(processes))
             with response_queue_pool.get_queue() as response_queue:
                 if not request_queue:
                     raise WorkerError("Database queue not initialized")
+
                 request_queue.put((attr, params, response_queue))
                 try:
-                    result = response_queue.get(timeout=25)
-                except (EOFError, Empty, KeyboardInterrupt):
+                    result = response_queue.get()
+                except EOFError:
                     return
                 if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
                     raise WorkerError(f"Error in worker process: {result[1]}")

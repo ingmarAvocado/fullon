@@ -98,7 +98,7 @@ class Cache(cache.Cache):
                     tipe: str,
                     key: str,
                     params: Dict[str, Any],
-                    pid: Optional[int] = None,
+                    pid: Optional[Any] = None,
                     message: str = "") -> int:
         """
         Add a new process entry to the cache.

@@ -11,7 +11,7 @@ from libs.queue_pool import QueuePool
 # Setup logging
 logger = log.fullon_logger(__name__)
 request_queue: Optional[Queue] = None
-response_queue_pool = QueuePool()
+response_queue_pool: Optional[QueuePool] = None
 process: Optional[Process] = None
 stop_signals: Dict[int, Any] = {}
 _started: bool = False
@@ -127,8 +127,9 @@ def process_requests(request_queue: Queue,  mngr: object):
 
 
 def start():
-    global _started, request_queue, process
-    setproctitle("Fullon Launcher Bot Queue")
+    global _started, request_queue, process, response_queue_pool
+    if not response_queue_pool:
+        response_queue_pool = QueuePool(procname="bot_status")
     if not _started:
         _started = True
         logger.info("Starting Bot launcher queue")

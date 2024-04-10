@@ -8,15 +8,8 @@ preparing the cache, and filtering cache entries based
 on timestamps and component types.
 """
 
-from libs.caches import crawler_cache as cache
-
-'''
-try:
-    EXCHANGES_DIR = os.listdir('exchanges/')
-except FileNotFoundError:
-    EXCHANGES_DIR = os.listdir('fullon/exchanges/')
-'''
+from libs.caches import crawler_cache
 
 
-class Cache(cache.Cache):
+class Cache(crawler_cache.Cache):
     pass

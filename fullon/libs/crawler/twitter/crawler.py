@@ -44,7 +44,7 @@ class Crawler(rootCrawler):
             try:
                 _last = arrow.get(last[account]).shift(seconds=1)
             except KeyError:
-                _last = arrow.utcnow().floor('day').shift(days=-3)
+                _last = arrow.utcnow().floor('day').shift(days=-5)
             _last = _last.format("YYYY-MM-DD_HH:mm:ss_ZZZ")
             _until = arrow.utcnow().format("YYYY-MM-DD_HH:mm:ss_ZZZ")
             search_terms.append(f'from:{account} since:{_last} until:{_until}')
@@ -52,7 +52,7 @@ class Crawler(rootCrawler):
         run_input = {
               "customMapFunction": "(object) => { return {...object} }",
               "includeSearchTerms": False,
-              "maxItems": 400,
+              "maxItems": 5000,
               "minimumFavorites": 0,
               "minimumReplies": 0,
               "minimumRetweets": 0,
@@ -64,7 +64,7 @@ class Crawler(rootCrawler):
               "searchTerms": search_terms,
               "sort": "Latest"
             }
-        #client.actor(self.actor).call(run_input=run_input)
+        client.actor(self.actor).call(run_input=run_input)
         runs = client.actor(self.actor).runs()
         latest_run = runs.list().items[-1]
         posts = []
@@ -87,7 +87,6 @@ class Crawler(rootCrawler):
                     reply_to = int(item['inReplyToId'])
                     if author_id == int(item['entities']['user_mentions'][0]['id_str']):
                         self_reply = True
-                        print(author_id,item['entities']['user_mentions'][0]['id_str'])
                 except (KeyError, IndexError):
                     pass
 

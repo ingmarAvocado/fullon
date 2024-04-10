@@ -1,10 +1,13 @@
 """
+A class for managing caching operations with Redis.
+Attributes:
 """
 
 import json
-from libs import log, database
-from libs.structs.exchange_struct import ExchangeStruct
+from libs import log
+from libs.database import Database
 from libs.caches import process_cache as cache
+from libs.structs.exchange_struct import ExchangeStruct
 from typing import Dict, List
 import time
 import redis
@@ -33,7 +36,7 @@ class Cache(cache.Cache):
             exchanges = json.loads(exchanges_json)
         else:
             # fetch data from the database
-            with database.Database() as dbase:
+            with Database() as dbase:
                 rows = dbase.get_cat_exchanges(all=True)
                 try:
                     exchanges = [{'name': exch[1], 'id': str(exch[0])} for exch in rows]
@@ -60,7 +63,7 @@ class Cache(cache.Cache):
             return res.decode('utf-8')
         else:
             # fetch data from the database
-            with database.Database() as dbase:
+            with Database() as dbase:
                 exchanges = dbase.get_cat_exchanges(all=True)
             for exch in exchanges:
                 try:
@@ -86,7 +89,7 @@ class Cache(cache.Cache):
         # check if the data is in Redis cache
 
         def from_database():
-            with database.Database() as dbase:
+            with Database() as dbase:
                 exchs = dbase.get_cat_exchanges(all=True)
                 for exch in exchs:
                     self.conn.hset(redis_key, exch[0], exch[1])
@@ -113,7 +116,7 @@ class Cache(cache.Cache):
         redis_key = f'exchange_symbols:{exchange}'
 
         def from_database(exchange):
-            with database.Database() as dbase:
+            with Database() as dbase:
                 rows = dbase.get_exchange_symbols(cat_ex_id=exchange)
                 symbols = []
                 for symbol in rows:
@@ -147,7 +150,7 @@ class Cache(cache.Cache):
 
         # Define a function to retrieve data from the database
         def from_database(ex_id: str) -> ExchangeStruct:
-            with database.Database() as dbase:
+            with Database() as dbase:
                 exchange = dbase.get_exchange(ex_id=ex_id)
                 exchange_struct = ExchangeStruct()
                 if exchange:
@@ -181,7 +184,7 @@ class Cache(cache.Cache):
 
         # Define a function to retrieve data from the database
         def from_database() -> None:
-            with database.Database() as dbase:
+            with Database() as dbase:
                 exchanges = dbase.get_exchange()
                 for exch in exchanges:
                     exchange_dict = exch.to_dict()

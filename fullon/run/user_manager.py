@@ -27,6 +27,12 @@ class UserManager:
         """
         pass
 
+    def stop_all(self):
+        """
+        Compatability
+        """
+        pass
+
     def add_exchange(self, exch: ExchangeStruct) -> str:
         """
         Adds an exchange account for a user.

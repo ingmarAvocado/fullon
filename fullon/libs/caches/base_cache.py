@@ -11,7 +11,7 @@ on timestamps and component types.
 import sys
 import redis
 from libs import settings, log
-from typing import List, Optional
+from typing import List
 
 logger = log.fullon_logger(__name__)
 

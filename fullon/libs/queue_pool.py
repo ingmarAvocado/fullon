@@ -1,10 +1,13 @@
 from multiprocessing import Manager
 from contextlib import contextmanager
+from setproctitle import setproctitle
 
 
 class QueuePool:
-    def __init__(self):
+    def __init__(self, procname: str = "unknown"):
+        setproctitle("Fullon queue manager for: "+procname)
         self.manager = Manager()
+        setproctitle("Fullon Daemon")
 
     @contextmanager
     def get_queue(self):

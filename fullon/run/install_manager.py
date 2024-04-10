@@ -30,6 +30,12 @@ class InstallManager:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         pass
 
+    def stop_all(self):
+        """
+        For being compatible with other components
+        """
+        pass
+
     def make_backup(self, name: Optional[str] = None, full: bool = False) -> str:
         """
         Create a backup of the PostgreSQL database using pg_dump and gzip.
@@ -177,11 +183,11 @@ class InstallManager:
         target = 'fullon/libs/crawler'  # Change this to your specific folder path
         try:
             # Attempt to get a list of subfolders in the specified folder, excluding 'analyzers' and '__pycache__'
-            sites = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('analyzers', '__pycache__')]
+            sites = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('apify', '__pycache__', 'llm_engines')]
         except FileNotFoundError:
             target = 'libs/crawler'  # Alternate folder path
             try:
-                sites = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('analyzers', '__pycache__')]
+                sites = [f.name for f in os.scandir(target) if f.is_dir() and f.name not in ('apify', '__pycache__', 'llm_engines')]
             except FileNotFoundError:
                 logger.error("Could not find the crawler directory at [fullon]/libs/crawler or /libs/crawler.")
                 return

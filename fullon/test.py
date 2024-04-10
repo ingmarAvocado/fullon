@@ -12,16 +12,17 @@ import pytest
 
 settings.LOG_LEVEL = "logging.INFO"
 
+
 startohlcv()
 startdb()
 
 crawler = CrawlerManager()
-#crawler._load_module_for_site(site='twitter')
-#crawler._fetch_posts(site='twitter')
-crawler._llm_scores()
 
-#stopdb()
-#stopohlcv()
+#crawler._load_module_for_site(site='twitter')
+crawler._fetch_posts(site='twitter', llm_scores=True)
+
+stopdb()
+stopohlcv()
 
 
 

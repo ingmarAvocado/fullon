@@ -7,14 +7,22 @@ the Web and saves it on the database, will be used later by sentiment manager.
 import threading
 from libs import log
 from libs.structs.crawler_struct import CrawlerStruct
+from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
-from libs.models.crawler_model import Database
+#from libs.models.crawler_model import Database
+from libs.database import Database
+from libs.cache import Cache
 from typing import List, Optional
 import sys
 import importlib
 from time import sleep
 import arrow
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+import numpy as np
+from os import getpid
+import pause
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import defaultdict
 
 
 logger = log.fullon_logger(__name__)
@@ -26,7 +34,7 @@ class CrawlerManager:
 
     def __init__(self):
         """Initialize the TradeManager and log the start."""
-        self.started = True
+        self.started = False
         self.stop_signals = {}
         self.thread_lock = threading.Lock()
         self.threads = {}
@@ -35,27 +43,42 @@ class CrawlerManager:
 
     def __del__(self):
         self.started = False
-        self.stop()
+        self.stop_all()
 
-    def stop(self):
+    def stop_all(self):
+        """
+        stops all threads
+        """
+        try:
+            self.monitor_thread_signal.set()
+            self.monitor_thread.join(timeout=1)
+        except AttributeError:
+            pass
+        threads_to_stop = list(self.stop_signals.keys())
+        for thread in threads_to_stop:
+            self.stop(thread=thread)
+        self.started = False
+
+    def stop(self, thread):
         """
         Stops the trade data collection loop for the specified exchange.
+
+        Args:
+            thread
         """
-        return
-        '''
         with self.thread_lock:  # Acquire the lock before accessing shared resources
             if thread in self.stop_signals:
-                self.stop_signals[thread].set()
                 try:
+                    self.stop_signals[thread].set()
                     self.threads[thread].join(timeout=1)  # Wait for the thread to finish with a timeout
-                except Exception as error:
-                    logger.error(f"Error stopping user_trades {thread}: {error}")
+                    del self.stop_signals[thread]
+                    del self.threads[thread]
+                except KeyError:
+                    logger.debug("Can't stop thread %s", (thread))
+                    pass
                 logger.info(f"Stopped  user_trades {thread}")
-                del self.stop_signals[thread]
-                del self.threads[thread]
             else:
                 logger.info(f"No running thread: {thread}")
-        '''
 
     def add_site(self, site: str) -> bool:
         """
@@ -157,7 +180,7 @@ class CrawlerManager:
             Optional[int]: The ID of the added analyzer, or None if the operation fails.
         """
         with Database() as dbase:
-            aid = dbase.add_analyzer(analyzer)
+            aid = dbase.add_analyzer(analyzer=analyzer)
             if aid:
                 msg = f"Analyzer {aid} has been created"
                 logger.info(msg)
@@ -179,7 +202,7 @@ class CrawlerManager:
             return False
 
         with Database() as dbase:
-            success = dbase.edit_analyzer(analyzer)
+            success = dbase.edit_analyzer(analyzer=analyzer)
         return success
 
     def del_analyzer(self, aid: int) -> bool:
@@ -193,7 +216,7 @@ class CrawlerManager:
             bool: True if the operation succeeds, False otherwise.
         """
         with Database() as dbase:
-            success = dbase.del_analyzer(aid)
+            success = dbase.del_analyzer(aid=aid)
         return success
 
     def add_follows_analyzer(self, uid: int, aid: int, fid: int, account: str) -> bool:
@@ -226,6 +249,27 @@ class CrawlerManager:
         """
         with Database() as dbase:
             return dbase.delete_follows_analyzer(uid=uid, aid=aid, fid=fid)
+
+    @staticmethod
+    def _update_process(key: str, message="Synced") -> bool:
+        """
+        Update the process status in cache. This function generates a new process ID 
+        and updates the cache with a new message status.
+
+        Args:
+            exchange_name (str): The name of the exchange.
+            symbol (str): The trading pair symbol.
+
+        Returns:
+            bool: Returns True if the process is successfully updated in the cache, else False.
+        """
+        with Cache() as store:
+            res = store.new_process(tipe="crawler",
+                                    key=key,
+                                    pid=f"thread:{getpid()}",
+                                    params={},
+                                    message=message)
+        return bool(res)
 
     def _load_module(self, site: str = '', engine: str = '') -> Optional[object]:
         """
@@ -288,6 +332,48 @@ class CrawlerManager:
         else:
             return importlib.import_module(module_name)
 
+    def normalize_and_scale_scores(self, posts: List[CrawlerPostStruct]) -> List[CrawlerPostStruct]:
+        """
+        Combine historical scores with current pre_scores, converting all to float,
+        and normalize scores using min-max scaling based on historical data.
+
+        The scores are log-transformed to normalize large variances and then scaled
+        to a range of 1 to 10.
+
+        Args:
+            posts (List[CrawlerPostStruct]): List of post structures with pre_score attribute.
+
+        Returns:
+            List[CrawlerPostStruct]: The input list with adjusted pre_scores.
+        """
+        with Database() as dbase:
+            # Fetch historical scores, assuming this includes current posts
+            historical_scores = [float(score) for score in dbase.get_pre_scores(num=15000)]
+
+        # Apply log transformation to normalize variances, np.log1p avoids log(0) issues
+        log_scores = np.log1p(historical_scores)
+
+        # Calculate scaling parameters from historical context
+        min_log_score = np.min(log_scores)
+        max_log_score = np.max(log_scores)
+        range_log_scores = max_log_score - min_log_score
+
+        # If there's no range (all scores identical), avoid division by zero
+        if range_log_scores == 0:
+            adjusted_scores = [Decimal(5.5)] * len(posts)  # Midpoint if no variance
+        else:
+            # Directly use historical scores for adjusting current posts
+            # This requires matching posts to their historical scores, which might need adjustment
+            # in how you track or fetch historical scores.    
+            # Assuming we adjust based on the fetched historical scores directly
+            adjusted_scores = 1 + (np.log1p([float(post.pre_score) if post.pre_score is not None else 0.0 for post in posts]) - min_log_score) * (9 / range_log_scores)
+            adjusted_scores = [Decimal(score).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) for score in adjusted_scores]
+
+        # Assign adjusted scores back to posts
+        for post, adjusted_score in zip(posts, adjusted_scores):
+            post.score = adjusted_score
+        return posts
+
     def _llm_scores(self) -> None:
         """
         blah blah
@@ -299,30 +385,85 @@ class CrawlerManager:
             for analyzer in analyzers:
                 for engine in engines:
                     posts = dbase.get_unscored_posts(aid=analyzer.aid,
-                                                     engine=engine)
+                                                     engine=engine,
+                                                     no_is_reply=True)
                     if posts:
-                        llm_engine = self._load_module(engine=engine)
-                        post_groups = {}
                         for post in posts:
-                            post_groups[post.remote_id] = post
-                        for post in posts:
-                            if post.self_reply:
-                                parent_content = post_groups[post.reply_to].content
-                                new_content = parent_content + post.content
-                                post_groups[post.reply_to].content = new_content
-                                break
-                        for post in post_groups.values():
+                            llm_engine = self._load_module(engine=engine)
                             score: int = llm_engine.score_post(post=post)
                             if score:
-                                dbase.add_engine_score(post_id=post.post_id,
-                                                       aid=analyzer.aid,
-                                                       engine=engine,
-                                                       score=Decimal(score))
-                                print("CONCLUIR")
-                                return
-                            #here we can call scoring API with the content to score
+                                dbase.add_engine_score(post_id=post.post_id, aid=analyzer.aid, engine=engine, score=Decimal(score))
+    '''
 
-    def _fetch_posts(self, site: str) -> None:
+    def _llm_scores(self) -> None:
+        """
+        Fetches unscored posts and computes their scores in parallel using language model engines.
+
+        This method retrieves posts that have not yet been scored by the specified analyzers and engines.
+        It leverages concurrent processing to score multiple posts simultaneously, improving efficiency
+        and reducing the time required to score large volumes of posts. Each post is scored using a
+        specified language model engine, and the resulting scores are stored in the database.
+
+        The method handles posts in batches, with each batch being processed by a pool of worker threads.
+        This approach is particularly beneficial for scoring operations that involve network I/O or other
+        latency-bound tasks, such as querying external APIs.
+
+        Notes:
+            - The method assumes that each language model engine has a `score_post` method.
+            - Posts are fetched based on analyzer ID and engine name, with an option to exclude replies.
+        """
+        with Database() as dbase:
+            analyzers = dbase.get_account_analyzers()
+            engines = dbase.get_llm_engines()
+        for analyzer in analyzers:
+            for engine in engines:
+                with Database() as dbase:
+                    posts = dbase.get_unscored_posts(aid=analyzer.aid, engine=engine, no_is_reply=True)
+                if not posts:
+                    continue
+                llm_engine = self._load_module(engine=engine)
+                if not llm_engine or not hasattr(llm_engine, 'score_post'):
+                    logger.error(f"Failed to load scoring engine: {engine}")
+                    continue
+
+                # Group posts by remote_id to ensure sequential processing for the same thread
+                posts_by_thread = defaultdict(list)
+                for post in posts:
+                    posts_by_thread[post.remote_id].append(post)
+
+                # Process each thread in parallel, but process posts within the same thread sequentially
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    future_to_thread = {
+                        executor.submit(self._llm_score_post, llm_engine, thread_posts, analyzer.aid, engine): thread_posts
+                        for thread_posts in posts_by_thread.values()
+                    }
+                    for future in as_completed(future_to_thread):
+                        try:
+                            # Thread processing result handling
+                            pass  # Implement as needed
+                        except Exception as exc:
+                            logger.error(f'Exception during thread processing: {exc}')
+
+    @staticmethod
+    def _llm_score_post(llm_engine, thread_posts, aid, engine):
+        """
+        Process all posts belonging to the same thread (conversation).
+        This method ensures sequential processing for posts in the same thread.
+
+        Args:
+            llm_engine (object): The language model engine instance for scoring.
+            thread_posts (List[CrawlerPostStruct]): List of posts in the same thread.
+            aid (int): Analyzer ID.
+            engine (str): The name of the engine.
+        """
+        for post in thread_posts:
+            score = llm_engine.score_post(post=post)
+            if score:
+                with Database() as dbase:
+                    dbase.add_engine_score(post_id=post.post_id, aid=aid, engine=engine, score=Decimal(score))
+    '''
+
+    def _fetch_posts(self, site: str, llm_scores: bool = True) -> None:
         """
         Continuously checks for new posts from authors for a specific site, updates scores, and sends to LLMS for sentiment analysis.
         Utilizes dynamic module loading based on the site to fetch posts. Stops when stop signal is set for the site.
@@ -340,6 +481,8 @@ class CrawlerManager:
             msg = f"Couldnt not load module {module}"
             logger.error(msg)
             return None
+        msg = f"Crawling service for site {site} has started"
+        logger.info(msg)
         while not stop_signal.is_set():
             with Database() as dbase:
                 accounts = dbase.get_crawling_list(site=site)
@@ -348,19 +491,30 @@ class CrawlerManager:
                 if posts:
                     posts = module.download_medias(posts=posts)
                     dbase.add_posts(posts=posts)
-                self._llm_scores()
-            return
+                    posts = self.normalize_and_scale_scores(posts=posts)
+                    dbase.add_posts(posts=posts)
+                if llm_scores:
+                    self._llm_scores()
             current_time = arrow.now()
             next_hour = current_time.shift(hours=1).replace(minute=0, second=0, microsecond=0)
             sleep_time = (next_hour - current_time).total_seconds()
-            sleep(sleep_time)  # Sleep until the start of the next hour
-        del module
 
-        #por cada sitio (twitter, etc necesito lanzar un thread)
-        # ese tread va a leer los posteadores de twitter
-        # armara un super request a apify para obtener los twitts
-        # luego por cada twiit insertamos su registro en la base de datos
-        # actualizamos scores y corremos vs openai u otros llms
+            log_message = (
+                f"Updating crawler for site {site}. "
+                f"Pausing until ({next_hour.format()})"
+            )
+            logger.info(log_message)
+            self._update_process(key=site)
+            check_interval = 0.3  # How often to check for the stop signal, in seconds
+            total_checks = int(sleep_time / check_interval)
+
+            for _ in range(total_checks):
+                if stop_signal.is_set():
+                    logger.info("Stop signal received. Exiting pause loop.")
+                    break
+                sleep(check_interval)
+            pause.until(next_hour.timestamp())
+        del module
 
     def run_loop(self) -> None:
         """
@@ -371,7 +525,7 @@ class CrawlerManager:
         when completed.
         """
         with Database() as dbase:
-            sites = dbase.get_crawler_sites()
+            sites = dbase.get_crawler_sites(active=True)
             for site in sites:
                 thread = threading.Thread(target=self._fetch_posts,
                                           args=(site,))

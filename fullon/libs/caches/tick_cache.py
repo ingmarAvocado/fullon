@@ -11,9 +11,8 @@ on timestamps and component types.
 import time
 import json
 import redis
-import os
+from  os import listdir
 from redis.exceptions import RedisError
-import arrow
 from libs import settings, log
 from libs.caches import symbol_cache as cache
 from libs.structs.tick_struct import TickStruct
@@ -22,9 +21,13 @@ from typing import Dict, Any, Optional, List, Tuple
 logger = log.fullon_logger(__name__)
 
 try:
-    EXCHANGES_DIR = os.listdir('exchanges/')
+    EXCHANGES_DIR = listdir('exchanges/')
 except FileNotFoundError:
-    EXCHANGES_DIR = os.listdir('fullon/exchanges/')
+    EXCHANGES_DIR = listdir('fullon/exchanges/')
+
+EXCHANGES_DIR.remove('ccxt')
+EXCHANGES_DIR.remove('__init__.py')
+EXCHANGES_DIR.remove('__pycache__')
 
 
 class Cache(cache.Cache):

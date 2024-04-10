@@ -2,7 +2,7 @@ import sys
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import time
-from libs import settings, log, cache
+from libs import settings, log
 
 logger = log.fullon_logger(__name__)
 
@@ -12,7 +12,6 @@ class Database():
 
     def __init__(self, max_conn=1):
         self.get_connection()
-        self.cache = cache.Cache()
 
     def __del__(self):
         self.endthis()
@@ -27,7 +26,6 @@ class Database():
         try:
             if self.con:
                 self.con.close()
-                del self.cache
                 del self.con
         except AttributeError:
             pass

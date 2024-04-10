@@ -9,9 +9,10 @@ on timestamps and component types.
 """
 
 import json
-from libs import log, database
+from libs import log
+from libs.database import Database
 from libs.caches import bot_cache as cache
-from typing import List, Tuple
+from typing import List
 
 
 logger = log.fullon_logger(__name__)
@@ -43,7 +44,7 @@ class Cache(cache.Cache):
                 crawlers = json.loads(crawlers_json)
         else:
             # Data is not in Redis, fetch from the database
-            with database.Database() as dbase:  # Replace with your actual database connection handling
+            with Database() as dbase:  # Replace with your actual database connection handling
                 crawlers = dbase.get_crawling_list(site=site)  # Fetch the data from PostgreSQL
                 # Assuming rows are fetched as a list of tuples
                 self.conn.set(redis_key, json.dumps(crawlers))
@@ -70,7 +71,7 @@ class Cache(cache.Cache):
                 crawlers = json.loads(crawlers_json)
         else:
             # Data is not in Redis, fetch from the database
-            with database.Database() as dbase:  # Replace with your actual database connection handling
+            with Database() as dbase:  # Replace with your actual database connection handling
                 crawlers = dbase.get_crawler_sites(all=True)  # Fetch the data from PostgreSQL
                 # Assuming rows are fetched as a list of tuples
                 self.conn.set(redis_key, json.dumps(crawlers))

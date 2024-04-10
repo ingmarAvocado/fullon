@@ -30,6 +30,7 @@ def test_calculate_final_summary(sim):
             'Positive Returns Standard Deviation': 0.9383,
             'Average Duration (hours)': 4.0, 'Profit Factor': 'placeholder',
             'Recovery Factor': 'placeholder', 'Sharpe Ratio': 0.6619,
+            'Max Drawdown %': 2,
             'params': {},
             'df': DataFrame(),
             'Compression': 1,
@@ -50,6 +51,7 @@ def test_calculate_final_summary(sim):
             'Positive Returns Standard Deviation': 1.2,
             'Average Duration (hours)': 5.0, 'Profit Factor': 'placeholder',
             'Recovery Factor': 'placeholder', 'Sharpe Ratio': 0.8,
+            'Max Drawdown %': 2,
             'params': {},
             'df': DataFrame(),
             'Compression': 1,
@@ -70,6 +72,7 @@ def test_calculate_final_summary(sim):
             'Positive Returns Standard Deviation': 0.9,
             'Average Duration (hours)': 3.0, 'Profit Factor': 'placeholder',
             'Recovery Factor': 'placeholder', 'Sharpe Ratio': 0.75,
+            'Max Drawdown %': 2,
             'params': {},
             'df': DataFrame(),
             'Compression': 1,
@@ -77,4 +80,3 @@ def test_calculate_final_summary(sim):
         }
     }
     res = sim.calculate_final_summary(summaries)
-    print(res)

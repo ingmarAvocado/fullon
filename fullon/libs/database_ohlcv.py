@@ -12,7 +12,7 @@ from enum import Enum
 # Setup logging
 logger = log.fullon_logger(__name__)
 request_queue: Optional[Queue] = None
-response_queue_pool: Optional[QueuePool] = QueuePool()
+response_queue_pool: Optional[QueuePool] = None
 processes: Dict[int, Process] = {}
 _started: bool = False
 
@@ -35,7 +35,7 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
         num: int worker #
         mngr: An instance of multiprocessing.Manager.
     """
-    setproctitle(f"Fullon bot database queue #{num} for OHLCV")
+    setproctitle(f"Fullon database worker #{num} for OHLCV")
     dbase_instance = None
     while True:
         try:
@@ -89,8 +89,9 @@ def start():
     """
     Starts the request processing by initializing Queues and kicking off the separate process.
     """
-    global request_queue, response_queue_pool, process, _started
-    setproctitle("Fullon DB OHLCV Launcher")
+    global request_queue, response_queue_pool, process, _started, response_queue_pool
+    if not response_queue_pool:
+        response_queue_pool = QueuePool(procname="Database Ohlcv")
     if not _started:
         _started = True
         logger.info(f"Starting Database Queue Manager for OHCLV")
@@ -99,10 +100,6 @@ def start():
         for num in range(0, settings.DBWORKERS_OHLCV):
             processes[num] = Process(target=process_requests, args=(num, request_queue, mngr))
             processes[num].start()
-    #lets start at least 4 response_queues
-    for _ in range(0, 4):
-        with response_queue_pool.get_queue() as response_queue:
-            pass
 
 
 def stop():
@@ -123,7 +120,7 @@ def stop():
                 process.terminate()
             del processes[num]
         request_queue = None
-        response_queue_pool = QueuePool()
+        response_queue_pool = None
         process = {}
         _started = False
 
@@ -184,6 +181,7 @@ class Database:
         """
         global request_queue, response_queue_pool
         try:
+            # print("OHLCV DB QUEUE", request_queue.qsize(), len(processes))
             with response_queue_pool.get_queue() as response_queue:
                 if not request_queue:
                     raise WorkerError("Database queue not initialized")
@@ -194,5 +192,13 @@ class Database:
                 if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
                     raise WorkerError(f"Error in worker process: {result[1]}")
                 return result
-        except EOFError:
-            pass
+        except (EOFError, AttributeError) as error:
+            error = str(error)
+            if 'EOFerror' in error:
+                pass
+            elif 'AttributeError' in error and 'get_queue' in error:
+                pass
+            else:
+                
+                print("SOOOMMEE ERROR")
+                raise

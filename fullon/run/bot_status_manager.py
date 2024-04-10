@@ -44,7 +44,12 @@ class BotStatusManager:
 
     def __del__(self):
         self.stop()
-        self.started = False
+
+    def stop_all(self):
+        """
+        redicted to stop
+        """
+        self.stop()
 
     def stop(self) -> None:
         """
@@ -55,6 +60,7 @@ class BotStatusManager:
         with self.thread_lock:
             if self.thread:
                 self.thread.join()
+        self.started = False
 
     def run_loop(self) -> None:
         """

@@ -10,24 +10,27 @@ on timestamps and component types.
 
 import json
 import redis
-import arrow
 from libs import log
 from libs.caches import orders_cache as cache
 from libs.structs.trade_struct import TradeStruct
 from typing import Dict, List
+from os import listdir
 
 logger = log.fullon_logger(__name__)
 
-'''
+
 try:
-    EXCHANGES_DIR = os.listdir('exchanges/')
+    EXCHANGES_DIR = listdir('exchanges/')
 except FileNotFoundError:
-    EXCHANGES_DIR = os.listdir('fullon/exchanges/')
-'''
-EXCHANGES_DIR = ['kraken', 'kucoin_futures']
+    EXCHANGES_DIR = listdir('fullon/exchanges/')
+
+EXCHANGES_DIR.remove('ccxt')
+EXCHANGES_DIR.remove('__init__.py')
+EXCHANGES_DIR.remove('__pycache__')
 
 
 class Cache(cache.Cache):
+
     """
     A class for managing caching operations with Redis.
     Attributes:

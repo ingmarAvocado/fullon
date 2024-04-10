@@ -32,19 +32,19 @@ def test_edit_bot(bot_manager):
 
 @pytest.mark.order(4)
 def test_start_bot(bot_manager):
-    bot = bot_manager.start_bot(bot_id=1)
+    bot = bot_manager.start(bot_id=1)
     assert bot is True
 
 
 @pytest.mark.order(5)
 def test_start_bot2(bot_manager):
-    bot = bot_manager.start_bot(bot_id=1)
+    bot = bot_manager.start(bot_id=1)
     assert bot is False
 
 
 @pytest.mark.order(6)
 def test_stop_bot2(bot_manager):
-    bot = bot_manager.stop_bot(bot_id=1)
+    bot = bot_manager.stop(bot_id=1)
     assert bot is True
 
 '''

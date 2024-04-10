@@ -192,7 +192,7 @@ class Database(database.Database):
             logger.warning(self.error_print(error=error, method="del_crawler_site", query=sql))
             return False
 
-    def get_crawler_sites(self, page: int = 1, page_size: int = 10, all: bool = False) -> List[str]:
+    def get_crawler_sites(self, page: int = 1, page_size: int = 10, all: bool = False, active=False) -> List[str]:
         """
         Get a list of crawler site profiles from the database.
 
@@ -204,7 +204,10 @@ class Database(database.Database):
         Returns:
             List[str]: A list of sites that can be crawled.
         """
-        sql = "SELECT sites FROM public.cat_sites"  # Adjusted to specifically select the 'sites' column
+        if active:
+            sql = "SELECT DISTINCT(site) FROM public.sites_follows"  # Adjusted to specifically select the 'sites' column
+        else:
+            sql = "SELECT * FROM public.cat_sites"
         params = []
         if not all:
             offset = (page - 1) * page_size
@@ -224,23 +227,24 @@ class Database(database.Database):
 
     def add_posts(self, posts: List[CrawlerPostStruct]) -> bool:
         """
-        Adds multiple posts to the table sites_posts.
+        Adds multiple posts to the table sites_posts or updates the scores if a post with the same unique constraint already exists.
 
         Args:
-            crawler_posts (List[CrawlerPostStruct]): A list of CrawlerPostStruct objects representing the posts to add.
+            posts (List[CrawlerPostStruct]): A list of CrawlerPostStruct objects representing the posts to add or update.
 
         Returns:
-            bool: True if all posts were added successfully, False otherwise.
+            bool: True if all posts were added or updated successfully, False otherwise.
         """
         sql = ("INSERT INTO sites_posts (account, account_id, remote_id, site, content, media, media_ocr, urls, "
-               "timestamp, is_reply, reply_to, self_reply, views, likes, reposts, replies, followers, pre_score) "
-               "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
-               "ON CONFLICT ON CONSTRAINT remote_id_site_unique DO NOTHING")
+               "timestamp, is_reply, reply_to, self_reply, views, likes, reposts, replies, followers, pre_score, score) "
+               "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+               "ON CONFLICT ON CONSTRAINT remote_id_site_unique "
+               "DO UPDATE SET pre_score = EXCLUDED.pre_score, score = EXCLUDED.score")
 
         # Prepare data for all posts, adjusted for new columns
         data = [(post.account, post.account_id, post.remote_id, post.site, post.content, post.media, post.media_ocr, post.urls,
                  post.timestamp, post.is_reply, post.reply_to, post.self_reply, post.views, post.likes,
-                 post.reposts, post.replies, post.followers, post.pre_score) for post in posts]
+                 post.reposts, post.replies, post.followers, post.pre_score, post.score) for post in posts]
         try:
             with self.con.cursor() as cur:
                 cur.executemany(sql, data)
@@ -248,7 +252,7 @@ class Database(database.Database):
                 return True
         except (Exception, psycopg2.DatabaseError) as error:
             self.con.rollback()
-            logger.warning("Error adding posts: {}".format(error))
+            logger.warning("Error adding or updating posts: {}".format(error))
             return False
 
     def get_posts(self, account: str, site: str, replies: bool = False, self_reply: bool = False) -> List[CrawlerPostStruct]:
@@ -363,8 +367,8 @@ class Database(database.Database):
             Dict[str, arrow.Arrow]: A dictionary mapping accounts to their last post date.
         """
         sql = """
-              SELECT account, MAX(timestamp) AS last_timestamp 
-              FROM public.sites_posts 
+              SELECT account, MAX(timestamp) AS last_timestamp
+              FROM public.sites_posts
               WHERE site = %s
               GROUP BY account
               ORDER BY last_timestamp DESC;
@@ -383,6 +387,29 @@ class Database(database.Database):
                 logger.error(self.error_print(
                     error=error, method="get_last_post_dates", query=sql))
         return None
+
+    def get_pre_scores(self, num: int = 25000) -> list[tuple[float]]:
+        """
+        Get last 15000 pre_scores.
+
+        Returns:
+            list a list of scores
+        """
+        sql = """
+              SELECT pre_score
+              FROM public.sites_posts
+              ORDER BY timestamp DESC
+              limit %s;
+        """
+        with self.con.cursor() as cur:
+            try:
+                cur.execute(sql, (num,))
+                rows = cur.fetchall()
+                return [float(row[0]) for row in rows]
+            except (Exception, psycopg2.DatabaseError) as error:
+                logger.error(self.error_print(
+                    error=error, method="get_pre_scores", query=sql))
+        return []
 
     def add_llm_engine(self, engine: str) -> bool:
         """
@@ -694,13 +721,14 @@ class Database(database.Database):
                 error=error, method="delete_follows_analyzer", query=sql))
         return False
 
-    def get_unscored_posts(self, aid: int, engine: str) -> List[CrawlerPostStruct]:
+    def get_unscored_posts(self, aid: int, engine: str, no_is_reply: bool = False) -> List[CrawlerPostStruct]:
         """
         Retrieves posts that have not been scored by a given analyzer and engine, ordered by account and sorted by date.
 
         Args:
             aid (int): The analyzer ID.
             engine (str): The name of the engine.
+            no_is_reply (bool): If True, exclude posts that are replies, unless they are self-replies.
 
         Returns:
             List[CrawlerPostStruct]: A list of unscored posts.
@@ -712,8 +740,14 @@ class Database(database.Database):
         FROM sites_posts sp
         LEFT JOIN engine_scores es ON sp.post_id = es.post_id AND es.aid = %s AND es.engine = %s
         WHERE es.score IS NULL
-        ORDER BY sp.account ASC, sp.timestamp ASC
         """
+        # Modify the condition to exclude is_reply posts if no_is_reply is True, but include if self_reply is True
+        if no_is_reply:
+            sql += " AND (sp.is_reply = False OR sp.self_reply = True)"
+        else:
+            # If no_is_reply is False, no need to modify the query to filter out replies
+            pass
+        sql += " ORDER BY sp.account ASC, sp.timestamp ASC"
         posts = []
         try:
             with self.con.cursor() as cur:

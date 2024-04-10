@@ -1,7 +1,5 @@
 from libs.settings_config import fullon_settings_loader
 from libs import settings
-print(dir(settings))
-exit()
 from libs import exchange, exchange_methods, log,  strategy, settings
 from libs import cache
 from libs.bot import Bot
@@ -128,8 +126,8 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 #time.sleep(1)
 #del exch
 ohlcv = OhlcvManager()
-ohlcv.run_ohlcv_loop(symbol='BTC/USD', exchange='kraken')
-#ohlcv.run_loop()
+#ohlcv.run_ohlcv_loop(symbol='BTC/USD', exchange='kraken')
+ohlcv.run_loop()
 time.sleep(2000)
 #ohlcv.stop_all()
 #exch.get_positions()
@@ -247,10 +245,10 @@ except KeyboardInterrupt:
 '''
 '''
 manager = BotManager()
-manager.start_bot(4)
+manager.start(4)
 time.sleep(4)
 print("next one")
-manager.start_bot(7)
+manager.start(7)
 #print(manager.is_running(3))
 #ipdb.set_trace()
 #manager.start(3)

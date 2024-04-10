@@ -18,6 +18,7 @@ class SettingsLoader():
     main class for settings module
     """
     config: configparser.ConfigParser
+    secrets: bool = True
 
     def load_conf_file(self, filename: str = "fullon.conf"):
         """
@@ -106,10 +107,11 @@ class SettingsLoader():
 
     def add_encrypted_settings(self):
         """comments"""
-        hush = secret.SecretManager()
-        if hush.secrets:
-            setattr(settings, "GOOGLE_CREDENTIALS", hush.credentials)
-            for key in hush.secrets:
-                name = "".join(key.name.split("/")[-1:])
-                payload = hush.access_secret_version(secret_id=name)
-                setattr(settings, str(name).upper(), str(payload))
+        if settings.GOOGLESECRETS:
+            hush = secret.SecretManager()
+            if hush.secrets:
+                setattr(settings, "GOOGLE_CREDENTIALS", hush.credentials)
+                for key in hush.secrets:
+                    name = "".join(key.name.split("/")[-1:])
+                    payload = hush.access_secret_version(secret_id=name)
+                    setattr(settings, str(name).upper(), str(payload))

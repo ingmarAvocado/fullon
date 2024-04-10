@@ -57,8 +57,6 @@ def user_ex():
 
 @pytest.mark.order(1)
 def test_get_cat_exchanges(store):
-    import ipdb
-    ipdb.set_trace()
     store.conn.delete('cat_exchanges')
     result = store.get_cat_exchanges()
     assert len(result) > 0

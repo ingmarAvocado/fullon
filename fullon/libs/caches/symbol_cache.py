@@ -2,7 +2,8 @@
 """
 
 import json
-from libs import log, database
+from libs import log
+from libs.database import Database
 from libs.caches import exchange_cache as cache
 from libs.structs.symbol_struct import SymbolStruct
 from typing import Optional, List
@@ -27,7 +28,7 @@ class Cache(cache.Cache):
         symbol_list: List[SymbolStruct] = []
 
         if force:
-            with database.Database() as dbase:
+            with Database() as dbase:
                 symbols = dbase.get_symbols(exchange=exchange, all=True)
                 for sym in symbols:
                     sym_dict = sym.to_dict()

@@ -469,6 +469,7 @@ CREATE TABLE public.sites_posts (
 	replies integer NOT NULL,
 	followers integer NOT NULL,
 	pre_score numeric,
+	score numeric,
 	CONSTRAINT primary_key PRIMARY KEY (post_id),
 	CONSTRAINT remote_id_site_unique UNIQUE (remote_id,site)
 );

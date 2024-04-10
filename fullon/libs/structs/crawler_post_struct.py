@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 from libs.structs.struct import Struct
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 
 @dataclass
@@ -21,6 +21,7 @@ class CrawlerPostStruct(Struct):
     reply_to: Optional[int] = None
     remote_id: Optional[int] = None
     pre_score: Optional[Decimal] = None
+    score: Optional[Decimal] = None
     replies:  Optional[int] = None
     views: Optional[int] = None
     likes: Optional[int] = None
@@ -42,4 +43,4 @@ class CrawlerPostStruct(Struct):
             base_score *= Decimal(1.1)
         if self.media:
             base_score *= Decimal(1.2)
-        self.pre_score = base_score
+        self.pre_score = base_score.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)

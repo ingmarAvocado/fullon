@@ -52,6 +52,9 @@ def signal_handler(sig, frame):
             logger.warning("Stopping components")
             stops_components()
             sys.exit(0)
+        else:
+            kill_processes('Fullon', manual=True)
+            kill_processes('fullon_daemon', manual=True)
 
 
 def kill_processes(name, manual: bool = False):

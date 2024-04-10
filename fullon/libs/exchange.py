@@ -2,8 +2,9 @@ from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager, Queue, Lock
 from queue import Empty
 from libs.cache import Cache
+from libs.database import Database
 from libs.exchange_methods import ExchangeMethods
-from libs import log, settings, database
+from libs import log, settings
 from libs.structs.exchange_struct import ExchangeStruct
 from libs.queue_pool import QueuePool
 from time import sleep
@@ -12,17 +13,12 @@ from setproctitle import setproctitle
 import arrow
 
 logger = log.fullon_logger(__name__)
-
-
 request_queues: Dict = {}
 processes: Dict = {}
-
 SENTINEL: Dict = {}
 NOQUEUE_POOL: Dict = {}
 lock = Lock()
-
-
-response_queue_pool = QueuePool()
+response_queue_pool: Optional[QueuePool] = None
 
 
 class WorkerError(Exception):
@@ -122,12 +118,16 @@ def stop_all():
         exchanges = store.get_cat_exchanges()
     for exchange in exchanges:
         stop(exchange['name'])
+    response_queue_pool = None
 
 
 def start_all():
     """
+    starts all exchanges
     """
-    setproctitle("Fullon Exchange Queue Launcher")
+    global response_queue_pool
+    if not response_queue_pool:
+        response_queue_pool = QueuePool(procname="Exchange")
     with Cache() as store:
         exchanges = store.get_cat_exchanges()
     for exchange in exchanges:
@@ -166,7 +166,7 @@ class Exchange:
         user = user_manager.UserManager()
         UID = user.get_user_id(mail=settings.ADMIN_MAIL)
         if UID:
-            with database.Database() as dbase:
+            with Database() as dbase:
                 try:
                     params = dbase.get_exchange(user_id=UID)[0]
                 except IndexError:
