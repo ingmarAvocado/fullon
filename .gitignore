@@ -2,8 +2,14 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*fullon.conf
+
+fullon/pickle/
+fullon/tmp/
+fullon/fullon_history.txt
 fullon/conf/fullon_hush.json
 fullon/conf/fullon.conf
+fullon/backups/
 fullon/catboostinfo/
+fullon/crawler_media/
 conf/fullon.conf
+
