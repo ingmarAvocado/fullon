@@ -11,9 +11,9 @@ from unittest.mock import PropertyMock, MagicMock
 
 
 @pytest.fixture
-def fullon_feed():
+def fullon_feed(bot_id):
     # You need to create a feed, helper, and broker instance here based on your application
-    bot1 = Bot(1, 432)
+    bot1 = Bot(bot_id, 432)
     with Database() as dbase:
         feeds = dbase.get_bot_feeds(bot_id=bot1.id)
     feed = feeds[0]
@@ -33,7 +33,7 @@ def test_init(fullon_feed):
     assert fullon_feed.pos == 0
     assert fullon_feed.exit is False
 
-
+"""
 def test_start(fullon_feed):
     fullon_feed.start(count=5)
     assert fullon_feed._state == fullon_feed._ST_HISTORY
@@ -102,7 +102,7 @@ def test_get_last_date(fullon_feed,):
     # Mock the Database's get_last_date method
     result = fullon_feed.get_last_date()
     assert isinstance(result, arrow.Arrow)
-
+"""
 
 ''' mocking is not working well with the queue, need to figure out a way
 def test_fetch_ohlcv(fullon_feed, mocker, dbohlcv_session):

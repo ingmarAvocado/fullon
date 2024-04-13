@@ -16,10 +16,16 @@ settings.LOG_LEVEL = "logging.INFO"
 startohlcv()
 startdb()
 
-crawler = CrawlerManager()
+#crawler = CrawlerManager()
 
 #crawler._load_module_for_site(site='twitter')
-crawler._fetch_posts(site='twitter', llm_scores=True)
+#crawler._fetch_posts(site='twitter', llm_scores=True)
+
+from libs.simulator_prompts import Prompts
+prompts = Prompts()
+numbots = prompts._get_bot_dict()
+prompts.BOT = numbots[1]
+strats = prompts._get_str_params()
 
 stopdb()
 stopohlcv()

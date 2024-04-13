@@ -605,7 +605,11 @@ class Interface(Ccxt_Interface):
         :return: A list containing the user's account information or
                  None if balances could not be retrieved.
         """
-        tbalance = self.execute_ws("private_post_tradebalance")['result']
+        try:
+            tbalance = self.execute_ws("private_post_tradebalance")['result']
+        except TypeError:
+            logger.error("Seems this account has no API thus no balances")
+            return {}
         balances = {}
         for balance in settings.COMMON_TICKERS.split(','):
             balances[balance] = {'free': float(tbalance['mf']),

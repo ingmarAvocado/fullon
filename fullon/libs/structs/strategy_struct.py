@@ -6,16 +6,17 @@ from libs.structs.struct import Struct
 @dataclass
 class StrategyStruct(Struct):
     """Strategy struct"""
-    bot_id: int = ''
-    cat_str_id: str = ''
-    uid: str = ''
-    mail: Optional[str] = ''
-    name: Optional[str] = ''
+    str_id: Optional[int] = None
+    cat_str_id: Optional[int] = None
+    bot_id: Optional[int] = None
+    uid: Optional[int] = None
+    mail: str = ''
+    name: str = ''
     cat_name: str = ''
-    take_profit: str = ''
-    stop_loss: str = ''
-    trailing_stop: str = ''
-    timeout: str = ''
+    take_profit: Optional[float] = None
+    stop_loss: Optional[float] = None
+    trailing_stop: Optional[float] = None
+    timeout: Optional[int] = None
     leverage: Optional[float] = None
     size_pct: Optional[float] = None
     size: Optional[float] = None

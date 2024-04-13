@@ -152,7 +152,7 @@ class BotManager:
             bots.append(bot)
         return bots
 
-    def bot_details(self, bot_id: int) -> Dict[str, Any]:
+    def bot_details(self, bot_id: int) -> List[Dict[str, Any]]:
         """
         Fetches bot parameters, feeds, and strategy details for a bot from the database, given its unique bot ID. 
 
@@ -166,24 +166,26 @@ class BotManager:
             Dict[str, Any]: A dictionary with bot parameters, feeds, and strategy details. Returns an empty
                             dictionary if the bot ID does not exist.
         """
-        details = {}
-
+        details = []
         with Database() as dbase:
-            details = dbase.get_bot_params(bot_id=bot_id)
-            if details:
-                _feeds = dbase.get_bot_feeds(bot_id=bot_id)
-                feeds = {}
-                for num, feed in enumerate(_feeds):
-                    feeds[f"{num}"] = {
-                                  'symbol': feed.symbol,
-                                  'exchange': feed.exchange_name,
-                                  'compression': feed.compression,
-                                  'period': feed.period,
-                                  'feed_id': feed.feed_id
-                                  }
-                details['feeds'] = feeds
-                extended = dbase.get_str_params(bot_id=bot_id)
-                details['extended'] = dict(extended)
+            _details = dbase.get_bot_params(bot_id=bot_id)
+            if _details:
+                for detail in _details:
+                    _feeds = dbase.get_bot_feeds(bot_id=bot_id)
+                    feeds = {}
+                    for num, feed in enumerate(_feeds):
+                        feeds[f"{num}"] = {
+                                      'str_id': feed.str_id,
+                                      'symbol': feed.symbol,
+                                      'exchange': feed.exchange_name,
+                                      'compression': feed.compression,
+                                      'period': feed.period,
+                                      'feed_id': feed.feed_id
+                                      }
+                    detail['feeds'] = feeds
+                    extended = dbase.get_str_params(bot_id=bot_id)
+                    detail['extended'] = dict(extended)
+                details.append(detail)
         return details
 
     def get_bot_feeds(self) -> Dict[str, Dict[str, Any]]:
@@ -255,45 +257,42 @@ class BotManager:
                 return False
         return True
 
-    def edit(self, bot: dict) -> bool:
+    def edit(self, bot_id: int, strat: dict) -> bool:
         """
         Edit the specified bot.
 
         Args:
-            bot (dict): The bot to edit.
+            bot_id (int): Bot to edit
+            start (dict): Start to edit.
 
         Returns:
             bool: True if the bot was successfully edited, False otherwise.
         """
         # Interact with the database
-
-        if 'bot_id' not in bot:
-            logger.error("No bot id in bot dict")
-            return False
+        str_id = strat['str_id']
         with Database() as dbase:
-
             # Extract and remove optional elements from bot
-            feeds = bot.pop('feeds', None)
-            extended = bot.pop('extended', None)
+            feeds = strat.pop('feeds', None)
+            extended = strat.pop('extended', None)
 
             # Copy bot to a new dictionary and remove certain elements
-            base = bot.copy()
-            for key in ['bot_id', 'dry_run', 'active', 'uid']:
+            base = strat.copy()
+            for key in ['dry_run', 'active', 'uid']:
                 base.pop(key, None)
 
             _bot = {}
             # Create _bot dictionary
-            if 'dry_run' in bot:
-                _bot['dry_run'] = bot['dry_run']
-            if 'active' in bot:
-                _bot['active'] = bot['active']
+            if 'dry_run' in strat:
+                _bot['dry_run'] = strat['dry_run']
+            if 'active' in strat:
+                _bot['active'] = strat['active']
             if _bot:
-                _bot['bot_id'] = bot['bot_id']
+                _bot['bot_id'] = str_id
                 # Perform a sequence of database operations, stopping if any operation fails
                 if not (res := dbase.edit_bot(bot=_bot)):
                     return False
 
-            if not (res := dbase.edit_base_strat_params(bot_id=bot['bot_id'], params=base)):
+            if not (res := dbase.edit_base_strat_params(str_id=str_id, params=base)):
                 return False
 
             if extended:
@@ -302,12 +301,13 @@ class BotManager:
                              'compression', 'order', 'bot_id', 'symbol_id',
                              'size', 'size_pct', 'size_currency', 'timeout']
                 extended = {k: v for k, v in extended.items() if k not in forbidden}
-                if not (res := dbase.edit_strat_params(bot_id=bot['bot_id'], params=extended)):
+                if not (res := dbase.edit_strat_params(str_id=str_id, params=extended)):
                     return False
 
             if feeds:
-                if not (res := dbase.edit_feeds(bot_id=bot['bot_id'], feeds=feeds)):
+                if not (res := dbase.edit_feeds(str_id=str_id, feeds=feeds)):
                     return False
+        return True
 
         # All operations were successful
         return res

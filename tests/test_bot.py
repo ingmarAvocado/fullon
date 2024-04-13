@@ -3,12 +3,15 @@ from libs.database import Database
 from libs.bot import Bot
 from libs.settings_config import fullon_settings_loader
 from libs.btrader.fullonsimfeed import FullonSimFeed
+from libs.btrader.fullonfeed import FullonFeed
 from libs.btrader.fullonresampler import FullonFeedResampler
 import backtrader as bt
 import arrow
 import importlib
 import pytest
 
+
+cerebro = None
 
 FEED_CLASSES = {
     "FullonFeed": "libs.btrader.fullonfeed.FullonFeed",
@@ -18,45 +21,46 @@ FEED_CLASSES = {
 
 
 @pytest.fixture
-def bot():
-    bot = Bot(1, 432)
+def bot(bot_id, feed1, feed2):
+    bot = Bot(bot_id, 432)
     yield bot
     del bot
     # Any teardown code can be placed here, if necessary
 
 
-def test_init(bot):
-    assert bot.strategy == "trading101_pairs"
-    assert bot.id == 1
-    assert isinstance(bot.strategy, str)
+@pytest.mark.order(1)
+def test_init(bot, symbol1, bot_id):
+    assert bot.id == bot_id
+    assert isinstance(bot.bot_name, str)
     # Add more assertions for other attributes if necessary
 
 
-def test__set_feeds(bot):
-    dbase = Database()
-    feeds = dbase.get_bot_feeds(bot_id=bot.id)
-    bot._set_feeds(feeds, dbase=dbase)
-    del dbase
-    assert len(bot.str_feeds) == 4
-    assert bot.str_feeds[0].symbol == "BTC/USD"
-    assert bot.str_feeds[0].period == "Ticks"
-    assert bot.str_feeds[0].compression == 1
+@pytest.mark.order(2)
+def test__set_feeds(bot, dbase, str_id1, str_id2, symbol1, symbol2):
+    bot._set_feeds(dbase=dbase)
+    assert len(bot.str_feeds) == 2
+    assert bot.str_feeds[str_id1][0].symbol == symbol1.symbol
+    assert bot.str_feeds[str_id1][0].period == "Ticks"
+    assert bot.str_feeds[str_id1][0].compression == 1
+    assert bot.str_feeds[str_id2][0].symbol == symbol2.symbol
+    assert bot.str_feeds[str_id2][0].period == "Ticks"
+    assert bot.str_feeds[str_id2][0].compression == 1
 
 
-def test__str_set_params(bot):
-    dbase = Database()
+@pytest.mark.order(3)
+def test__str_set_params(bot, dbase, str_id1):
     params = bot._str_set_params(dbase)
-    del dbase
-    assert isinstance(params['helper'], Bot)
+    assert isinstance(params[str_id1]['helper'], Bot)
 
 
-def test_extend_str_params(bot):
+@pytest.mark.order(4)
+def test_extend_str_params(bot, str_id1):
     test_params = {"param1": 1, "param2": 2}
-    bot.extend_str_params(test_params)
-    assert bot.str_params["param1"] == 1
-    assert bot.str_params["param2"] == 2
+    bot.extend_str_params(test_params=test_params, str_id=str_id1)
+    assert bot.str_params[str_id1]["param1"] == 1
+    assert bot.str_params[str_id1]["param2"] == 2
 
-
+@pytest.mark.order(5)
 def test__set_timeframe(bot):
     # Test valid timeframes
     assert bot._set_timeframe("ticks") == bt.TimeFrame.Ticks
@@ -64,77 +68,67 @@ def test__set_timeframe(bot):
     assert bot._set_timeframe("days") == bt.TimeFrame.Days
     assert bot._set_timeframe("weeks") == bt.TimeFrame.Weeks
     assert bot._set_timeframe("months") == bt.TimeFrame.Months
-
     # Test case insensitivity
     assert bot._set_timeframe("Days") == bt.TimeFrame.Days
-
     # Test invalid timeframe
     assert bot._set_timeframe("invalid") is None
 
 
-def test_backload_from(bot):
-    # Setup feeds
-    with Database() as dbase:
-        feeds = dbase.get_bot_feeds(bot_id=bot.id)
-        bot._set_feeds(feeds, dbase=dbase)
-
+@pytest.mark.order(6)
+def test_backload_from(bot, str_id1, str_id2):
     # Test valid bars
-    backload_time_100 = bot.backload_from(100)
-    backload_time_200 = bot.backload_from(200)
-
+    backload_time_100 = bot.backload_from(str_id=str_id1, bars=100)
+    backload_time_200 = bot.backload_from(str_id=str_id2, bars=200)
     assert isinstance(backload_time_100[0], arrow.Arrow)
     assert isinstance(backload_time_100[0], arrow.Arrow)
     assert isinstance(backload_time_200[1], arrow.Arrow)
     assert isinstance(backload_time_200[1], arrow.Arrow)
-
     # Test if backload_time_200 is before backload_time_100
     assert backload_time_200[0] < backload_time_100[0]
-
     # Test if backload_time_100 is before current time
     assert backload_time_100[0] < arrow.utcnow()
 
-
+@pytest.mark.order(7)
 def test__load_feeds(bot, mocker):
-    # Setup feeds
-    dbase = Database()
-    feeds = dbase.get_bot_feeds(bot_id=bot.id)
-    bot._set_feeds(feeds, dbase=dbase)
-
-    del dbase
-    # Setup cerebro
+    global cerebro
+    mocker.patch.object(bot, '_sim_feeds_can_start', return_value=True)
     cerebro = bt.Cerebro()
-
     # Load feeds
     bot._load_feeds(cerebro, warm_up=450, event=False, ofeeds={})
-
     # Check if feeds are loaded correctly
-    assert len(cerebro.datas) == len(bot.str_feeds)
+    loaded = []
+    for feeds in bot.str_feeds.values():
+        for feed in feeds:
+            key = f"{feed.ex_id}:{feed.symbol}:{feed.period}:{feed.compression}"
+            if key not in loaded:
+                loaded.append(key)
+    assert len(cerebro.datas) == len(loaded)
     for i, data in enumerate(cerebro.datas):
         assert data._name == str(i)
         assert isinstance(data, FullonSimFeed)
+
+
+@pytest.mark.order(8)
+def test_pair_feeds(bot):
     bot._pair_feeds(cerebro=cerebro)
 
-
-'''
-def test_start_bot():
-    # Test that the bot is instantiated with a valid UUID
-    bot1 = bot.Bot('2')
-    assert isinstance(bot1, bot.Bot), "The bot instance is not of type 'bot.Bot'"
-
-    # Test that the bot has a valid UUID attribute
-    assert hasattr(bot1, 'id'), "The bot instance does not have a 'bot_id' attribute"
-    assert isinstance(bot1.id, str), "The 'bot_id' attribute is not a string"
-    assert len(bot1.id) == 36, "The 'bot_id' attribute is less than 36"
-
-    #  Test it has feeds
-    assert hasattr(bot1, 'str_feeds'), "The bot has no feeds"
-    assert isinstance(bot1.str_feeds, list), "the bots feeds are not a list"
-    assert len(bot1.str_feeds) > 0, "the bot feeds is empty"
-
-    bot1 = bot.Bot('1')
-    assert (bot1.id is None), "The bot instance can't handle unknown bot_id"
+@pytest.mark.order(9)
+def test__load_live_feeds(bot, mocker):
+    global cerebro
+    cerebro = bt.Cerebro()
+    # Load feeds
+    bot._load_live_feeds(cerebro, bars=200)
+    # Check if feeds are loaded correctly
+    loaded = []
+    for feeds in bot.str_feeds.values():
+        for feed in feeds:
+            key = f"{feed.ex_id}:{feed.symbol}:{feed.period}:{feed.compression}"
+            if key not in loaded:
+                loaded.append(key)
+    assert len(cerebro.datas) == len(loaded)
 
 
+@pytest.mark.order(10)
 def get_date_from_bars(bars: int, period: str, compression: int = 1) -> arrow.arrow.Arrow:
     period_map = {
         "ticks": 1,
@@ -147,6 +141,18 @@ def get_date_from_bars(bars: int, period: str, compression: int = 1) -> arrow.ar
     period = period.lower()
     baja = compression * period_map.get(period, 0) * bars
     return arrow.utcnow().shift(seconds=-baja).replace(second=0, microsecond=0)
+
+
+'''
+def test_simul_strategy(bot):
+    test_params = {'sma1': '45'}
+    feeds = {}
+    bot.run_simul_loop(feeds=feeds,
+                       visual=False,
+                       test_params={},
+                       warm_up=450,
+                       event=False)
+
 
 
 def test_live_strategy():

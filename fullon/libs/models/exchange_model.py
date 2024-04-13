@@ -13,7 +13,7 @@ logger = log.fullon_logger(__name__)
 
 class Database(database.Database):
 
-    def get_user_exchanges(self, uid: str) -> List[Dict[str, Any]]:
+    def get_user_exchanges(self, uid: int) -> List[Dict[str, Any]]:
         """
         Get user exchanges.
 
@@ -140,6 +140,37 @@ class Database(database.Database):
                     method="add_user_exchange",
                     query=sql))
             raise
+
+    def remove_user_exchange(self, ex_id: int) -> bool:
+        """
+        Remove a user exchange by its ID.
+
+        Args:
+            ex_id (int): The ID of the exchange to be removed.
+
+        Returns:
+            bool: True if the exchange was successfully deleted, False otherwise.
+
+        Raises:
+            psycopg2.DatabaseError: If an error occurs while deleting the exchange.
+        """
+        # SQL query to delete the exchange
+        sql = "DELETE FROM exchanges WHERE ex_id = %s"
+        try:
+            with self.con.cursor() as cur:
+                cur.execute(sql, (ex_id,))
+                deleted_count = cur.rowcount  # Number of rows affected by the delete operation
+                self.con.commit()
+                return deleted_count > 0  # True if any row was deleted, False otherwise
+        except (Exception, psycopg2.DatabaseError) as error:
+            self.con.rollback()  # Rollback transaction in case of error
+            logger.warning(
+                self.error_print(
+                    error=error,
+                    method="remove_user_exchange",
+                    query=sql))
+            # Consider whether you want to re-raise the exception or handle it differently
+            return False
 
     def get_exchange_cat_id(self, name: str = "", ex_id: str = "") -> Optional[int]:
         """

@@ -117,7 +117,6 @@ class AccountManager:
         while not self.stop_signals[user_ex.ex_id].is_set():
             try:
                 account = exch.get_balances()
-
                 # If there are any account balances, update user account and positions
                 if account:
                     # Get the user's last positions for the current exchange
@@ -129,7 +128,8 @@ class AccountManager:
                         store.update_process(tipe="account",
                                              key=user_ex.name,
                                              message="Updated")
-
+                else:
+                    break
                 for _ in range(intervals):  # intervals * 0.2 seconds = settings.UPDATE_ACCOUNT_INTERVAL
                     if self.stop_signals[user_ex.ex_id].is_set():
                         break

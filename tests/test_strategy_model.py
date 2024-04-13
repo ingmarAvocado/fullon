@@ -2,95 +2,99 @@ from __future__ import unicode_literals, print_function
 import sys
 from libs.models.bot_model import Database
 from run.user_manager import UserManager
+from libs.structs.exchange_struct import ExchangeStruct
 import pytest
-
-@pytest.fixture(scope="module")
-def dbase():
-    with Database() as dbase:
-        yield dbase
-
-@pytest.fixture(scope="module")
-def uid():
-    user = UserManager()
-    uid = user.get_user_id(mail='admin@fullon')
-    yield uid
-
-
-@pytest.fixture(scope="module")
-def bot_test_id():
-    yield 2
-
-
-@pytest.mark.order(1)
-def test_get_base_str_params(dbase, bot_test_id):
-    strat = dbase.get_base_str_params(bot_id=bot_test_id)
-    if strat:
-        assert 'take_profit' in dir(strat)
-    else:
-        assert strat is None
-
-
-@pytest.mark.order(2)
-def test_get_str_params(dbase, bot_test_id):
-    strat = dbase.get_str_params(bot_id=bot_test_id)
-    strat = dict(strat)
-    assert isinstance(strat, dict)
-
-
-@pytest.mark.order(3)
-def test_update_base_str_params(dbase, bot_test_id):
-    strat = dbase.get_bot_params(bot_id=bot_test_id)
-    _ = strat.pop('dry_run', None)
-    _ = strat.pop('active', None)
-    _ = strat.pop('uid', None)
-    bot_id = strat.pop('bot_id')
-    result = dbase.edit_base_strat_params(bot_id=bot_id, params=strat)
-    assert result is True
 
 
 @pytest.mark.order(4)
-def test_update_str_params(dbase, bot_test_id):
-    strat = dbase.get_str_params(bot_id=bot_test_id)
-    strat = dict(strat)
-    result = dbase.edit_strat_params(bot_id=bot_test_id, params=strat)
-    assert result is True
+def test_get_base_str_params(dbase, bot_id, cat_str_name):
+    strats = dbase.get_base_str_params(bot_id=bot_id)
+    for strat in strats:
+        assert strat.cat_name == cat_str_name
 
 
 @pytest.mark.order(5)
-def test_get_cat_strategies(dbase):
-    strats = dbase.get_cat_strategies(page=1, page_size=2, all=False)
-    assert isinstance(strats, list)
-    assert len(strats) > 1
-    strats = dbase.get_cat_strategies(page=1, page_size=2, all=True)
-    assert isinstance(strats, list)
-    assert len(strats) > 1
+def test_get_str_params(dbase, bot_id, str_id1):
+    params = dbase.get_str_params(bot_id=bot_id)
+    param = params[0]
+    assert param['str_id'] == str_id1
 
 
 @pytest.mark.order(6)
-def test_get_user_strategies(dbase, uid):
-    strats = dbase.get_user_strategies(uid=uid)
-    assert isinstance(strats, list)
-    assert len(strats) > 0
+def test_update_base_str_params(dbase, bot_id):
+    strat = dbase.get_bot_params(bot_id=bot_id)
+    _ = strat[0].pop('dry_run', None)
+    _ = strat[0].pop('active', None)
+    _ = strat[0].pop('uid', None)
+    _ = strat[0].pop('bot_id', None)
+    str_id = strat[0].pop('str_id', None)
+    strat[0]['take_profit'] = 10
+    result = dbase.edit_base_strat_params(str_id=str_id, params=strat[0])
+    assert result is True
+    strats = dbase.get_base_str_params(bot_id=bot_id)
+    for strat in strats:
+        if strat.str_id == str_id:
+            assert float(strat.take_profit) == 10
 
 
 @pytest.mark.order(7)
-def test_install_strategy(dbase):
-    strname = 'pytest'
-    base_params = {'take_profit': 2.5, 'trailing_stop': None, 'timeout': 30, 'stop_loss': 1.5, 'pre_load_bars': 30, 'feeds': 2} 
-    params = {'rsi_period': 14, 'rsi_upper': 63, 'rsi_lower': 36}
-    res = dbase.install_strategy(name=strname, base_params=base_params, params=params)
-    assert res is None
+def test_get_cat_strategies(dbase):
+    strats = dbase.get_cat_strategies(page=1, page_size=2, all=False)
+    assert isinstance(strats, list)
+    assert len(strats) >= 1
+    strats = dbase.get_cat_strategies(page=1, page_size=2, all=True)
+    assert isinstance(strats, list)
+    assert len(strats) >= 1
 
 
 @pytest.mark.order(8)
-def test_get_strategies_bot(dbase):
-    cat_str_name = "trading101"
-    res = dbase.get_strategies_bots(cat_str_name=cat_str_name)
-    assert isinstance(res[0].name, str)
+def test_get_cat_strategies_params(dbase, cat_str_id):
+    strats = dbase.get_cat_strategies_params(cat_str_id=cat_str_id)
+    assert isinstance(strats, list)
+    assert len(strats) >= 1
+    strats = dbase.get_cat_strategies_params(cat_str_id=cat_str_id)
+    assert isinstance(strats, list)
+    assert len(strats) >= 1
 
 
 @pytest.mark.order(9)
-def test_delete_cat_strategy(dbase):
-    cat_str_name = "pytest"
-    res = dbase.del_cat_strategy(cat_str_name=cat_str_name)
-    assert res is True
+def test_edit_str_params(dbase, bot_id):
+    params = dbase.get_str_params(bot_id=bot_id)
+    for param in params:
+        str_id = param.pop('str_id')
+        param['rsi_period'] = 100
+        result = dbase.edit_strat_params(str_id=str_id, params=param)
+        assert result is True
+    strats = dbase.get_str_params(bot_id=bot_id)
+    for strat in strats:
+        assert int(strat['rsi_period']) == 100
+
+
+@pytest.mark.order(10)
+def test_get_bots_strategies(dbase, bot_id, cat_str_name):
+    bots = dbase.get_bots_strategies(cat_str_name=cat_str_name)
+    exists = False
+    for bot in bots:
+        if bot.bot_id == bot_id:
+            exists = True
+    assert exists is True
+
+
+@pytest.mark.order(11)
+def test_get_user_strategies(dbase, uid, bot_id):
+    strats = dbase.get_user_strategies(uid=uid)
+    for strat in strats:
+        assert strat.uid == uid
+        assert strat.bot_id == bot_id
+
+
+@pytest.mark.order(12)
+def test_get_cat_str_id(dbase, cat_str_name, cat_str_id):
+    _cat_str_id = dbase.get_cat_str_id(name=cat_str_name)
+    assert cat_str_id == _cat_str_id
+
+
+@pytest.mark.order(13)
+def test_get_cat_strategy(dbase, cat_str_id):
+    strat = dbase.get_cat_strategy(cat_str_id=cat_str_id)
+    assert strat.cat_str_id == cat_str_id

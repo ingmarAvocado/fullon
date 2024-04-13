@@ -20,9 +20,7 @@ params = "test param"
 message_new = "new"
 message_update = "update"
 
-@pytest.fixture(scope="module")
-def store():
-    return cache.Cache(reset=True)
+
 
 @pytest.fixture(scope="module")
 def mock_store(store):

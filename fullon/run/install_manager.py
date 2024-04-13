@@ -294,28 +294,6 @@ class InstallManager:
             return True
         return False
 
-    def add_user(self, user: dict) -> None:
-        """
-        Adds a new user to the database.
-
-        Args:
-            user (dict): The user dict
-        """
-        with Database() as dbase:
-            dbase.add_user(user=user)
-
-    def remove_user(self, user_id: Optional[str] = None, email: Optional[str] = None) -> None:
-        """
-        Adds a new user to the database.
-
-        Args:
-            username (str): The username for the new user.
-            password (str): The password for the new user.
-            email (str): The email address for the new user.
-        """
-        with Database() as dbase:
-            dbase.remove_user(user_id=user_id, email=email)
-
     def list_symbols(self,
                      page: int = 1,
                      page_size: int = 10,
@@ -393,7 +371,7 @@ class InstallManager:
             List: A  list of dicts containing the bots
         """
         with Database() as dbase:
-            bots = dbase.get_strategies_bots(cat_str_name=cat_str_name)
+            bots = dbase.get_bots_strategies(cat_str_name=cat_str_name)
         return bots
 
     def del_cat_str(self, cat_str_name: str) -> bool:

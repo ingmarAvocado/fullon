@@ -2,6 +2,7 @@
 comment
 """
 from __future__ import unicode_literals, print_function
+from numpy import right_shift
 import pytest
 from fullon.libs import log
 from fullon.libs import cache
@@ -13,7 +14,7 @@ from time import sleep
 
 
 logger = log.fullon_logger(__name__)
-symbol_name = "USDC/USDT"
+symbol_name = "AGLD/USD"
 
 @pytest.fixture(scope="module")
 def symbol():
@@ -28,15 +29,15 @@ def symbol():
             LAST(price, timestamp) as close,
             SUM(volume) as vol
     FROM kraken_agld_usd.trades
-    WHERE kraken_agld_usd.trades.timestamp > '2023-01-01'
+    WHERE kraken_agld_usd.trades.timestamp > '2017-01-01'
     GROUP BY ts WITH NO DATA;
     commit;
-    SELECT add_continuous_aggregate_policy('kraken_xrp_usd.candles1m',
+    SELECT add_continuous_aggregate_policy('kraken_agld_usd.candles1m',
         start_offset => INTERVAL '2 h',
         end_offset => INTERVAL '1 h',
         schedule_interval => INTERVAL '1 h');
     commit;
-    ALTER TABLE kraken_xrp_USD.candles1m  RENAME COLUMN ts to timestamp;
+    ALTER TABLE agld_usd_USD.candles1m  RENAME COLUMN ts to timestamp;
     """
     with cache.Cache() as store:
         sym = store.get_symbol(symbol='BTC/USD', exchange_name='kraken')

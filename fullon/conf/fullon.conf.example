@@ -1,0 +1,76 @@
+[xmlserver]
+XMLRPC_HOST = 127.0.0.1
+XMLRPC_PORT = 8090
+
+[logger]
+LOG_LEVEL = logging.INFO
+DBLOG = 20
+SMLOG = 20
+PRDLOG = 20
+STRTLOG = 20
+
+[postgresql]
+DBNAME=fullon
+DBNAME_OHLCV=fullon_ohlcv
+DBUSER=fullon
+DBPASSWD=fullon
+#DBHOST=/var/run/postgresql
+DBHOST=10.206.35.109
+DBPORT= 5432
+DBWORKERS = 2
+DBWORKERS_OHLCV = 2
+
+[redis]
+CACHE_HOST = localhost
+CACHE_PORT = 6379
+CACHE_DB = 0
+CACHE_USER =  None
+CACHE_PASSWORD = None 
+CACHE_TIMEOUT = 30
+CACHE_LOG = 15
+
+[fullon_daemon]
+STABLECOIN=USD
+BACKUPS=backups/
+IMAGE_DIR=crawler_media/
+GZIP=/bin/gzip
+GUNZIP=/bin/gunzip
+PSQL=/usr/bin/psql
+PG_DUMP=/usr/bin/pg_dump
+SQL_INSTALL_FILE=install/base.sql
+SQL_EXTRA_FILE=install/extra.sql
+SQL_TEST_FILE=install/test.sql
+LAUNCH_BOTS_INTERVAL = 60
+CONSOLE_LOG = True
+XLS_SIMULATION_PATH=simulresults/
+ADMIN_MAIL = admin@fullon
+COMMON_TICKERS = BTC,ETH,USD,USDT,USDC
+
+[simul]
+NOISE = False
+
+[order_config]
+O_OPEN = 1
+O_FILLED = 3
+O_CANCELED = 2
+SLIPPAGE_POINT = 400
+LIMIT_VAR = .001
+
+[secrets]
+SECRETPROJECT = 
+GOOGLESECRETS = False
+APIFY_ACTOR_TWITTER = 
+APIFY_TOKEN = 
+GRANDESMODELOS1 =  
+EX_ID_1 = 
+EX_ID_2 =
+
+[time_intervals]
+INTERVAL = 0.5
+LIMIT_ORDER_INTERVAL = 30
+UPDATE_TICK_INTERVAL = 7
+UPDATE_ACCOUNT_INTERVAL = 20
+UPDATE_ORDERS_INTERVAL = 5
+REVIEW_ORDERS_INTERVAL = 10
+OHLCV_INTERVAL = 1
+KRAKEN_TIMEOUT = 1

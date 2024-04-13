@@ -97,7 +97,7 @@ class Interface:
         attr_name = f"ex_id_{ex_id}".upper()
         # Use getattr to dynamically get the attribute value
         value = getattr(settings, attr_name, None)
-        if value is not None:
+        if value:
             # Assuming the value format is always "key:secret"
             key, secret = value.split(':')
             return key, secret

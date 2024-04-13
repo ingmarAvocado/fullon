@@ -2,12 +2,16 @@ from run import install_manager
 from run import user_manager
 from run import bot_manager
 from run.crawler_manager import CrawlerManager
+from libs import log
 from libs.structs.symbol_struct import SymbolStruct
 from libs.structs.exchange_struct import ExchangeStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.database import Database
 from typing import Optional, Tuple
+
+
+logger = log.fullon_logger(__name__)
 
 
 def install():
@@ -136,7 +140,7 @@ def install_admin_user() -> Optional[int]:
     """
     installs users
     """
-    system = install_manager.InstallManager()
+    user_system = user_manager.UserManager()
     # now lets add a user
     USER = {
         "mail": "admin@fullon",
@@ -147,9 +151,8 @@ def install_admin_user() -> Optional[int]:
         "lastname": "plant",
         "phone": 666666666,
         "id_num": 3242}
-    system.add_user(USER)
-    user = user_manager.UserManager()
-    uid = user.get_user_id(mail='admin@fullon')
+    user_system.add_user(USER)
+    uid = user_system.get_user_id(mail='admin@fullon')
     return uid
 
 
@@ -205,17 +208,17 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "size_pct": 10,
         "size_currency": 'USD',
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
     feed = {
         "symbol_id": 1,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 2,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 2}
@@ -223,7 +226,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
 
     feed = {
         "symbol_id": 1,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Minutes',
         "compression": 10,
         "order": 3}
@@ -231,11 +234,12 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
 
     feed = {
         "symbol_id": 2,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Minutes',
         "compression": 10,
         "order": 4}
     user.add_feed_to_bot(feed=feed)
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # New bot #2
@@ -258,23 +262,23 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "size_pct": 10,
         "size_currency": 'USD',
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 1,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 1,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Minutes',
         "compression": 10,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
-
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # New bot #3
@@ -295,32 +299,33 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 1,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 1,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Days',
         "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
     bot = bot_manager.BotManager()
-    _bot = {"bot_id": bot_id,
-            "size": None,
-            "size_pct": 10,
-            "size_currency": "USD",
-            "take_profit": 14,
-            "trailing_stop": 13,
-            "timeout": None
-            }
+    _strat = {"bot_id": bot_id,
+              "str_id": str_id,
+              "size": None,
+              "size_pct": 10,
+              "size_currency": "USD",
+              "take_profit": 14,
+              "trailing_stop": 13,
+              "timeout": None
+              }
     extended = {
           'rsi': "14",  #
           'rsi_entry': "60",
@@ -333,8 +338,9 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "ema": "20",
           "prediction_steps": "1",
           "threshold": "0.48"}
-    _bot['extended'] = extended
-    bot.edit(bot=_bot)
+    _strat['extended'] = extended
+    bot.edit(bot_id=bot_id, strat=_strat)
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # bot 4
@@ -355,18 +361,18 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 2,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 2,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Days',
         "compression": 1,
         "order": 2}
@@ -374,6 +380,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
+            "str_id": str_id,
             "size": None,
             "size_pct": 10,
             "size_currency": "USD",
@@ -393,9 +400,9 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "ema": "20",
           "prediction_steps": "1",
           "threshold": "0.35"}
-    _bot['extended'] = extended
-    bot.edit(bot=_bot)
-
+    _strat['extended'] = extended
+    bot.edit(bot_id=bot_id, strat=_strat)
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # New bot #5
@@ -415,18 +422,18 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 8,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 8,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Days',
         "compression": 1,
         "order": 2}
@@ -434,6 +441,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
 
     bot = bot_manager.BotManager()
     _bot = {"bot_id": bot_id,
+            "str_id": str_id,
             "size": None,
             "size_pct": 10,
             "size_currency": "USD",
@@ -454,7 +462,9 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "prediction_steps": "1",
           "threshold": "0.48"}
     _bot['extended'] = extended
-    bot.edit(bot=_bot)
+    _strat['extended'] = extended
+    bot.edit(bot_id=bot_id, strat=_strat)
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # New bot #6
@@ -474,25 +484,26 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 7,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 7,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Days',
         "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
     bot = bot_manager.BotManager()
-    _bot = {"bot_id": bot_id,
+    _strat = {"bot_id": bot_id,
+            "str_id": str_id,
             "size": None,
             "size_pct": 10,
             "size_currency": "USD",
@@ -509,9 +520,9 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "prediction_steps": "1",
           "threshold": "0.35"
           }
-    _bot['extended'] = extended
-    bot.edit(bot=_bot)
-
+    _strat['extended'] = extended
+    bot.edit(bot_id=bot_id, strat=_strat)
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # New bot #7
@@ -523,7 +534,6 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     }
     bot_id = user.add_bot(bot=BOT)
     exchange = {"exchange_id": ex_id}
-    user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
         cat_str_id = dbase.get_cat_str_id(name='xgb_forest_mom_short')
@@ -531,25 +541,26 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 9,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 9,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Days',
         "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
     bot = bot_manager.BotManager()
-    _bot = {"bot_id": bot_id,
+    _strat = {"bot_id": bot_id,
+            "str_id": str_id,
             "size": None,
             "size_pct": 10,
             "size_currency": "USD",
@@ -566,8 +577,9 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "prediction_steps": "1",
           "threshold": "0.35"
           }
-    _bot['extended'] = extended
-    bot.edit(bot=_bot)
+    _strat['extended'] = extended
+    bot.edit(bot_id=bot_id, strat=_strat)
+    logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
     # New bot #8
@@ -587,32 +599,33 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
         "leverage": 2}
-    user.add_bot_strategy(strategy=STRAT)
+    str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
         "symbol_id": 8,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
         "symbol_id": 8,
-        "bot_id": bot_id,
+        "str_id": str_id,
         "period": 'Days',
         "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
     bot = bot_manager.BotManager()
-    _bot = {"bot_id": bot_id,
-            "size": None,
-            "size_pct": 10,
-            "size_currency": "USD",
-            "take_profit": 16,
-            "trailing_stop": 13,
-            "timeout": None
-            }
+    _strat = {"bot_id": bot_id,
+              "str_id": str_id,
+              "size": None,
+              "size_pct": 10,
+              "size_currency": "USD",
+              "take_profit": 16,
+              "trailing_stop": 13,
+              "timeout": None
+              }
     extended = {
           'rsi': "14",
           'rsi_entry': "40",
@@ -622,8 +635,9 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "prediction_steps": "1",
           "threshold": "0.35"
           }
-    _bot['extended'] = extended
-    bot.edit(bot=_bot)
+    _strat['extended'] = extended
+    bot.edit(bot_id=bot_id, strat=_strat)
+
 
 
 def install_crawler_follows(uid: int):

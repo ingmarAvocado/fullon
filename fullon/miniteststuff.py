@@ -47,10 +47,6 @@ store = cache.Cache()
 #UID = ''
 user = user_manager.UserManager()
 UID = user.get_user_id(mail='admin@fullon')
-if UID:
-    details = user.user_details(uid=UID)
-else:
-    raise ValueError("No user id")
 exch = dbase.get_exchange(user_id=UID)[0]
 
 orderBuy = {"ex_id": exch.ex_id,

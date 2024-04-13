@@ -48,7 +48,22 @@ class UserManager:
             result = dbase.add_user_exchange(exchange=exch)
         return result
 
-    def add_bot_strategy(self, strategy: dict) -> str:
+    def remove_exchange(self, ex_id: int) -> bool:
+        """
+        Removes a user exchange
+
+        Args:
+            ex_id (int): The exchange to remove
+
+        Returns:
+            bool: True if deleted
+        """
+        logger.info("Adding exchange account of a user_ex...")
+        with Database() as dbase:
+            result = dbase.remove_user_exchange(ex_id=ex_id)
+        return result
+
+    def add_bot_strategy(self, strategy: dict) -> int:
         """
         Links a strategy to a user.
 
@@ -56,14 +71,14 @@ class UserManager:
             strategy (dict): The strategy struct
 
         Returns:
-            str: The strategy ID.
+            int: The strategy ID.
         """
         logger.info("Linking strategies to user_ex...")
         with Database() as dbase:
             strategy_id = dbase.add_bot_strategy(strategy=strategy)
         return strategy_id
 
-    def del_bot_strategy(self, bot_id: int) -> bool:
+    def del_bot_strategy(self, str_id: int) -> bool:
         """
         Links a strategy to a user.
 
@@ -73,28 +88,11 @@ class UserManager:
         Returns:
             str: The strategy ID.
         """
-        logger.info("Deleting strategy %s", bot_id)
+        logger.info("Deleting strategy %s", str_id)
         res = False
         with Database() as dbase:
-            res = dbase.del_bot_strategy(bot_id=bot_id)
+            res = dbase.del_bot_strategy(str_id=str_id)
         return res
-
-    def add_params_to_strategy(self, strategy: str, params: Dict) -> bool:
-        """
-        Adds parameters to a strategy.
-
-        Args:
-            strategy (str): The strategy name.
-            params (Dict): The parameters to add to the strategy.
-
-        Returns:
-            bool: The result of adding parameters to the strategy.
-        """
-        logger.info("Adding params to strategies...")
-        with Database() as dbase:
-            strategy = dbase.add_params_to_strategy(strategy=strategy, params=params)
-        del dbase
-        return bool(strategy)
 
     def add_feed_to_bot(self, feed: Dict) -> bool:
         """
@@ -108,10 +106,7 @@ class UserManager:
         """
         logger.info("Adding feeds to bot...")
         with Database() as dbase:
-            strategy = False
-            if feed['bot_id']:
-                strategy = dbase.add_feed_to_bot(feed=feed)
-        return bool(strategy)
+            return dbase.add_feed_to_bot(feed=feed)
 
     def add_bot(self, bot: Dict) -> int:
         """
@@ -126,6 +121,21 @@ class UserManager:
         logger.info("Adding bot...")
         with Database() as dbase:
             result = dbase.add_bot(bot=bot)
+        return result
+
+    def remove_bot(self, bot_id: int) -> bool:
+        """
+        removes a bot.
+
+        Args:
+            bot_id (int): The bot id
+
+        Returns:
+            bool: if bot was removed
+        """
+        logger.info("removed bot...")
+        with Database() as dbase:
+            result = dbase.delete_bot(bot_id=bot_id)
         return result
 
     def add_bot_exchange(self, bot_id: int, exchange: Dict) -> bool:
@@ -143,27 +153,6 @@ class UserManager:
         with Database() as dbase:
             result = dbase.add_exchange_to_bot(bot_id=bot_id, exchange=exchange)
         return bool(result)
-
-    def list_user_strats(self, bot_id: int) -> str:
-        """
-        Lists user strategies (currently not used).
-
-        Args:
-            bot_id (int): The strategy ID.
-
-        Returns:
-            str: A formatted string containing the user strategies.
-        """
-        dbase = Database()
-        params = dbase.get_user_strat_params(bot_id=bot_id)
-        del dbase
-        msg = ""
-        for param in params:
-            string = f'"str_name": "{param.str_name}",\
-                       "name":"{param.name}",\
-                       "value":"{param.value}"'
-            msg = msg + '{' + string + '}\n'
-        return msg
 
     def list_users(self, page=1, page_size=10, all=False) -> List[Dict]:
         """
@@ -204,9 +193,10 @@ class UserManager:
         Returns:
             str: A formatted string containing the user list.
         """
-        with Database() as dbase:
-            exchanges: List[Dict[str, Any]] = dbase.get_user_exchanges(uid=uid)
-        return exchanges
+        if uid:
+            with Database() as dbase:
+                return  dbase.get_user_exchanges(uid=uid)
+        return []
 
     def user_details(self, uid: int) -> Dict[str, Dict[str, Dict[str, Union[str, int]]]]:
         """
@@ -247,6 +237,7 @@ class UserManager:
                         }
 
         return details
+
 
     def set_secret_key(self, user_id: int, exchange: str, key: str, secret: str) -> bool:
         """
@@ -311,3 +302,25 @@ class UserManager:
                 pass
         del hush
         return False
+
+    def add_user(self, user: dict) -> None:
+        """
+        Adds a new user to the database.
+
+        Args:
+            user (dict): The user dict
+        """
+        with Database() as dbase:
+            dbase.add_user(user=user)
+
+    def remove_user(self, user_id: Optional[str] = None, email: Optional[str] = None) -> bool:
+        """
+        Adds a new user to the database.
+
+        Args:
+            username (str): The username for the new user.
+            password (str): The password for the new user.
+            email (str): The email address for the new user.
+        """
+        with Database() as dbase:
+            return dbase.remove_user(user_id=user_id, email=email)

@@ -1,33 +1,29 @@
 from __future__ import unicode_literals, print_function
 import sys
-from libs.models.bot_model import Database
 import pytest
 
-@pytest.fixture(scope="module")
-def dbase():
-    with Database() as dbase:
-        yield dbase
 
-
-def test_get_bot_details(dbase):
-    bot = dbase.get_bot_list(bot_id=1)
+def test_get_bot_details(dbase, bot_id):
+    bot = dbase.get_bot_list(bot_id=bot_id)
     assert len(bot) > 0
 
 
-def test_edit_bot(dbase):
-    bot = dbase.get_bot_list(bot_id=1)[0]
+def test_edit_bot(dbase, bot_id):
+    bot = dbase.get_bot_list(bot_id=bot_id)[0]
     _bot = {'bot_id': bot.bot_id,
             'dry_run': bot.dry_run,
             'name': bot.name,
             'uid': bot.uid,
             'timestamp': bot.timestamp}
     res = dbase.edit_bot(bot=_bot)
+    assert res is True
 
 
-def test_edit_feeds(dbase):
+def test_edit_feeds(dbase, bot_id):
     feeds = {}
-    _feeds = dbase.get_bot_feeds(1)
+    _feeds = dbase.get_bot_feeds(bot_id=bot_id)
     if _feeds:
+        str_id = None
         for feed in _feeds:
             feeds[feed.feed_id] = {
                               'symbol': feed.symbol,
@@ -36,12 +32,14 @@ def test_edit_feeds(dbase):
                               'period': feed.period,
                               'feed_id': feed.feed_id
                               }
-    res = dbase.edit_feeds(bot_id=1, feeds=feeds)
-    assert res is True
+            str_id = feed.str_id
+        if str_id:
+            res = dbase.edit_feeds(str_id=str_id, feeds=feeds)
+            assert res is True
 
 
-def test_save_bot_log(dbase):
-    bot_id = 2
+def test_save_bot_log(dbase, bot_id):
+    bot_id = bot_id
     message = 'open'
     position = 0.0001
     feed_num = 0

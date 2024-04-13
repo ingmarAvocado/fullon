@@ -193,7 +193,7 @@ class TradeManager:
                 tsleep = exch.get_sleep()
                 if not tsleep:
                     tsleep = 1
-                time.sleep(exch.get_sleep()*2)  # this is just a trottle.
+                time.sleep(tsleep*2)  # this is just a trottle.
             else:
                 break
         return timestamp

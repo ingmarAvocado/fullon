@@ -1,5 +1,5 @@
 -- Database generated with pgModeler (PostgreSQL Database Modeler).
--- pgModeler version: 1.1.1
+-- pgModeler version: 1.1.2
 -- PostgreSQL version: 16.0
 -- Project Site: pgmodeler.io
 -- Model Author: ---
@@ -71,10 +71,10 @@ ALTER TABLE public.users OWNER TO postgres;
 CREATE TABLE public.cat_strategies (
 	cat_str_id serial NOT NULL,
 	name varchar(50) NOT NULL,
-	take_profit varchar(5),
-	stop_loss varchar(5),
-	trailing_stop varchar(5),
-	timeout varchar(8),
+	take_profit float,
+	stop_loss float,
+	trailing_stop float,
+	timeout float,
 	pre_load_bars smallint NOT NULL DEFAULT 200,
 	feeds smallint NOT NULL DEFAULT 2,
 	pairs bool DEFAULT False,
@@ -88,12 +88,13 @@ ALTER TABLE public.cat_strategies OWNER TO postgres;
 -- object: public.strategies | type: TABLE --
 -- DROP TABLE IF EXISTS public.strategies CASCADE;
 CREATE TABLE public.strategies (
+	str_id serial NOT NULL,
 	bot_id integer,
 	cat_str_id integer NOT NULL,
-	take_profit varchar(5),
-	stop_loss varchar(5),
-	trailing_stop varchar(5),
-	timeout varchar(8),
+	take_profit float,
+	stop_loss float,
+	trailing_stop float,
+	timeout float,
 	leverage float NOT NULL DEFAULT 1,
 	size_pct float,
 	size float,
@@ -101,7 +102,7 @@ CREATE TABLE public.strategies (
 	pre_load_bars smallint,
 	feeds smallint DEFAULT 2,
 	pairs bool DEFAULT False,
-	CONSTRAINT unique_bot_id UNIQUE (bot_id)
+	CONSTRAINT strategies_pk PRIMARY KEY (str_id)
 );
 -- ddl-end --
 ALTER TABLE public.strategies OWNER TO postgres;
@@ -170,10 +171,10 @@ ALTER TABLE public.cat_strategies_params OWNER TO postgres;
 -- object: public.strategies_params | type: TABLE --
 -- DROP TABLE IF EXISTS public.strategies_params CASCADE;
 CREATE TABLE public.strategies_params (
-	bot_id integer NOT NULL,
+	str_id integer NOT NULL,
 	name varchar(25) NOT NULL,
 	value varchar(75) NOT NULL,
-	CONSTRAINT unique_param_symbol2 UNIQUE (bot_id,name)
+	CONSTRAINT unique_param_symbol2 UNIQUE (str_id,name)
 );
 -- ddl-end --
 ALTER TABLE public.strategies_params OWNER TO postgres;
@@ -395,7 +396,7 @@ CREATE AGGREGATE public.LAST (
 -- DROP TABLE IF EXISTS public.feeds CASCADE;
 CREATE TABLE public.feeds (
 	feed_id serial NOT NULL,
-	bot_id integer NOT NULL,
+	str_id integer NOT NULL,
 	symbol_id integer NOT NULL,
 	period varchar(10) NOT NULL,
 	compression smallint NOT NULL,
@@ -529,7 +530,7 @@ ALTER TABLE public.follows_analyzers OWNER TO postgres;
 -- ALTER TABLE public.exchanges DROP CONSTRAINT IF EXISTS user_id CASCADE;
 ALTER TABLE public.exchanges ADD CONSTRAINT user_id FOREIGN KEY (uid)
 REFERENCES public.users (uid) MATCH FULL
-ON DELETE RESTRICT ON UPDATE RESTRICT;
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: exchange_cat_exchange | type: CONSTRAINT --
@@ -553,9 +554,9 @@ REFERENCES public.cat_strategies (cat_str_id) MATCH SIMPLE
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
--- object: bot_id | type: CONSTRAINT --
--- ALTER TABLE public.strategies DROP CONSTRAINT IF EXISTS bot_id CASCADE;
-ALTER TABLE public.strategies ADD CONSTRAINT bot_id FOREIGN KEY (bot_id)
+-- object: many_str_one_bot | type: CONSTRAINT --
+-- ALTER TABLE public.strategies DROP CONSTRAINT IF EXISTS many_str_one_bot CASCADE;
+ALTER TABLE public.strategies ADD CONSTRAINT many_str_one_bot FOREIGN KEY (bot_id)
 REFERENCES public.bots (bot_id) MATCH SIMPLE
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
@@ -564,7 +565,7 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- ALTER TABLE public.bots DROP CONSTRAINT IF EXISTS bot_user CASCADE;
 ALTER TABLE public.bots ADD CONSTRAINT bot_user FOREIGN KEY (uid)
 REFERENCES public.users (uid) MATCH FULL
-ON DELETE NO ACTION ON UPDATE CASCADE;
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
 -- object: cat_ex_id | type: CONSTRAINT --
@@ -590,8 +591,8 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- object: cat_id | type: CONSTRAINT --
 -- ALTER TABLE public.strategies_params DROP CONSTRAINT IF EXISTS cat_id CASCADE;
-ALTER TABLE public.strategies_params ADD CONSTRAINT cat_id FOREIGN KEY (bot_id)
-REFERENCES public.strategies (bot_id) MATCH FULL
+ALTER TABLE public.strategies_params ADD CONSTRAINT cat_id FOREIGN KEY (str_id)
+REFERENCES public.strategies (str_id) MATCH FULL
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
@@ -634,13 +635,13 @@ ON DELETE NO ACTION ON UPDATE NO ACTION;
 -- ALTER TABLE public.feeds DROP CONSTRAINT IF EXISTS feed_symbol CASCADE;
 ALTER TABLE public.feeds ADD CONSTRAINT feed_symbol FOREIGN KEY (symbol_id)
 REFERENCES public.symbols (symbol_id) MATCH FULL
-ON DELETE NO ACTION ON UPDATE NO ACTION;
+ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 
--- object: feed_bots | type: CONSTRAINT --
--- ALTER TABLE public.feeds DROP CONSTRAINT IF EXISTS feed_bots CASCADE;
-ALTER TABLE public.feeds ADD CONSTRAINT feed_bots FOREIGN KEY (bot_id)
-REFERENCES public.bots (bot_id) MATCH SIMPLE
+-- object: feed_strategies | type: CONSTRAINT --
+-- ALTER TABLE public.feeds DROP CONSTRAINT IF EXISTS feed_strategies CASCADE;
+ALTER TABLE public.feeds ADD CONSTRAINT feed_strategies FOREIGN KEY (str_id)
+REFERENCES public.strategies (str_id) MATCH SIMPLE
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 

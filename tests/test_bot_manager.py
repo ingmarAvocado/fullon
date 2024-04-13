@@ -18,34 +18,50 @@ def test_bots_list(bot_manager):
 
 
 @pytest.mark.order(2)
-def test_bot_details(bot_manager):
-    details = bot_manager.bot_details(bot_id=1)
-    assert len(details) > 4
-    assert isinstance(details['feeds']['0'], dict)
+def test_bot_details(bot_manager, bot_id):
+    details = bot_manager.bot_details(bot_id=bot_id)
+    assert len(details) >= 1
+    assert len(details[0]) >= 2
+    assert isinstance(details[0]['feeds']['0'], dict)
 
 
 @pytest.mark.order(3)
-def test_edit_bot(bot_manager):
-    bot = bot_manager.bot_details(bot_id=1)
-    res = bot_manager.edit(bot=bot)
+def test_edit_bot(bot_manager, bot_id, str_id1):
+    bot = bot_manager.bot_details(bot_id=bot_id)
+    _strat = {"bot_id": bot_id,
+              "str_id": str_id1,
+              "size": None,
+              "size_pct": 10,
+              "size_currency": "USD",
+              "take_profit": 14,
+              "trailing_stop": 13,
+              "timeout": None
+              }
+    extended = {
+          'rsi': "14",  #
+    }
+    _strat['extended'] = extended
+    res = bot_manager.edit(bot_id=bot, strat=_strat)
+    assert res is True
+
 
 
 @pytest.mark.order(4)
-def test_start_bot(bot_manager):
-    bot = bot_manager.start(bot_id=1)
+def test_start_bot(bot_manager, bot_id):
+    bot = bot_manager.start(bot_id=bot_id)
     assert bot is True
 
-
 @pytest.mark.order(5)
-def test_start_bot2(bot_manager):
-    bot = bot_manager.start(bot_id=1)
+def test_start_bot2(bot_manager, bot_id):
+    bot = bot_manager.start(bot_id=-1)
     assert bot is False
 
 
 @pytest.mark.order(6)
-def test_stop_bot2(bot_manager):
-    bot = bot_manager.stop(bot_id=1)
+def test_stop_bot2(bot_manager, bot_id):
+    bot = bot_manager.stop(bot_id=bot_id)
     assert bot is True
+
 
 '''
 def test_edit_bot(bot_manager):

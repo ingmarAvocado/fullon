@@ -12,61 +12,55 @@ logger = log.fullon_logger(__name__)
 
 class Database(database.Database):
 
-    def get_bot_feeds(self, bot_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_bot_feeds(self, bot_id: Optional[int] = None) -> List[Any]:
         """
         Fetches and returns all the feeds associated with a bot from the database.
-        The method performs an SQL query that selects distinct data associated with 
-        bot feeds, including exchange information, feed details, and symbol information. 
 
         Parameters:
-        bot_id (str): A string representing the unique identifier of the bot.
-        Returns:
-        list[dict]: A list of dictionaries where each dictionary represents a feed 
-        and its associated details. If no data is found or an error occurs, an empty 
-        list is returned.
-        """
+        bot_id (int): An integer representing the unique identifier of the bot.
 
-        # SQL query string
-        sql = """
-            SELECT DISTINCT
-                public.exchanges.ex_id,
-                public.feeds.period,
-                public.feeds.compression,
-                public.feeds.feed_id,
-                public.feeds.order as feed_order,
-                public.cat_exchanges.name as exchange_name,
-                public.cat_exchanges.cat_ex_id,
-                public.symbols.symbol,
-                public.symbols.base,
-                public.symbols.futures,
-                public.symbols.ex_base
-            FROM
-                public.cat_exchanges
-                INNER JOIN public.symbols
-                    ON public.cat_exchanges.cat_ex_id = public.symbols.cat_ex_id
-                INNER JOIN public.feeds
-                    ON public.symbols.symbol_id = public.feeds.symbol_id
-                INNER JOIN public.exchanges
-                    ON public.cat_exchanges.cat_ex_id = public.exchanges.cat_ex_id
-                INNER JOIN public.bot_exchanges
-                    ON public.bot_exchanges.ex_id = public.exchanges.ex_id
-            """
-        if bot_id:
-            sql += " WHERE feeds.bot_id = %s and bot_exchanges.bot_id = %s "
-        sql += "ORDER by feed_order ASC"
-        try:
-            with self.con.cursor() as cur:
-                cur.execute(sql, (bot_id, bot_id))  # Use parameterized query to prevent SQL injection
-                rows = [dbhelpers.reg(cur, row) for row in cur.fetchall()]
-                return rows
-        except (Exception, psycopg2.DatabaseError) as error:
-            logger.error(
-                self.error_print(error=error,
-                                 method="get_bot_feeds",
-                                 query=sql))
+        Returns:
+        list[dict]: A list of dictionaries where each dictionary represents a feed and its associated details.
+                    If no data is found or an error occurs, an empty list is returned.
+        """
+        if bot_id is None:
             return []
 
-    def edit_feeds(self, bot_id: int, feeds: dict) -> bool:
+        # Corrected SQL query string
+        sql = """
+            SELECT DISTINCT
+                e.ex_id,
+                f.period,
+                f.compression,
+                f.feed_id,
+                f.str_id,
+                f."order" as feed_order,
+                ce.name as exchange_name,
+                ce.cat_ex_id,
+                s.symbol,
+                s.base,
+                s.futures,
+                s.ex_base
+            FROM
+                public.feeds f
+                INNER JOIN public.strategies str ON f.str_id = str.str_id
+                INNER JOIN public.symbols s ON f.symbol_id = s.symbol_id
+                INNER JOIN public.exchanges e ON s.cat_ex_id = e.cat_ex_id
+                INNER JOIN public.cat_exchanges ce ON e.cat_ex_id = ce.cat_ex_id
+            WHERE
+                str.bot_id = %s
+            ORDER BY
+                f."order" ASC
+        """
+        try:
+            with self.con.cursor() as cur:
+                cur.execute(sql, (bot_id,))
+                return [dbhelpers.reg(cur, row) for row in cur.fetchall()]
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error(f"Error fetching bot feeds for bot_id {bot_id}: {error}")
+            return []
+
+    def edit_feeds(self, str_id: int, feeds: dict) -> bool:
         """
         Updates feeds table for each feed_id in the provided list.
 
@@ -84,7 +78,7 @@ class Database(database.Database):
                 # SQL query to update the feeds for all feeds in the list
                 sql = """
                 UPDATE feeds
-                SET bot_id = %s, symbol_id = %s, period = %s, compression = %s 
+                SET str_id = %s, symbol_id = %s, period = %s, compression = %s 
                 WHERE feed_id = %s
                 """
 
@@ -94,11 +88,10 @@ class Database(database.Database):
                     symbol_id = self.get_symbol_id(symbol=feed_data['symbol'],
                                                    exchange_name=feed_data['exchange'])
                     # Execute the SQL query for each feed
-                    cur.execute(sql, (bot_id, symbol_id, feed_data['period'], feed_data['compression'], feed_data['feed_id']))
+                    cur.execute(sql, (str_id, symbol_id, feed_data['period'], feed_data['compression'], feed_data['feed_id']))
 
                 # Commit changes
                 self.con.commit()
-
             return True
         except (Exception, psycopg2.DatabaseError) as error:
             logger.error(f"Error in edit_feeds: {error}")
@@ -354,48 +347,52 @@ class Database(database.Database):
             logger.error(f"Error editing bot: {error}")
             return False
 
-    def get_bot_params(self, bot_id: int) -> Dict:
+    def get_bot_params(self, bot_id: int) -> List[Dict]:
         """
-        Fetches and returns details of a bot with a given bot_id from the database.
-        The details include bot's information, its strategies, parameters, feeds, and symbol.
-        Parameters:
-            bot_id (int): The id of the bot.
+        Fetches and returns details of all strategies associated with a bot from the database.
+        The details include the bot's information, its strategies, and various parameters for each strategy.
+
+        Args:
+            bot_id (int): The ID of the bot.
+
         Returns:
-            dict: A dictionary containing the details of the bot. 
+            List[Dict]: A list of dictionaries, each containing the details of each strategy associated with the bot.
         """
         sql = """
             SELECT
-                public.bots.bot_id,
-                public.bots.dry_run,
-                public.bots.active,
-                public.bots.uid,
-                public.strategies.take_profit,
-                public.strategies.stop_loss,
-                public.strategies.trailing_stop,
-                public.strategies.timeout,
-                public.strategies.leverage,
-                public.strategies.size_pct,
-                public.strategies.size,
-                public.strategies.size_currency,
-                public.strategies.pre_load_bars
+                b.bot_id,
+                b.dry_run,
+                b.active,
+                b.uid,
+                s.str_id,
+                s.take_profit,
+                s.stop_loss,
+                s.trailing_stop,
+                s.timeout,
+                s.leverage,
+                s.size_pct,
+                s.size,
+                s.size_currency,
+                s.pre_load_bars
             FROM
-                public.bots
-                INNER JOIN public.strategies
-                 ON public.bots.bot_id = public.strategies.bot_id
-                 AND public.bots.bot_id = %s
-            ORDER BY public.bots.bot_id
+                public.bots b
+                INNER JOIN public.strategies s ON b.bot_id = s.bot_id
+            WHERE b.bot_id = %s
+            ORDER BY s.str_id
         """
-        details = {}
         try:
-            with self.con.cursor(cursor_factory=DictCursor) as cur:
+            with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute(sql, (bot_id,))
-                row = cur.fetchone()
-                if row is None:
-                    raise ValueError(f"No bot found with bot_id: {bot_id}")                
-                details = dict(row)
+                results = cur.fetchall()
+                if not results:
+                    logger.warning(f"No strategies found for bot_id: {bot_id}")
+                    return []
+                # Convert each row to a dictionary and collect in a list
+                return [dict(row) for row in results]
+
         except psycopg2.DatabaseError as error:
-            logger.error(self.error_print(error=error, method="bot_details", query=sql))
-        return details
+            logger.error(f"Database error in get_bot_params: {error}")
+            return []
 
     def get_bot_list(self, uid: Optional[str] = None, bot_id: Optional[str] = None, active: bool = False) -> Optional[List[Dict[str, str]]]:
         """
@@ -527,10 +524,10 @@ class Database(database.Database):
             psycopg2.DatabaseError: If an error occurs while inserting the feed.
         """
         sql = """
-            INSERT INTO public.feeds (bot_id, symbol_id, period, compression, "order")
+            INSERT INTO public.feeds (str_id, symbol_id, period, compression, "order")
             VALUES (%s, %s, %s, %s, %s)
         """
-        data = (feed['bot_id'], feed['symbol_id'], feed['period'], feed['compression'], feed['order'])
+        data = (feed['str_id'], feed['symbol_id'], feed['period'], feed['compression'], feed['order'])
         cur = None
         try:
             with self.con.cursor() as cur:

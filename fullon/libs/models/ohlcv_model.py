@@ -1,4 +1,5 @@
 from typing import List, Optional, Union, Tuple, Any
+from numpy import left_shift
 import psycopg2
 from psycopg2.extensions import AsIs, ISOLATION_LEVEL_AUTOCOMMIT, ISOLATION_LEVEL_DEFAULT
 import arrow
@@ -6,6 +7,7 @@ from libs import settings, log
 from libs import database_helpers as dbhelpers
 from libs.structs.trade_struct import TradeStruct
 from datetime import datetime
+import base64
 
 logger = log.fullon_logger(__name__)
 
@@ -14,6 +16,7 @@ class Database:
 
     def __init__(self, exchange: str, symbol: str):
         self.exchange = exchange
+        self.symbol = symbol
         symbol = exchange + "_" + symbol.replace("/", "_")
         symbol = symbol.replace(":", "_")
         self.schema = symbol.replace("-", "_")
@@ -234,7 +237,10 @@ class Database:
         self.schema = symbol.replace("-", "_")
         return None
 
-    def install_schema(self, ohlcv):
+    def install_schema(self, ohlcv: bool = False):
+        """
+        Makes schema
+        """
         if not self.table_exists():
             self.make_schema()
             self.make_trade_table()
@@ -387,15 +393,14 @@ class Database:
                 hypertable_sql = f"SELECT create_hypertable('{self.schema}.trades', 'timestamp')"
                 cur.execute(hypertable_sql)
                 self.con.commit()
-
             logger.info("Trade hypertable created")
             return True
         except (Exception, psycopg2.DatabaseError) as error:
             self.con.rollback()
             logger.info(self.error_print(error=error, method="make_trade_table", query=sql))
-            raise
+        return False
 
-    def make_candle_table(self, ohlcv: Optional[str] = None) -> None:
+    def make_candle_table(self, ohlcv: bool = False) -> None:
         """
         Creates a table for candles in the database if it does not exist.
 
@@ -405,12 +410,9 @@ class Database:
         Raises:
             psycopg2.DatabaseError: If an error occurs during the creation of the table.
         """
-        if ohlcv == "False":
-            ohlcv = None
-
         if ohlcv:
-            import base64
-            base64_bytes = ohlcv.encode('ascii')
+            ohlcv_str = self.make_default_ohlcv()
+            base64_bytes = ohlcv_str.encode('ascii')
             message_bytes = base64.b64decode(base64_bytes)
             sql = message_bytes.decode('ascii').replace('SCHEMA', self.schema)
         else:
@@ -436,6 +438,37 @@ class Database:
             self.con.rollback()
             logger.info(self.error_print(error=error, method="make_candle_tables", query=sql))
             raise
+
+    def make_default_ohlcv(self) -> str:
+        """
+        Creates a table for candles in the database if it does not exist.
+
+        Raises:
+            psycopg2.DatabaseError: If an error occurs during the creation of the table.
+        """
+        left, right = self.symbol.split("/")
+        OHLCV = f"""
+        CREATE MATERIALIZED VIEW {self.exchange}_{left}_{right}.candles1m
+        WITH (timescaledb.continuous) AS
+        SELECT time_bucket('1 minutes', timestamp) AS ts,
+                FIRST(price, timestamp) as open,
+                MAX(price) as high,
+                MIN(price) as low,
+                LAST(price, timestamp) as close,
+                SUM(volume) as vol
+        FROM kraken_{left}_{right}.trades
+        WHERE kraken_{left}_{right}.trades.timestamp > '2017-01-01'
+        GROUP BY ts WITH NO DATA;
+        commit;
+        SELECT add_continuous_aggregate_policy('{self.exchange}_{left}_{right}.candles1m',
+            start_offset => INTERVAL '2 h',
+            end_offset => INTERVAL '1 h',
+            schedule_interval => INTERVAL '1 h');
+        commit;
+        ALTER TABLE {self.exchange}_{left}_{right}_USD.candles1m  RENAME COLUMN ts to timestamp;
+        """
+        return OHLCV
+
 
     def get_latest_timestamp(self, table: str = "", table2: str = "") -> Optional[str]:
         """

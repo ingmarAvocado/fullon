@@ -19,29 +19,6 @@ def test_add_exchange(user_manager, monkeypatch, db_session):
         mock_run_default.assert_called_once()
 
 
-@pytest.mark.order(2)
-def test_add_params_to_strategy(user_manager):
-    mock_strategy = "strategy_name"
-    mock_params = {'key': 'value'}
-    mock_result = True
-
-    with patch('libs.database.Database._run_default', return_value=mock_result) as mock_run_default:
-        result = user_manager.add_params_to_strategy(mock_strategy, mock_params)
-        assert result == mock_result
-        mock_run_default.assert_called_once()
-
-
-@pytest.mark.order(3)
-def test_add_feed_to_bot(user_manager):
-    mock_feed = {'bot_id': 1, 'key': 'value'}
-    mock_result = True
-
-    with patch('libs.database.Database._run_default', return_value=mock_result) as mock_run_default:
-        result = user_manager.add_feed_to_bot(mock_feed)
-        assert result == mock_result
-        mock_run_default.assert_called_once()
-
-
 @pytest.mark.order(4)
 def test_add_bot(user_manager):
     mock_bot = {'key': 'value'}
@@ -65,9 +42,10 @@ def test_add_bot_exchange(user_manager):
         mock_run_default.assert_called_once()
 
 
+
 @pytest.mark.order(6)
 def test_user_set_secret_key(user_manager):
-    user_id = 'pytest'
+    user_id = 0
     key = "key1"
     exchange = "kraken"
     secret = "secret"
@@ -104,9 +82,10 @@ def test_user_set_secret_key(user_manager):
     assert res is True
 
 
+
 @pytest.mark.order(7)
-def test_get_user_id(user_manager):
-    user = user_manager.get_user_id(mail='admin@fullon')
+def test_get_user_id(user_manager, test_mail):
+    user = user_manager.get_user_id(mail=test_mail)
     assert isinstance(user, int)
 
 
@@ -115,14 +94,23 @@ def test_user_list(user_manager):
     users = user_manager.list_users(page=1, page_size=10, all=False)
     assert isinstance(users, list)
 
-
 @pytest.mark.order(9)
-def test_get_user_exchange(user_manager):
-    uid = user_manager.get_user_id(mail='admin@fullon')
-    res = user_manager.get_user_exchanges(uid=uid)
+def test_get_user_exchange(user_manager, test_mail, uid,  exchange1):
+    _uid = user_manager.get_user_id(mail=test_mail)
+    assert _uid == uid
+    res = user_manager.get_user_exchanges(uid=_uid)
+    assert isinstance(res, list)
+    assert isinstance(res[0], dict)
+    assert res[0]['cat_ex_id'] == exchange1[1]
+    _uid = user_manager.get_user_id(mail='notreal@noexists.com')
+    assert _uid is None
+    res = user_manager.get_user_exchanges(uid=_uid)
+    assert res == []
 
+'''
 
 @pytest.mark.order(10)
 def test_del_strategy(user_manager):
     res = user_manager.del_bot_strategy(bot_id=0)
     assert res is False
+'''

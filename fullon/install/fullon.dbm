@@ -3,8 +3,8 @@
 CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="1.1.1" use-changelog="false" max-obj-count="32"
-	 last-position="619,101" last-zoom="0.95" scene-rect="0,0,4569.01,2223.72"
+<dbmodel pgmodeler-ver="1.1.2" use-changelog="false" max-obj-count="32"
+	 last-position="61,0" last-zoom="0.7" scene-rect="0,0,4569.01,2223.72"
 	 default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
@@ -133,16 +133,16 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="varchar" length="50"/>
 	</column>
 	<column name="take_profit">
-		<type name="varchar" length="5"/>
+		<type name="float" length="5"/>
 	</column>
 	<column name="stop_loss">
-		<type name="varchar" length="5"/>
+		<type name="float" length="5"/>
 	</column>
 	<column name="trailing_stop">
-		<type name="varchar" length="5"/>
+		<type name="float" length="5"/>
 	</column>
 	<column name="timeout">
-		<type name="varchar" length="8"/>
+		<type name="float" length="8"/>
 	</column>
 	<column name="pre_load_bars" not-null="true" default-value="200">
 		<type name="smallint" length="0"/>
@@ -161,10 +161,13 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="strategies" layers="0" collapse-mode="2" max-obj-count="15" z-value="0">
+<table name="strategies" layers="0" collapse-mode="2" max-obj-count="16" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="3420" y="800"/>
+	<position x="3160" y="900"/>
+	<column name="str_id" not-null="true">
+		<type name="serial" length="0"/>
+	</column>
 	<column name="bot_id">
 		<type name="integer" length="0"/>
 	</column>
@@ -172,16 +175,16 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="integer" length="0"/>
 	</column>
 	<column name="take_profit">
-		<type name="varchar" length="5" precision="2"/>
+		<type name="float" length="1"/>
 	</column>
 	<column name="stop_loss">
-		<type name="varchar" length="5" precision="2"/>
+		<type name="float" length="5" precision="2"/>
 	</column>
 	<column name="trailing_stop">
-		<type name="varchar" length="5" precision="2"/>
+		<type name="float" length="5" precision="2"/>
 	</column>
 	<column name="timeout">
-		<type name="varchar" length="8" precision="2"/>
+		<type name="float" length="8" precision="2"/>
 	</column>
 	<column name="leverage" not-null="true" default-value="1">
 		<type name="float" length="0"/>
@@ -204,15 +207,15 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<column name="pairs" default-value="False">
 		<type name="bool" length="0"/>
 	</column>
-	<constraint name="unique_bot_id" type="uq-constr" table="public.strategies">
-		<columns names="bot_id" ref-type="src-columns"/>
+	<constraint name="strategies_pk" type="pk-constr" table="public.strategies">
+		<columns names="str_id" ref-type="src-columns"/>
 	</constraint>
 </table>
 
 <table name="bots" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2720" y="1000"/>
+	<position x="2560" y="1080"/>
 	<column name="bot_id" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
@@ -320,8 +323,8 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="strategies_params" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="4120" y="860"/>
-	<column name="bot_id" not-null="true">
+	<position x="3880" y="940"/>
+	<column name="str_id" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
@@ -331,7 +334,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="varchar" length="75"/>
 	</column>
 	<constraint name="unique_param_symbol2" type="uq-constr" table="public.strategies_params">
-		<columns names="bot_id,name" ref-type="src-columns"/>
+		<columns names="str_id,name" ref-type="src-columns"/>
 	</constraint>
 </table>
 
@@ -700,11 +703,11 @@ CREATE AGGREGATE public.LAST (
 <table name="feeds" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2860" y="440"/>
+	<position x="2800" y="360"/>
 	<column name="feed_id" not-null="true">
 		<type name="serial" length="0"/>
 	</column>
-	<column name="bot_id" not-null="true">
+	<column name="str_id" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
 	<column name="symbol_id" not-null="true">
@@ -935,7 +938,7 @@ CREATE AGGREGATE public.LAST (
 </table>
 
 <constraint name="user_id" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="RESTRICT" del-action="RESTRICT" ref-table="public.users" table="public.exchanges">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.exchanges">
 	<columns names="uid" ref-type="src-columns"/>
 	<columns names="uid" ref-type="dst-columns"/>
 </constraint>
@@ -958,14 +961,14 @@ CREATE AGGREGATE public.LAST (
 	<columns names="cat_str_id" ref-type="dst-columns"/>
 </constraint>
 
-<constraint name="bot_id" type="fk-constr" comparison-type="MATCH SIMPLE"
+<constraint name="many_str_one_bot" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.bots" table="public.strategies">
 	<columns names="bot_id" ref-type="src-columns"/>
 	<columns names="bot_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="bot_user" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="CASCADE" del-action="NO ACTION" ref-table="public.users" table="public.bots">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.bots">
 	<columns names="uid" ref-type="src-columns"/>
 	<columns names="uid" ref-type="dst-columns"/>
 </constraint>
@@ -990,8 +993,8 @@ CREATE AGGREGATE public.LAST (
 
 <constraint name="cat_id" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.strategies" table="public.strategies_params">
-	<columns names="bot_id" ref-type="src-columns"/>
-	<columns names="bot_id" ref-type="dst-columns"/>
+	<columns names="str_id" ref-type="src-columns"/>
+	<columns names="str_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="bot_uid" type="fk-constr" comparison-type="MATCH FULL"
@@ -1025,15 +1028,15 @@ CREATE AGGREGATE public.LAST (
 </constraint>
 
 <constraint name="feed_symbol" type="fk-constr" comparison-type="MATCH FULL"
-	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.symbols" table="public.feeds">
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.symbols" table="public.feeds">
 	<columns names="symbol_id" ref-type="src-columns"/>
 	<columns names="symbol_id" ref-type="dst-columns"/>
 </constraint>
 
-<constraint name="feed_bots" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.bots" table="public.feeds">
-	<columns names="bot_id" ref-type="src-columns"/>
-	<columns names="bot_id" ref-type="dst-columns"/>
+<constraint name="feed_strategies" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.strategies" table="public.feeds">
+	<columns names="str_id" ref-type="src-columns"/>
+	<columns names="str_id" ref-type="dst-columns"/>
 </constraint>
 
 <constraint name="bot_id_bot_id" type="fk-constr" comparison-type="MATCH SIMPLE"
@@ -1176,11 +1179,6 @@ CREATE AGGREGATE public.LAST (
 	 dst-table="public.symbols" reference-fk="feed_symbol"
 	 src-required="false" dst-required="true"/>
 
-<relationship name="rel_feeds_bots" type="relfk" layers="0"
-	 src-table="public.feeds"
-	 dst-table="public.bots" reference-fk="feed_bots"
-	 src-required="false" dst-required="true"/>
-
 <relationship name="rel_simulations_bots" type="relfk" layers="0"
 	 src-table="public.simulations"
 	 dst-table="public.bots" reference-fk="bot_id_bot_id"
@@ -1190,11 +1188,6 @@ CREATE AGGREGATE public.LAST (
 	 src-table="public.strategies"
 	 dst-table="public.cat_strategies" reference-fk="cat_str_id"
 	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_strategies_bots" type="relfk" layers="0"
-	 src-table="public.strategies"
-	 dst-table="public.bots" reference-fk="bot_id"
-	 src-required="false" dst-required="false"/>
 
 <relationship name="rel_follow_accounts_users" type="relfk" layers="0"
 	 src-table="public.sites_follows"
@@ -1244,5 +1237,15 @@ CREATE AGGREGATE public.LAST (
 	 src-table="public.engine_scores"
 	 dst-table="public.post_analyzers" reference-fk="aid_to_aid"
 	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_feeds_strategies" type="relfk" layers="0"
+	 src-table="public.feeds"
+	 dst-table="public.strategies" reference-fk="feed_strategies"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_strategies_bots" type="relfk" layers="0"
+	 src-table="public.strategies"
+	 dst-table="public.bots" reference-fk="many_str_one_bot"
+	 src-required="false" dst-required="false"/>
 
 </dbmodel>

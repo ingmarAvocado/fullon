@@ -133,26 +133,18 @@ class Prompts():
             except ValueError:
                 print("Please enter a valid bot number.")
 
-    def _get_str_params(self) -> dict:
+    def _get_str_params(self) -> list:
         """
         Set the strategy parameters for the bot.
 
-        :return: A dictionary of strategy parameters.
+        :return: A list of dictionaries, each containing strategy parameters including both base and additional ones.
         """
         bot_id = self.BOT[0]
-        strs = []
         with Database() as dbase:
-            strs = dbase.get_str_params(bot_id=bot_id)
-        with Database() as dbase:
-            base_params = vars(dbase.get_base_str_params(bot_id=bot_id))
-        for s in strs:
-            name = s[0]
-            value = s[1]
-            if name not in base_params:
-                try:
-                    base_params.update({name: int(value)})
-                except BaseException:
-                    base_params.update({name: value})
+            # Fetch both sets of parameters in a single database connection
+            strats = dbase.get_str_params(bot_id=bot_id)
+            base_params = dbase.get_base_str_params(bot_id=bot_id)
+        # Assuming both base_params and strats return a list of dictionaries, where each dict contains 'str_id' and parameters
         return base_params
 
     def set_str_params(self):

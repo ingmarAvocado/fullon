@@ -46,7 +46,6 @@ class Bot:
                 logger.warning(f"Bot id {bot_id} not found or not active")
                 return None
             self.bars = bars
-            self.strategy = dbase.get_str_name(bot_id=bot_id)
             self.uid = bot.uid
             self.id = bot.bot_id
             self.bot_name = bot.name
@@ -55,8 +54,7 @@ class Bot:
             self.simulresults = {}
             self.str_params = self._str_set_params(dbase=dbase)
             self.cache = cache.Cache()
-            self.str_feeds = self._set_feeds(
-                dbase.get_bot_feeds(bot_id=bot.bot_id), dbase=dbase)
+            self.str_feeds = self._set_feeds(dbase=dbase)
             if not self.str_feeds:
                 logger.error(
                     "__init__: It is not possible to run a simulation without feeds")
@@ -77,20 +75,23 @@ class Bot:
         self.__dict__.update(state)
         self.cache = cache.Cache()
 
-    def _set_feeds(self, feeds, dbase) -> list:
+    def _set_feeds(self, dbase) -> dict:
         """
         Set the feeds for the bot.
 
         :param feeds: A list of feeds to be used by the bot.
         :return: A list of modified feeds.
         """
-        ret_feeds = []
+        feeds = dbase.get_bot_feeds(bot_id=self.id)
+        ret_feeds = {}
         exchanges = dbase.get_exchange(user_id=self.uid)
         tradeable = {}
         exch_dict = {}
         for exch in exchanges:
             _exch = exch.to_dict()
             exch_dict[_exch['cat_name']] = _exch['name']
+        for feed in feeds:
+            ret_feeds[feed.str_id] = []
         for feed in feeds:
             try:
                 if tradeable[feed.exchange_name][feed.symbol] is True:
@@ -101,15 +102,15 @@ class Bot:
                     tradeable[feed.exchange_name] = {}
                 tradeable[feed.exchange_name][feed.symbol] = True
             setattr(feed, 'user_ex_name', exch_dict[feed.exchange_name])
-            setattr(feed, 'strategy_name', self.strategy)
-            ret_feeds.append(feed)
+            setattr(feed, 'strategy_name', self.str_params[feed.str_id]['cat_name'])
+            ret_feeds[feed.str_id].append(feed)
         return ret_feeds
 
     def _str_set_params(self, dbase) -> dict:
         """
         Set the strategy parameters for the bot.
 
-        :return: A dictionary of strategy parameters.
+        :return: A list of dictionaries with enhanced strategy parameters.
         """
         def convert_value(value):
             try:
@@ -117,33 +118,43 @@ class Bot:
                     return float(value)
                 else:  # Else try parsing as int
                     return int(value)
-            except ValueError:  # If both float and int casting fail, keep as string
+            except (ValueError, TypeError):  # If both float and int casting fail, keep as string
                 return value
 
-        strs = dbase.get_str_params(bot_id=self.id)
-        if not strs:
-            logger.warning("Could't find params for this bot, are you sure this is ok")
-        params = {}
-        for s in strs:
-            name = s[0]
-            value = s[1]
-            params[name] = convert_value(value)
-        base_params = vars(dbase.get_base_str_params(bot_id=self.id))
-        for p, k in base_params.items():
-            if k is not None:
-                params[p] = convert_value(str(k))
-        params['helper'] = self
-        return params
+        base_params = dbase.get_base_str_params(bot_id=self.id)
+        params = dbase.get_str_params(bot_id=self.id)
+        if not params:
+            logger.warning("Couldn't find params for this bot, are you sure this is ok")
 
-    def extend_str_params(self, test_params: dict) -> None:
+        ret_params = {}
+        for param in params:
+            # Iterate over a copy of the dictionary's items
+            for name, value in list(param.items()):
+                param[name] = convert_value(value)
+            # Assign the helper object
+            param['helper'] = self
+            # Assign the base parameter object
+            for base_param in base_params:
+                if base_param.str_id == param['str_id']:
+                    param.update(base_param.to_dict())
+                    break  # Stop looking through base_params once a match is found
+            param.pop('mail')
+            param.pop('name')
+            param['uid'] = self.uid
+            param['bot_id'] = self.uid
+            ret_params[param['str_id']] = param
+        return ret_params
+
+    def extend_str_params(self, str_id: int, test_params: dict) -> None:
         """
         Extend the strategy parameters with additional test parameters.
 
         :param test_params: A dictionary containing additional test parameters.
+        :param str_id: Strategy_id to modify params
         """
         if test_params:
             for key, value in test_params.items():
-                self.str_params[key] = value
+                self.str_params[str_id][key] = value
 
     def _set_timeframe(self, period: str) -> Any:
         """
@@ -162,7 +173,7 @@ class Bot:
         # return the corresponding constant from the dictionary, or None if the period is not in the dictionary
         return period_map.get(period)
 
-    def backload_from(self, bars: int = 100) -> Tuple[arrow.Arrow, arrow.Arrow]:
+    def backload_from(self, str_id: int, bars: int = 100) -> Tuple[arrow.Arrow, arrow.Arrow]:
         """
         Shift the current time by a certain amount, based on the 'frame' and 'compression' parameters.
         Returns a new Arrow object with the shifted time.
@@ -178,7 +189,7 @@ class Bot:
             "months": "months"
         }
         # get the feed for the last data and calculate the time shift based on the compression and simul_backtest
-        feed = self.str_feeds[-1]
+        feed = self.str_feeds[str_id][-1]
         timeframe = self._set_timeframe(period=feed.period)
         time_unit = period_map.get(feed.period.lower())
         if time_unit is None:
@@ -206,25 +217,26 @@ class Bot:
         corresponding feed in the pair.
         """
         # Determine the number of data feeds in the Cerebro object
-        num_feeds = len(cerebro.datas)
-        if self.str_params['feeds'] != num_feeds:
-            msg = f"Number of feeds ({num_feeds}) do not match "
-            msg += f"strategy requirement ({self.str_params['feeds']})"
-            logger.error(msg)
-            return False
-        # If there is an odd number of data feeds, raise an error
-        if self.str_params['pairs'] is True:
-            if num_feeds % 2 != 0:
-                msg = f"Number of data feeds must be even, current num feeds {num_feeds}"
+        for str_id, params in self.str_params.items():
+            num_feeds = len(self.str_feeds[str_id])
+            if params['feeds'] != num_feeds:
+                msg = f"Number of feeds ({num_feeds}) do not match "
+                msg += f"strategy requirement ({params['feeds']})"
                 logger.error(msg)
                 return False
-            # Determine the number of pairs of data feeds
-            num_pairs = num_feeds // 2
-            for i in range(num_pairs):
-                # Set the 'feed2' attribute of the first feed to be the second feed in the pair
-                cerebro.datas[i].feed2 = cerebro.datas[i + num_pairs]
-                # Set the 'feed2' attribute of the second feed to be the first feed in the pair
-                cerebro.datas[i + num_pairs].feed2 = cerebro.datas[i]
+            # If there is an odd number of data feeds, raise an error
+            if params['pairs'] is True:
+                if num_feeds % 2 != 0:
+                    msg = f"Number of data feeds must be even, current num feeds {num_feeds}"
+                    logger.error(msg)
+                    return False
+                # Determine the number of pairs of data feeds
+                num_pairs = num_feeds // 2
+                for i in range(num_pairs):
+                    # Set the 'feed2' attribute of the first feed to be the second feed in the pair
+                    cerebro.datas[i].feed2 = cerebro.datas[i + num_pairs]
+                    # Set the 'feed2' attribute of the second feed to be the first feed in the pair
+                    cerebro.datas[i + num_pairs].feed2 = cerebro.datas[i]
         return True
 
     def _sim_feeds_can_start(self, feed: object, fromdate: arrow.Arrow) -> bool:
@@ -259,19 +271,20 @@ class Bot:
         Returns:
             bool: `True` if all feeds can start, `False` otherwise.
         """
-        for feed in self.str_feeds:
-            with cache.Cache() as store:
-                # Check if the OHLCV process for the feed is 'Synced' and its timestamp is not older than 120 seconds.
-                if not self.check_ohlcv(feed, store):
-                    return self.retry_or_fail(retries, f"OHLCV for {feed.exchange_name}:{feed.symbol} is not synced", stop_signal)
+        for feeds in self.str_feeds.values():
+            for feed in feeds:
+                with cache.Cache() as store:
+                    # Check if the OHLCV process for the feed is 'Synced' and its timestamp is not older than 120 seconds.
+                    if not self.check_ohlcv(feed, store):
+                        return self.retry_or_fail(retries, f"OHLCV for {feed.exchange_name}:{feed.symbol} is not synced", stop_signal)
 
-                # Check if the ticker for the feed is running and its timestamp is not older than 120 seconds.
-                if not self.check_ticker(feed, store):
-                    return self.retry_or_fail(retries, f"Ticker for {feed.exchange_name}:{feed.symbol} doesn't seem to be working", stop_signal)
+                    # Check if the ticker for the feed is running and its timestamp is not older than 120 seconds.
+                    if not self.check_ticker(feed, store):
+                        return self.retry_or_fail(retries, f"Ticker for {feed.exchange_name}:{feed.symbol} doesn't seem to be working", stop_signal)
 
-                # Check if the account associated with `self.uid` is being updated and its timestamp is not older than 120 seconds.
-                if not self.check_account(store):
-                    return self.retry_or_fail(retries, f"Account {self.uid} is not being updated", stop_signal)
+                    # Check if the account associated with `self.uid` is being updated and its timestamp is not older than 120 seconds.
+                    if not self.check_account(store=store, feed=feed):
+                        return self.retry_or_fail(retries, f"Account {self.uid} is not being updated", stop_signal)
 
         return True
 
@@ -307,7 +320,7 @@ class Bot:
             return arrow.get(res[1]).shift(seconds=600) > arrow.utcnow()
         return False
 
-    def check_account(self, store) -> bool:
+    def check_account(self, store, feed) -> bool:
         """
         Checks if the account associated with `self.uid` is being updated and its timestamp is not older than 120 seconds.
 
@@ -317,14 +330,13 @@ class Bot:
         Returns:
             bool: `True` if the account associated with `self.uid` is being updated and its timestamp is not older than 120 seconds, `False` otherwise.
         """
-        for feed in self.str_feeds:
-            res = store.get_process(tipe="account", key=feed.user_ex_name)
-            try:
-                if arrow.get(res['timestamp']).shift(seconds=120) < arrow.utcnow():
-                    return False
-            except KeyError:
-                logger.error("Account component not started for this account")
-                exit()
+        res = store.get_process(tipe="account", key=feed.user_ex_name)
+        try:
+            if arrow.get(res['timestamp']).shift(seconds=120) < arrow.utcnow():
+                return False
+        except KeyError:
+            logger.error("Account component not started for this account")
+            exit()
         return True
 
     def retry_or_fail(self, retries: int, message: str, stop_signal) -> bool:
@@ -349,10 +361,11 @@ class Bot:
             time.sleep(1)
         return self._feeds_can_start(retries=retries-1, stop_signal=stop_signal)
 
-    def _load_feeds(self, cerebro: bt.Cerebro,
+    def _load_feeds(self,
+                    cerebro: bt.Cerebro,
                     warm_up: int,
                     event: bool,
-                    ofeeds: list) -> bool:
+                    ofeeds: dict) -> bool:
         """
         Loads the feeds into the cerebro instance for backtesting.
 
@@ -367,51 +380,75 @@ class Bot:
         # Initialize the first feed as None
         feed0 = None
         # Loop through all the feeds and add them to the cerebro instance
-        for num, feed in enumerate(self.str_feeds):
-            # Clear the simulation results list for this feed
-            self.simulresults[num] = []
-            # Set the timeframe for the feed
-            timeframe = self._set_timeframe(period=feed.period)
-            not_tick = True
-            if feed.period.lower() == "ticks":
-                self.str_feeds[num].period = "minutes"
-                feed.period = "minutes"
-                not_tick = False
-            compression = feed.compression
-            try:
-                compression = ofeeds[num]['compression']
-            except KeyError:
-                pass
-            if not_tick:
-                fromdate, _ = self.backload_from(bars=self.bars+warm_up)
-            else:
-                # Set the start date for the backtest
-                fromdate, _ = self.backload_from(bars=self.bars)
-            if not self._sim_feeds_can_start(feed=feed, fromdate=fromdate):
-                logger.error("Feeds can't start, exiting bot startup")
-                return False
+        loaded = []
+        index = 0
+        for str_id, feeds in self.str_feeds.items():
+            for num, feed in enumerate(feeds):
+                key = f"{feed.ex_id}:{feed.symbol}:{feed.period}:{feed.compression}"
+                if key in loaded:
+                    continue
+                # Clear the simulation results list for this feed
+                self.simulresults[num] = []
+                # Set the timeframe for the feed
+                timeframe = self._set_timeframe(period=feed.period)
+                not_tick = True
+                if feed.period.lower() == "ticks":
+                    self.str_feeds[str_id][num].period = "minutes"
+                    feed.period = "minutes"
+                    not_tick = False
+                compression = feed.compression
+                try:
+                    compression = ofeeds[num]['compression']
+                except KeyError:
+                    pass
+                if not_tick:
+                    fromdate, _ = self.backload_from(str_id=str_id,
+                                                     bars=self.bars+warm_up)
+                else:
+                    # Set the start date for the backtest
+                    fromdate, _ = self.backload_from(str_id=str_id,
+                                                     bars=self.bars)
+                if not self._sim_feeds_can_start(feed=feed, fromdate=fromdate):
+                    logger.error("Feeds can't start, exiting bot startup")
+                    return False
 
-            # Choose the feed class based on the event parameter
-            feed_name = "FullonEventFeed" if event else "FullonSimFeed"
-            # Get the feed class object dynamically
-            feed_class = FEED_CLASSES[feed_name]
-            feed_module, feed_class_name = feed_class.rsplit(".", 1)
-            FeedClass = getattr(importlib.import_module(feed_module), feed_class_name)
-            # Create a new broker object for this feed
-            # Create a new data object using the chosen feed class
-            data = FeedClass(feed=feed,
-                             timeframe=timeframe,
-                             compression=int(compression),
-                             helper=self,
-                             fromdate=fromdate,
-                             mainfeed=feed0)
-            # Add the data object to the cerebro instance
-            cerebro.adddata(data, name=f'{num}')
-            # Store the first feed object for later use
-            if num == 0:
-                feed0 = data
-            del data
+                # Choose the feed class based on the event parameter
+                feed_name = "FullonEventFeed" if event else "FullonSimFeed"
+                # Get the feed class object dynamically
+                feed_class = FEED_CLASSES[feed_name]
+                feed_module, feed_class_name = feed_class.rsplit(".", 1)
+                FeedClass = getattr(importlib.import_module(feed_module), feed_class_name)
+                # Create a new broker object for this feed
+                # Create a new data object using the chosen feed class
+                loaded.append(key)
+                data = FeedClass(feed=feed,
+                                 timeframe=timeframe,
+                                 compression=int(compression),
+                                 helper=self,
+                                 fromdate=fromdate,
+                                 mainfeed=feed0)
+                # Add the data object to the cerebro instance
+                cerebro.adddata(data, name=f'{index}')
+                # Store the first feed object for later use
+                if index == 0:
+                    feed0 = data
+                index += 1
         return True
+
+    def _load_strategies(self, cerebro: bt.Cerebro, event: bool = False):
+        """
+        loads strategies into a cerebro
+        """
+        if event:
+            strategy.STRATEGY_TYPE = "event"
+        else:
+            strategy.STRATEGY_TYPE = "backtest"
+
+        for params in self.str_params.values():
+            module = importlib.import_module(
+                'strategies.' + params['cat_name'] + '.strategy',
+                package='Strategy')
+            cerebro.addstrategy(module.Strategy, **params)
 
     def run_simul_loop(self,
                        feeds: dict = {},
@@ -432,20 +469,13 @@ class Bot:
         if not self.id:
             return False
 
-        self.extend_str_params(test_params)
+        for str_id in self.str_feeds.keys():
+            self.extend_str_params(str_id=str_id, test_params=test_params)
         cerebro = bt.Cerebro()
-
-        if event:
-            strategy.STRATEGY_TYPE = "event"
-        else:
-            strategy.STRATEGY_TYPE = "backtest"
         broker = self.get_broker(dry=True)
         cerebro.setbroker(broker)
 
-        module = importlib.import_module(
-            'strategies.' + self.strategy + '.strategy',
-            package='Strategy')
-        cerebro.addstrategy(module.Strategy, **self.str_params)
+        self._load_strategies(cerebro=cerebro, event=event)
         if not self._load_feeds(cerebro=cerebro, warm_up=warm_up, event=event, ofeeds=feeds):
             return False
         if not self._pair_feeds(cerebro=cerebro):
@@ -456,15 +486,6 @@ class Bot:
             r = cerebro.run(live=True)
         except:
             raise
-        '''
-        except (TypeError, KeyError) as error:
-            logger.warning(
-                "Error can't run Bot, probably loading a parameter that the bot does not have: %s", str(error))
-            return ["ERROR Can't run bot"]
-        except ValueError as error:
-            if 'Cant continue without funds' in  str(error):
-                return ['Error: ran out of funds']
-        '''
 
         if r == []:
             return [
@@ -477,13 +498,15 @@ class Bot:
                 p = p + str(key) + "_" + str(value) + "_"
             imgtitle = "tmp/simul_" + self.strategy + "_" + p + "_" + now + ".png"
             cerebro.plot(style='candles', saveimg=imgtitle)
-        self.str_params.pop('helper')
-        self.str_params.pop('pre_load_bars')
+        '''
+        self.str_params.pop('helper', None)
+        self.str_params.pop('pre_load_bars', None)
         for num in range(0, len(self.simulresults)):
             self.simulresults[num].append({"strategy": self.strategy,
                                            "params": self.str_params,
                                            "feed": self.str_feeds[num],
                                            "imgtitle": imgtitle})
+        '''
         del cerebro
         return self.simulresults
 
@@ -497,50 +520,53 @@ class Bot:
         - None
         """
         # Initialize the first feed as None
-        fromdate, fromdate2 = self.backload_from(bars=bars)
         #fromdate = arrow.get('2023-09-04 00:00:00')
         feed_map = {}
-        for num, feed in enumerate(self.str_feeds):
-            compression = int(feed.compression)
-            period = feed.period
-            timeframe = self._set_timeframe(period=period)
-            # Choose the feed class based on the event parameter
-            feed_class = FEED_CLASSES['FullonFeed']
-            feed_module, feed_class_name = feed_class.rsplit(".", 1)
-            FeedClass = getattr(importlib.import_module(feed_module), feed_class_name)
-            # Create a new broker object for this feed
-            # Create a new data object using the chosen feed class
-            #  Since when the database should load
-            if timeframe == bt.TimeFrame.Ticks:
-                data = FeedClass(feed=feed,
-                                 timeframe=1,
-                                 compression=1,
-                                 helper=self,
-                                 fromdate=fromdate,
-                                 fromdate2=fromdate2,
-                                 mainfeed=None)
-                cerebro.adddata(data, name=f'{num}')
-                try:
-                    feed_map[feed.exchange_name].update({feed.symbol: data})
-                except KeyError:
-                    feed_map[feed.exchange_name] = {feed.symbol: data}
-            else:
-                try:
-                    parent_data = feed_map[feed.exchange_name][feed.symbol]
-                except KeyError:
-                    logger.error('Resampled feed %s symbol does not match main feed symbol', num)
-                    return
-                resampled_data = cerebro.resampledata(parent_data,
-                                                      timeframe=timeframe,
-                                                      compression=compression,
-                                                      name=f'{num}')
-                sampler = FullonFeedResampler()
-                sampler.prepare(data=resampled_data,
-                                bars=bars,
-                                timeframe=timeframe,
-                                compression=compression,
-                                feed=feed,
-                                fromdate=fromdate.format("YYYY-MM-DD HH:mm:ss"))
+        index = 0
+        for str_id, feeds in self.str_feeds.items():
+            fromdate, fromdate2 = self.backload_from(str_id=str_id, bars=bars)
+            for num, feed in enumerate(feeds):
+                compression = int(feed.compression)
+                period = feed.period
+                timeframe = self._set_timeframe(period=period)
+                # Choose the feed class based on the event parameter
+                feed_class = FEED_CLASSES['FullonFeed']
+                feed_module, feed_class_name = feed_class.rsplit(".", 1)
+                FeedClass = getattr(importlib.import_module(feed_module), feed_class_name)
+                # Create a new broker object for this feed
+                # Create a new data object using the chosen feed class
+                #  Since when the database should load
+                if timeframe == bt.TimeFrame.Ticks:
+                    data = FeedClass(feed=feed,
+                                     timeframe=1,
+                                     compression=1,
+                                     helper=self,
+                                     fromdate=fromdate,
+                                     fromdate2=fromdate2,
+                                     mainfeed=None)
+                    cerebro.adddata(data, name=f'{index}')
+                    try:
+                        feed_map[feed.exchange_name].update({feed.symbol: data})
+                    except KeyError:
+                        feed_map[feed.exchange_name] = {feed.symbol: data}
+                else:
+                    try:
+                        parent_data = feed_map[feed.exchange_name][feed.symbol]
+                    except KeyError:
+                        logger.error('Resampled feed %s symbol does not match main feed symbol', num)
+                        return
+                    resampled_data = cerebro.resampledata(parent_data,
+                                                          timeframe=timeframe,
+                                                          compression=compression,
+                                                          name=f'{index}')
+                    sampler = FullonFeedResampler()
+                    sampler.prepare(data=resampled_data,
+                                    bars=bars,
+                                    timeframe=timeframe,
+                                    compression=compression,
+                                    feed=feed,
+                                    fromdate=fromdate.format("YYYY-MM-DD HH:mm:ss"))
+                    index += 1
 
     def get_broker(self, dry=False) -> bt.brokers.BackBroker:
         """
@@ -562,6 +588,23 @@ class Bot:
             broker = FullonBroker(feed=self.str_feeds[0])
         return broker
 
+    def _load_live_strategies(self, cerebro: bt.Cerebro, stop_signal):
+        """
+        loads strategies into a cerebro
+        """
+        if self.dry_run:
+            strategy.STRATEGY_TYPE = "drylive"
+        else:
+            strategy.STRATEGY_TYPE = "live"
+        if self.test:
+            strategy.STRATEGY_TYPE = "testlive"
+        for params in self.str_params.values():
+            params['stop_signal'] = stop_signal
+            module = importlib.import_module(
+                'strategies.' + params['cat_name'] + '.strategy',
+                package='Strategy')
+            cerebro.addstrategy(module.Strategy, **params)
+
     def run_loop(self, stop_signal, no_check: bool = False, test: Optional[bool] = False) -> None:
         """
         Run the bot's main loop until the stop_signal is set.
@@ -577,29 +620,14 @@ class Bot:
         if not self._feeds_can_start(stop_signal=stop_signal):
             logger.error("Feeds can't start, exiting bot startup")
             return
-        self.test = test
         cerebro = bt.Cerebro()
-        if self.dry_run:
-            strategy.STRATEGY_TYPE = "drylive"
-        else:
-            strategy.STRATEGY_TYPE = "live"
-        if test:
-            strategy.STRATEGY_TYPE = "testlive"
         broker = self.get_broker()
         cerebro.setbroker(broker)
-
-        module = importlib.import_module(
-            'strategies.' + self.strategy + '.strategy',
-            package='Strategy')
-
-        if stop_signal:
-            self.str_params['stop_signal'] = stop_signal
-
-        cerebro.addstrategy(module.Strategy, **self.str_params)
         self._load_live_feeds(cerebro=cerebro, bars=self.str_params['pre_load_bars'])
         logger.info("Starting Bot...")
         # print(len(cerebro.datas))
         #try:
+        return
         cerebro.run(live=True)
         #except KeyboardInterrupt:
         #    exit()

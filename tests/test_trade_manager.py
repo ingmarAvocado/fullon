@@ -53,3 +53,4 @@ def test_update_trades_since_1(trade_manager,
                                       test=True)
     assert len(caplog.records) > 0
 
+

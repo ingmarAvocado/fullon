@@ -40,7 +40,12 @@ class Strategy(bt.Strategy):
         ('pre_load_bars', 100),
         ('feeds', 2),
         ('pairs', False),
-        ('stop_signal', None)
+        ('stop_signal', None),
+        ('str_id', None),
+        ('cat_str_id', None),
+        ('bot_id', None),
+        ('uid', None),
+        ('cat_name', None)
     )
 
     name = ""

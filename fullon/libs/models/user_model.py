@@ -34,7 +34,7 @@ class Database(database.Database):
             logger.warning(self.error_print(error=error, method="get_user_id", query=sql))
             raise
 
-    def remove_user(self, user_id: Optional[str] = None, email: Optional[str] = None) -> None:
+    def remove_user(self, user_id: Optional[str] = None, email: Optional[str] = None) -> bool:
         """
         Remove a user from the database based on their user_id or email address.
 
@@ -55,9 +55,11 @@ class Database(database.Database):
             with self.con.cursor() as cur:
                 cur.execute(sql)
                 self.con.commit()
+                return True
         except (Exception, psycopg2.DatabaseError) as error:
             self.con.rollback()
             logger.warning(self.error_print(error=error, method="remove_user", query=sql))
+        return False
 
     def add_user(self, user: Dict[str, Any]) -> None:
         """
