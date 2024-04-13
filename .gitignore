@@ -11,3 +11,4 @@ fullon/conf/fullon.conf
 fullon/backups/
 fullon/catboostinfo/
 fullon/crawler_media/
+conf/fullon.conf
