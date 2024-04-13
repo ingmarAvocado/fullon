@@ -9,5 +9,5 @@ fullon/fullon_history.txt
 fullon/conf/fullon_hush.json
 fullon/conf/fullon.conf
 fullon/backups/
-fullon/catboostinfo
+fullon/catboostinfo/
 fullon/crawler_media/
