@@ -24,9 +24,11 @@ try:
 except FileNotFoundError:
     EXCHANGES_DIR = listdir('fullon/exchanges/')
 
-EXCHANGES_DIR.remove('ccxt')
-EXCHANGES_DIR.remove('__init__.py')
-EXCHANGES_DIR.remove('__pycache__')
+for folder in ['ccxt','__init__.py','__pycache__']:
+    try:
+        EXCHANGES_DIR.remove(folder)
+    except ValueError:
+        pass
 
 
 class Cache(cache.Cache):
