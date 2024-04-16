@@ -70,6 +70,8 @@ class Strategy(strat.Strategy):
         """
         # Check for stop loss
         res = self.check_exit()
+        #import ipdb
+        #ipdb.set_trace()
         if not res:
             if self.pos[0] > 0 and self.indicators.exit:
                 res = self.close_position(feed=0, reason="strategy")
@@ -135,6 +137,7 @@ class Strategy(strat.Strategy):
                           'vwap_entry', 'macd_entry']:
             try:
                 value = self.indicators_df.loc[current_time, indicator]
+                #print(value)
                 self.set_indicator(indicator, value)
             except KeyError:
                 self.set_indicator(indicator, None)

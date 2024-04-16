@@ -238,7 +238,6 @@ class UserManager:
 
         return details
 
-
     def set_secret_key(self, user_id: int, exchange: str, key: str, secret: str) -> bool:
         """
         Adds a new user key to secret database.

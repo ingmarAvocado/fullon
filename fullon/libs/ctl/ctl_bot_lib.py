@@ -8,12 +8,12 @@ from libs.ctl.ctl_strategies_lib import CTL
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from clint.textui import colored
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Union
 import pandas as pd
 import arrow
 import time
 from prettytable import PrettyTable
-from typing import Union
+import json
 
 
 logger = log.fullon_logger(__name__)
@@ -108,7 +108,7 @@ class CTL(CTL):
             print(f"\nCould not stop bot {bot_id}, is it running?")
             return
 
-    def _bot_header(self, details: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    def _bot_header(self, details: List[Dict[str, Any]]) -> Tuple[str, Dict[str, Any], List[Any]]:
         """
         Creates a formatted string header for display, encompassing editable fields,
         extended parameters, and feed details of a bot. It also combines these details
@@ -129,46 +129,83 @@ class CTL(CTL):
         """
         # Generate tables for editable fields, extended params, and feeds
         non_editable_keys = ['uid', 'str_id', 'bot_id', 'name', 'feeds', 'extended']
-        editable_fields = {k: v for k, v in details.items() if k not in non_editable_keys}
+        combined_fields = {}
+        extended_fields = {}
+        combined_feeds = {}
+        str_ids = []
+        for str_id, detail in details.items():
+            str_ids.append(str_id)  # Store strategy IDs for header labeling
+            # Handle regular fields
+            for key, value in detail.items():
+                if key not in non_editable_keys:
+                    if key not in combined_fields:
+                        combined_fields[key] = []
+                    combined_fields[key].append(value)
+
+            # Handle extended fields, assuming extended is a dictionary of parameters
+            # Handle extended fields
+            extended_info = detail.get('extended', {})
+            existing_keys = set(extended_info.keys())
+            all_possible_keys = set(extended_fields.keys()).union(existing_keys) - {'str_id'}
+
+            # Update the dictionary of all extended fields to include this strategy's values or None
+            for key in all_possible_keys:
+                if key not in extended_fields:
+                    extended_fields[key] = [''] * (len(str_ids) - 1)  # Initialize with None for previous strategies
+
+                if key in extended_info and key != 'str_id':
+                    extended_fields[key].append(extended_info[key])
+                else:
+                    extended_fields[key].append('')  # Append None where no value exists for this strategy
+
+            feeds = detail['feeds']
+            for _, feed in feeds.items():
+                feed_id = f"Feed id #{feed['feed_id']}"
+                for key, value in feed.items():
+                    if feed_id not in combined_feeds:
+                        combined_feeds[feed_id] = {}
+                    combined_feeds[feed_id][key] = value
+
+        # Generate table for editable fields
         start_index = 0
-        header = self._table(title="Current details", fields=editable_fields, index=start_index)
+        header = self._table(title="Current details",
+                             fields=combined_fields,
+                             strs=str_ids,
+                             index=start_index)
 
-        start_index += len(editable_fields)
-        header += self._table(title="Extended params", fields=details.get('extended', {}), index=start_index)
+        start_index += len(combined_fields)
+        header += self._table(title="Extended params",
+                              fields=extended_fields,
+                              strs=str_ids,
+                              index=start_index)
 
-        start_index += len(details.get('extended', {}))
-        header += self._table_feeds(title="Feeds", feeds=details.get('feeds', {}), index=start_index)
+        start_index += len(extended_fields)
+        header += self._table_feeds(title="Feeds", feeds=combined_feeds, index=start_index)
 
         # Combine all fields
-        fields = {**editable_fields, **details.get('extended', {}), **details.get('feeds', {})}
+        fields = {**combined_fields, **extended_fields, **combined_feeds}
+        return header, fields, str_ids
 
-        return header, fields
-
-    def _table(self, title: str, fields: Dict[str, Any], index: int) -> str:
+    def _table(self, title: str, fields: Dict[str, List[Any]], strs: list, index: int) -> str:
         """
-        Prints a table with each row represented by a tuple consisting of 
-        the index, field name, and value. The index starts from the provided
-        start_index and increments for each field.
-
-        Args:
-            fields (Dict[str, Any]): A dictionary where each key-value pair
-                represents a field name and its value.
-            index (int): The starting index for the table rows.
-
-        Returns:
-            str: The table as a string with borders.
+        Generates a table from a dictionary where each key maps to a list of values.
+        Replaces 'None' values with an empty string '' for better presentation.
         """
-        rows = [(i + index, field, str(value))  # Convert value to string
-                for i, (field, value) in enumerate(fields.items())]
-
         table = PrettyTable()
-        table.field_names = ['No.', 'Field', 'Value']
+        table.field_names = ['No.', 'Field'] + [f'Strategy {id}' for id in strs]
+
+        rows = []
+        for key, values in fields.items():
+            # Replace 'None' with '' for all values in the list
+            formatted_values = [(value if value is not None else '') for value in values]
+            row = [index, key] + formatted_values
+            rows.append(row)
+            index += 1
+
         for row in rows:
             table.add_row(row)
 
-        # Add any other formatting or border styles you need
-        resp = f"\n{title}:\n" + table.get_string()
-        return resp
+        return f"\n{title}:\n" + table.get_string()
 
     def _table_feeds(self, title: str, feeds: Dict[str, Any], index: int) -> str:
         """
@@ -273,7 +310,7 @@ class CTL(CTL):
             return False
         #then we assign a strategy
         print(colored.blue("Set the strategy"))
-        feeds_num = self.set_new_strategy(bot_id=bot_id)
+        str_id, feeds_num = self.set_new_strategy(bot_id=bot_id)
         if not feeds_num:
             print(colored.red("Failed adding strategy to bot"))
             return False
@@ -282,7 +319,7 @@ class CTL(CTL):
         _feeds = {}
         for num, feed in feeds.items():
             _feeds[str(num)] = feed
-        if self.RPC.bots('add_feeds', {'bot_id': bot_id, 'feeds': _feeds}):
+        if self.RPC.bots('add_feeds', {'str_id': str_id, 'feeds': _feeds}):
             print(colored.green("Feeds added"))
         else:
             print(colored.red("Failed adding feeds to bot"))
@@ -375,11 +412,11 @@ class CTL(CTL):
                     print(colored.red("\nInvalid bot ID."))
                     continue
 
-                details = self.RPC.bots('details', {'bot_id': bot_id})
+                details = json.loads(self.RPC.bots('details', {'bot_id': bot_id}))
                 self.edit_fields(details=details)
                 save_changes = session.prompt("\n(Edit Bot Shell) Save changes? (yes/no) > ")
                 if save_changes.lower() in ['y', 'yes']:
-                    self.RPC.bots('edit', {'bot': details})
+                    self.RPC.bots('edit', {'bot_id': bot_id, 'strats': json.dumps(details)})
                     print(colored.green(f"\nUpdated bot {bot_id}"))
                 #print("\n" + tabulate(bots, headers="keys", tablefmt="pretty"))
                 return
@@ -406,10 +443,9 @@ class CTL(CTL):
         session = PromptSession()
         changes = {}
         extended = {}
-        feeds = {}
 
         while True:
-            header, fields = self._bot_header(details)
+            header, fields, str_ids = self._bot_header(details)
             print(header)
             field_num = session.prompt("(Edit Bot Shell) Enter number of field to edit, press enter to refresh, or 'write' when finished > ")
 
@@ -431,19 +467,30 @@ class CTL(CTL):
 
             field = list(fields.keys())[field_num]
 
-            if 'feeds' in details and field in details['feeds']:
-                feed = self._change_bot_feed(feed=details['feeds'][field])
+            if 'Feed id' in field:
+                feed = self._change_bot_feed(feed=fields[field])
+                feed_id = str(feed['str_id'])
                 if feed:
-                    details['feeds'][field].update(feed)
+                    for key, value in details[feed_id]['feeds'].items():
+                        if value['feed_id'] == feed['feed_id']:
+                            details[feed_id]['feeds'][key] = feed
+            elif field in ['strategy']:
+                print(f"Uneditable field ({field}) index num {field_num}")
             else:
-                new_value = session.prompt(f"(Bot Shell) Enter new value for '{field}' > ")
-                # if it's an extended field
-                if 'extended' in details and field in details['extended']:
-                    extended[field] = new_value
-                else:
-                    changes[field] = new_value
-                details.update(changes)
-                details['extended'].update(extended)
+                try:
+                    completer = WordCompleter(str_ids, ignore_case=True)
+                    str_id = session.prompt(f"(Bot Shell) Pick Strategy > ", completer=completer)
+                    str_id = str(str_id)
+                    new_value = session.prompt(f"(Bot Shell) Enter new value for '{field}' > ")
+                    if 'extended' in details[str_id] and field in details[str_id]['extended']:
+                        details[str_id]['extended'][field] = new_value
+                    else:
+                        details[str_id]['field'] = new_value
+                except (EOFError, KeyboardInterrupt):  # Catch Ctrl+D and Ctrl+C and exit
+                    raise
+                    return {}
+                except ValueError as error:
+                    print(colored.red("\nInvalid input, please enter a valid bot ID to edit"))    
 
     def _change_bot_feed(self, feed: Dict) -> Dict:
         """
@@ -524,7 +571,6 @@ class CTL(CTL):
         """
         # Retrieve bots list
         _bots = self.RPC.bots("live_list")
-
         if _bots:
             self.display_bots(_bots)
         else:
@@ -548,6 +594,7 @@ class CTL(CTL):
 
                     # Reorder the bot dictionary as per desired format
                     ordered = ['bot_id',
+                               'strategy',
                                'feed',
                                'exchange',
                                'symbol',

@@ -12,26 +12,6 @@ rsi_upper: int = 63
 
 
 @pytest.fixture(scope="module")
-def str_ids(bot_id, dbase, cat_str_id):
-    STRAT = {
-        "cat_str_id": cat_str_id,
-        "bot_id": bot_id,
-        "size_pct": 10,
-        "size_currency": 'USD',
-        "leverage": 2}
-    str_id1 = dbase.add_bot_strategy(strategy=STRAT)
-    STRAT = {
-        "cat_str_id": cat_str_id,
-        "bot_id": bot_id,
-        "size_pct": 10,
-        "size_currency": 'BTC',
-        "leverage": 5}
-    str_id2 = dbase.add_bot_strategy(strategy=STRAT)
-    yield (str_id1, str_id2)
-
-
-
-@pytest.fixture(scope="module")
 def prompts(bot_id):
     prompts = Prompts()
     numbots = prompts._get_bot_dict()
@@ -41,7 +21,7 @@ def prompts(bot_id):
 
 
 @pytest.mark.order(1)
-def test__get_str_params(prompts, str_ids):
+def test__get_str_params(prompts):
     strats = prompts._get_str_params()
     for strat in strats:
         assert strat.str_id > 0

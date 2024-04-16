@@ -238,6 +238,8 @@ class OhlcvManager:
                 pause_time = arrow.now().shift(minutes=1).floor('minute')
                 self._update_process(exchange_name=exchange, symbol=symbol)
                 if test:
+                    print("setting stop signal")
+                    stop_signal.set()
                     break
                 while arrow.now() < pause_time:
                     if stop_signal.is_set():
@@ -260,6 +262,8 @@ class OhlcvManager:
                 logger.debug(msg)
                 self.fetch_individual_trades_ws(symbol=symbol_struct)
                 if test:
+                    print("setting stop signal")
+                    stop_signal.set()
                     break
                 now = arrow.now()
                 pause_until = now.shift(minutes=1).floor('minute')

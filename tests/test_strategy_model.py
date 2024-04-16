@@ -27,6 +27,7 @@ def test_update_base_str_params(dbase, bot_id):
     _ = strat[0].pop('active', None)
     _ = strat[0].pop('uid', None)
     _ = strat[0].pop('bot_id', None)
+    _ = strat[0].pop('strategy', None)
     str_id = strat[0].pop('str_id', None)
     strat[0]['take_profit'] = 10
     result = dbase.edit_base_strat_params(str_id=str_id, params=strat[0])
@@ -81,11 +82,14 @@ def test_get_bots_strategies(dbase, bot_id, cat_str_name):
 
 
 @pytest.mark.order(11)
-def test_get_user_strategies(dbase, uid, bot_id):
+def test_get_user_strategies(dbase, uid):
     strats = dbase.get_user_strategies(uid=uid)
+    strat_match = False
     for strat in strats:
-        assert strat.uid == uid
-        assert strat.bot_id == bot_id
+        if strat.uid == uid:
+            if strat.bot_id == 1:
+                strat_match = True
+    assert strat_match is True
 
 
 @pytest.mark.order(12)

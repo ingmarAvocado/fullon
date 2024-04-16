@@ -9,13 +9,6 @@ from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
 
 
-
-@pytest.fixture(scope="module")
-def dbase():
-    with Database() as dbase:
-        yield dbase
-
-
 @pytest.fixture(scope="module")
 def profile():
     return CrawlerStruct(fid=0, uid=1, site='anothernetwork', account='Snowden', ranking=2, contra=False, expertise='hacking')
@@ -24,7 +17,7 @@ def profile():
 @pytest.fixture(scope="module")
 def analyzer(dbase):
     test_analyzer = CrawlerAnalyzerStruct(title="Test Analyzer", prompt="Test Prompt")
-    aid = dbase.add_analyzer(test_analyzer)
+    aid = dbase.add_analyzer(analyzer=test_analyzer)
     assert aid is not None and isinstance(aid, int)
     test_analyzer.aid = aid
     yield test_analyzer
@@ -45,7 +38,7 @@ def posts():
             urls='www.lambo.com',
             is_reply=False,
             reply_to=None,
-            self_reply = False,
+            self_reply=False,
             views=0,
             likes=0,
             reposts=0,
@@ -78,7 +71,7 @@ def posts():
 
 @pytest.fixture(scope="function")
 def added_analyzer(dbase, analyzer):
-    aid = dbase.add_analyzer(analyzer)
+    aid = dbase.add_analyzer(analyzer=analyzer)
     assert aid is not None and aid > 0
     analyzer.aid = aid
     yield analyzer
@@ -129,7 +122,7 @@ def test_upsert_profile_updates_existing_profile(dbase, profile):
 
 @pytest.mark.order(5)
 def test_add_analyzer(dbase, analyzer):
-    aid = dbase.add_analyzer(analyzer)
+    aid = dbase.add_analyzer(analyzer=analyzer)
     assert aid is not None and aid > 0
     # Store aid for later use in update and delete tests
     analyzer.aid = aid
@@ -140,7 +133,7 @@ def test_edit_analyzer(dbase, added_analyzer):
     # Update the analyzer details
     added_analyzer.title = "Updated Title"
     added_analyzer.prompt = "Updated Prompt"
-    success = dbase.edit_analyzer(added_analyzer)
+    success = dbase.edit_analyzer(analyzer=added_analyzer)
     assert success is True
 
 
@@ -206,7 +199,7 @@ def test_add_follows_engine_record(dbase, analyzer, profile):
     aid = analyzer.aid  # Add an analyzer and get aid
     fid = profile.fid  # Add a site follow and get fid
     account = profile.account
-    success = dbase.add_follows_analyzer(uid, aid, fid, account)
+    success = dbase.add_follows_analyzer(uid=uid, aid=aid, fid=fid, account=account)
     assert success, "Expected method to successfully insert record"
 
 
@@ -258,7 +251,7 @@ def test_add_engine_score(posts, dbase, analyzer):
     score = 9.423423423
     engine = 'anotherllm1'
     res = dbase.add_engine_score(post_id=edited_post.post_id,
-                                 aid = analyzer.aid,
+                                 aid=analyzer.aid,
                                  engine=engine,
                                  score=score)
     assert res is True
@@ -270,14 +263,14 @@ def test_get_engine_scores(posts, dbase):
     score = Decimal("9.423423423")
     engine = 'anotherllm1'
     res = dbase.get_engine_scores(post_id=edited_post.post_id,
-                                 engine=engine)
+                                  engine=engine)
     _score = res[0][2]
     assert isinstance(_score, Decimal)
     assert _score == score
 
 
 @pytest.mark.order(19)
-def test_get_post_score(posts, dbase, analyzer):
+def test_get_post_score(posts, dbase):
     score = posts[0].pre_score
     res = dbase.get_post(post_id=posts[0].post_id)
     assert isinstance(res.pre_score, Decimal)
@@ -290,12 +283,12 @@ def test_update_post_media(dbase, posts):
     for post in posts:
         post.media_ocr = f"Updated OCR for post {post.post_id}"
 
-    success = dbase.update_post_media(posts)
+    success = dbase.update_post_media(posts=posts)
     assert success, "Batch OCR update failed"
 
     # Step 3: Retrieve the updated posts and verify the updates
     for original_post in posts:
-        updated_post = dbase.get_post(original_post.post_id)
+        updated_post = dbase.get_post(post_id=original_post.post_id)
         assert updated_post is not None, f"Post {original_post.post_id} not found"
         assert updated_post.media_ocr == f"Updated OCR for post {original_post.post_id}", \
             f"OCR update not applied for post {original_post.post_id}"
@@ -317,7 +310,7 @@ def test_del_follows_engine_record(dbase, analyzer, profile):
     uid = profile.uid  # Add a user and get uid
     aid = analyzer.aid  # Add an analyzer and get aid
     fid = profile.fid  # Add a site follow and get fid
-    success = dbase.delete_follows_analyzer(uid, aid, fid)
+    success = dbase.delete_follows_analyzer(uid=uid, aid=aid, fid=fid)
     assert success, "Expected method to successfully delere record"
 
 @pytest.mark.order(27)

@@ -21,7 +21,6 @@ message_new = "new"
 message_update = "update"
 
 
-
 @pytest.fixture(scope="module")
 def mock_store(store):
     # Make a copy of the original store object

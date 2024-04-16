@@ -156,7 +156,7 @@ class CTL(CTL):
                         "bot_id": bot_id}
                     resp = str(self.RPC.strategies('add_user', {'strat': STRAT}))
                     if 'Error' not in resp:
-                        return strats[selection][1]
+                        return (resp, strats[selection][1])
                     else:
                         print(f"Error: cant process {resp}")
                 else:

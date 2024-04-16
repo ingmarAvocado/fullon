@@ -38,15 +38,13 @@ def test_get_symbols2(dbase):
 
 
 @pytest.mark.order(3)
-def test_get_symbol(dbase, symbol1):
-    symbol = symbol1.symbol
-    cat_ex_id = symbol1.cat_ex_id
-    exchange = symbol1.exchange_name
+def test_get_symbol(dbase):
+    symbol = "BTC/USD"
+    exchange = "kraken"
     symbol_data = dbase.get_symbol(symbol=symbol,
-                                   cat_ex_id=cat_ex_id)
+                                   exchange_name=exchange)
     assert symbol_data is not None
     assert symbol_data.symbol == symbol
-    assert symbol_data.cat_ex_id == cat_ex_id
     assert symbol_data.exchange_name == exchange
     assert isinstance(symbol_data.updateframe, str)
     assert isinstance(symbol_data.backtest, int)
@@ -55,15 +53,13 @@ def test_get_symbol(dbase, symbol1):
 
 
 @pytest.mark.order(4)
-def test_get_symbol2(dbase, symbol2):
-    symbol = symbol2.symbol
-    cat_ex_id = symbol2.cat_ex_id
-    exchange = symbol2.exchange_name
+def test_get_symbol2(dbase):
+    symbol = "ETH/USD"
+    exchange = "kraken"
     symbol_data = dbase.get_symbol(symbol=symbol,
-                                   cat_ex_id=cat_ex_id)
+                                   exchange_name=exchange)
     assert symbol_data is not None
     assert symbol_data.symbol == symbol
-    assert symbol_data.cat_ex_id == cat_ex_id
     assert symbol_data.exchange_name == exchange
     assert isinstance(symbol_data.updateframe, str)
     assert isinstance(symbol_data.backtest, int)

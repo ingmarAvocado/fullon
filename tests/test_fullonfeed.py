@@ -11,35 +11,38 @@ from unittest.mock import PropertyMock, MagicMock
 
 
 @pytest.fixture
-def fullon_feed(bot_id):
+def fullon_feed():
     # You need to create a feed, helper, and broker instance here based on your application
-    bot1 = Bot(bot_id, 432)
-    with Database() as dbase:
-        feeds = dbase.get_bot_feeds(bot_id=bot1.id)
-    feed = feeds[0]
-    timeframe = bot1._set_timeframe(period=feed.period)
-    fromdate = bot1.backload_from(bars=bot1.bars)[0].floor('day')
+    bot1 = Bot(1, 432)
+    str_id1 = list(bot1.str_feeds.keys())[0]
+    feed = bot1.str_feeds[str_id1][0]
+    feed = bot1.str_feeds[str_id1][0]
+    timeframe = bot1._set_timeframe(period="minutes")
+    fromdate = bot1.backload_from(str_id=str_id1, bars=bot1.bars)[0].floor('day')
     fullon_feed = FullonFeed(feed=feed,
                              timeframe=timeframe,
-                             compression=int(feed.compression),
+                             compression=int(1),
                              helper=bot1,
                              fromdate=fromdate,
                              mainfeed=None)
     return fullon_feed
 
 
+@pytest.mark.order(1)
 def test_init(fullon_feed):
     assert isinstance(fullon_feed, FullonFeed)
     assert fullon_feed.pos == 0
     assert fullon_feed.exit is False
 
-"""
+
+@pytest.mark.order(2)
 def test_start(fullon_feed):
     fullon_feed.start(count=5)
     assert fullon_feed._state == fullon_feed._ST_HISTORY
     assert fullon_feed._table != ""
 
 
+@pytest.mark.order(3)
 def test_islive(fullon_feed):
     fullon_feed._state = fullon_feed._ST_LIVE
     assert fullon_feed.islive() == True
@@ -47,11 +50,13 @@ def test_islive(fullon_feed):
     assert fullon_feed.islive() == False
 
 
+@pytest.mark.order(4)
 def test_stop(fullon_feed):
     fullon_feed.stop()
     assert fullon_feed.exit is False
 
 
+@pytest.mark.order(5)
 def test_get_time_factor(fullon_feed):
     fullon_feed.feed.period = "minutes"
     fullon_feed.compression = 5
@@ -62,6 +67,7 @@ def test_get_time_factor(fullon_feed):
     assert fullon_feed.get_time_factor() == 259200
 
 
+@pytest.mark.order(6)
 def test_empty_bar(fullon_feed):
     fullon_feed._state = fullon_feed._ST_LIVE
     fullon_feed._empty_bar()
@@ -69,6 +75,7 @@ def test_empty_bar(fullon_feed):
     assert fullon_feed._last_id is ''
 
 
+@pytest.mark.order(7)
 def test_get_table(fullon_feed, mocker):
     mock_table_exists = mocker.patch.object(DataBase_ohclv, "table_exists")
 
@@ -87,6 +94,7 @@ def test_get_table(fullon_feed, mocker):
     '''
 
 
+@pytest.mark.order(8)
 def test_fetch_tick(fullon_feed, mocker):
     # Mock the cache's get_ticker method
     ticker_data = ("price", "timestamp")
@@ -98,11 +106,11 @@ def test_fetch_tick(fullon_feed, mocker):
     assert result[1] == "price"
 
 
+@pytest.mark.order(9)
 def test_get_last_date(fullon_feed,):
     # Mock the Database's get_last_date method
     result = fullon_feed.get_last_date()
     assert isinstance(result, arrow.Arrow)
-"""
 
 ''' mocking is not working well with the queue, need to figure out a way
 def test_fetch_ohlcv(fullon_feed, mocker, dbohlcv_session):

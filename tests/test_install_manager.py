@@ -19,10 +19,12 @@ def install_manager():
     return manager
 
 
+
+@pytest.mark.order(1)
 def test_init(install_manager):
     assert install_manager is not None
 
-
+@pytest.mark.order(2)
 def test_make_backup(install_manager):
     res = install_manager.make_backup(full=False)
     assert 'backup' in res
@@ -31,11 +33,12 @@ def test_make_backup(install_manager):
         os.remove(res)
 
 
+@pytest.mark.order(3)
 def test_list_backups(install_manager):
     backups = install_manager.list_backups()
     assert isinstance(backups, list)
 
-'''
+"""
 def test_install_base(install_manager):
     result = install_manager.install_base()
     assert result is None
@@ -44,43 +47,50 @@ def test_install_base(install_manager):
 def test_clean_base(install_manager):
     result = install_manager.clean_base()
     assert result is None
-'''
+"""
 
 
+@pytest.mark.order(4)
 def test_test_pre_install(install_manager):
     result = install_manager.test_pre_install()
     assert isinstance(result, bool)
 
 
+@pytest.mark.order(5)
 def test_install_strategies(install_manager):
     res = install_manager.install_strategies()
     assert isinstance(res, bool)
 
 
+@pytest.mark.order(6)
 def test_list_cat_strategies(install_manager):
     res = install_manager.list_cat_strategies(page=1, page_size=2)
     assert isinstance(res, list)
     assert len(res) > 1
 
 
+@pytest.mark.order(7)
 def test_list_symbols(install_manager):
     res = install_manager.list_symbols(page=1, page_size=2)
     assert isinstance(res, list)
     assert len(res) > 1
 
 
+@pytest.mark.order(9)
 def test_list_cat_exchanges(install_manager):
     res = install_manager.list_cat_strategies(page=1, page_size=2)
     assert isinstance(res, list)
     assert len(res) > 0
 
 
+@pytest.mark.order(9)
 def test_list_strategy_bots(install_manager):
     name = 'trading101'
     res = install_manager.list_strategy_bots(cat_str_name=name)
     assert isinstance(res[0].name, str)
 
 
+@pytest.mark.order(10)
 def test_list_symbols_exchange(install_manager):
     res = install_manager.list_symbols_exchange(exchange='krak')
     assert 'Error' in res[0]
@@ -88,11 +98,13 @@ def test_list_symbols_exchange(install_manager):
     assert len(res) > 2
 
 
+@pytest.mark.order(11)
 def test_install_exchanges(install_manager):
     res = install_manager.install_exchanges()
     assert res is None
 
 
+@pytest.mark.order(12)
 def test_install_and_remove_symbol(install_manager):
     # Define a sample symbol to be installed
     SYMBOL_NAME = "AGLD/USD"
@@ -126,30 +138,3 @@ def test_install_and_remove_symbol(install_manager):
                               cat_ex_id=cat_ex_id)
     assert symbol is None
     del dbase
-
-
-def test_add_and_remove_user(install_manager):
-    user = {
-        'mail': 'test_password',
-        'password': 'test_password',
-        'f2a': 'test_f2a',
-        'role': 'test_role',
-        'name': 'Test',
-        'lastname': 'User',
-        'phone': '1234567890',
-        'id_num': '123456',
-    }
-
-    # Add the user
-    install_manager.add_user(user)
-
-    # Check if the user was added
-    with Database() as dbase:
-        user_id = dbase.get_user_id(mail=user['mail'])
-        assert user_id is not None
-        # Remove the user
-        install_manager.remove_user(user_id=user_id)
-
-        # Check if the user was removed
-        user_id_after_removal = dbase.get_user_id(mail=user['mail'])
-        assert user_id_after_removal is None

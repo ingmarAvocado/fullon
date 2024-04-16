@@ -3,6 +3,7 @@ from run.bot_manager import BotManager
 import pytest
 from prompt_toolkit.input import create_pipe_input
 from unittest.mock import patch
+import json
 
 
 def mock_prompt(prompt, **kwargs):
@@ -64,3 +65,18 @@ def test_change_bot_feed(ctl, bot):
     #ctl._change_bot_feed(feed=_bot['feeds']['0'])
     #ctl.display_bots(bots=_bots)
 
+
+@pytest.mark.order(5)
+def test__bot_header(bot_id, rpc_client, ctl):
+    details = json.loads(rpc_client.bots('details', {'bot_id': '3'}))
+    str1 = list(details)[0]
+    str2 = list(details)[1]
+    details[str1]['extended']['sma4'] = 60
+    details[str1]['extended']['sma2'] = 65
+    details[str2]['extended']['sma3'] = 90
+    assert isinstance(details, dict)
+    assert len(details[str1]['feeds']) > 1
+    header, fields, str_ids = ctl._bot_header(details=details)
+    assert header is not None
+    assert fields is not {}
+    assert str_ids is not {}

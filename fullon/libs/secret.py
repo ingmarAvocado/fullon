@@ -25,21 +25,14 @@ class SecretManager:
         """
         constructor
         """
-        #self.credentials = compute_engine.Credentials()
-        #project = "fullon"
-        #if not self._test_credentials(project=project):
-        #    logger.info(
-        #        "Production secret auth not working... trying development.json file")
         paths = ["/etc/fullon/fullon_hush.json", "conf/fullon_hush.json", "fullon/conf/fullon_hush.json"]
-        try:
-            self.credentials = self._get_credentials(paths)
-        except FileNotFoundError:
-            logger.debug("Can't find a .json file in 'conf/' or 'fullon/conf/'. Do you have it?")
-            sys.exit()
-        except ValueError:
-            logger.info("Invalid JsonFile")
-            sys.exit()
-
+        self.credentials = self._get_credentials(paths)
+        if not self.credentials:
+            msg = "Need a good google.json file with rights access to secret "
+            msg += "Google keys in /etc/fullon/fullon_hush.json or "
+            msg += "conf/fullon_hush.json or fullon/conf/fullon_hush.json"
+            logger.error(msg)
+            raise FileNotFoundError("No google secret file found")
         project = settings.SECRETPROJECT
         if not self._test_credentials(project=project):
             logger.info("Can't load google secret manager exiting")
@@ -64,13 +57,11 @@ class SecretManager:
         for path_str in paths:
             if path.exists(path_str):
                 return service_account.Credentials.from_service_account_file(path_str)
-
-        logger.error("No secret google keys found")
         return None
 
     def _test_credentials(self, project: str) -> bool:
         """
-        Tests if the Google Cloud credentials are working.    
+        Tests if the Google Cloud credentials are working.   
         Args:
         - project (str): The project to check for authentication.
 

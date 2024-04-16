@@ -31,12 +31,21 @@ threas2: Thread
 stop_event = Event()
 pmanager = ProcessManager()
 not_stopping = True
+ctrlc = 0
 
 
 def ignore_signal(sig, frame):
+    global ctrlc
     process_name = subprocess.check_output(["ps", "-p", str(os.getpid()), "-o", "comm="], encoding="utf-8").strip()
     if 'Daemon' in process_name:
-        logger.info("SIGINT received again, but ignoring since shutdown is in progress.")
+        logger.info("SIGINT received again, but ignoring since shutdown is in progress %s try", (ctrlc))
+        ctrlc += 1
+        if ctrlc > 5:
+            logger.info("CTRL-C pressed more than 5 times, hard kill in progress")
+            kill_processes('Fullon', manual=True)
+            kill_processes('fullon_daemon', manual=True)
+            time.sleep(1)
+            exit()
 
 
 def signal_handler(sig, frame):
@@ -55,6 +64,7 @@ def signal_handler(sig, frame):
         else:
             kill_processes('Fullon', manual=True)
             kill_processes('fullon_daemon', manual=True)
+            kill_hard()
 
 
 def kill_processes(name, manual: bool = False):
@@ -184,6 +194,7 @@ def other_instances() -> bool:
     '''
     for process in psutil.process_iter(['pid', 'name', 'username']):
         if "Fullon" in process.name():
+            print(process.name)
             if os.getuid() == process.uids().real:
                 return True
     return False

@@ -10,11 +10,10 @@ from libs.btrader.fullonsimfeed import FullonSimFeed
 def fullon_sim_feed():
     # You need to create a feed, helper, and broker instance here based on your application
     bot1 = Bot(1, 432)
-    with Database() as dbase:
-        feeds = dbase.get_bot_feeds(bot_id=bot1.id)
-    feed = feeds[0]
+    str_id1 = list(bot1.str_feeds.keys())[0]
+    feed = bot1.str_feeds[str_id1][0]
     timeframe = bot1._set_timeframe(period=feed.period)
-    fromdate = bot1.backload_from(bars=bot1.bars)[0].floor('day')
+    fromdate = bot1.backload_from(str_id=str_id1, bars=bot1.bars)[0].floor('day')
     fullon_feed = FullonSimFeed(feed=feed,
                                 timeframe=timeframe,
                                 compression=int(feed.compression),

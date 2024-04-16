@@ -285,6 +285,69 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
 
     BOT = {
         'user': uid,
+        'name': 'trading101x2',
+        'dry_run': 'True',
+        'active': 'False'
+    }
+    bot_id = user.add_bot(bot=BOT)
+    exchange = {"exchange_id": ex_id}
+    user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
+
+    with Database() as dbase:
+        cat_str_id = dbase.get_cat_str_id(name='trading101')
+    STRAT = {
+        "cat_str_id": cat_str_id,
+        "bot_id": bot_id,
+        "size_pct": 10,
+        "size_currency": 'USD',
+        "leverage": 2}
+    str_id = user.add_bot_strategy(strategy=STRAT)
+
+    feed = {
+        "symbol_id": 1,
+        "str_id": str_id,
+        "period": 'Ticks',
+        "compression": 1,
+        "order": 1}
+    user.add_feed_to_bot(feed=feed)
+    feed = {
+        "symbol_id": 1,
+        "str_id": str_id,
+        "period": 'Minutes',
+        "compression": 10,
+        "order": 2}
+    user.add_feed_to_bot(feed=feed)
+
+    STRAT = {
+        "cat_str_id": cat_str_id,
+        "bot_id": bot_id,
+        "size_pct": 15,
+        "size_currency": 'USD',
+        "leverage": 5}
+    str_id2 = user.add_bot_strategy(strategy=STRAT)
+
+    feed = {
+        "symbol_id": 2,
+        "str_id": str_id2,
+        "period": 'Ticks',
+        "compression": 1,
+        "order": 1}
+    user.add_feed_to_bot(feed=feed)
+    feed = {
+        "symbol_id": 2,
+        "str_id": str_id2,
+        "period": 'Minutes',
+        "compression": 10,
+        "order": 2}
+    user.add_feed_to_bot(feed=feed)
+
+    logger.info(f"Bot {bot_id} has been installed")
+
+    # -------------------------------------------------------
+    # New bot #4
+
+    BOT = {
+        'user': uid,
         'name': 'FOREST LONG BTC/USD',
         'dry_run': 'True',
         'active': 'True'
@@ -339,11 +402,11 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "prediction_steps": "1",
           "threshold": "0.48"}
     _strat['extended'] = extended
-    bot.edit(bot_id=bot_id, strat=_strat)
+    bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
     logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
-    # bot 4
+    # bot 5
 
     BOT = {
         'user': uid,
@@ -401,11 +464,11 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "prediction_steps": "1",
           "threshold": "0.35"}
     _strat['extended'] = extended
-    bot.edit(bot_id=bot_id, strat=_strat)
+    bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
     logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
-    # New bot #5
+    # New bot #6
     BOT = {
         'user': uid,
         'name': 'FOREST LONG SOL/USD',
@@ -463,11 +526,11 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "threshold": "0.48"}
     _bot['extended'] = extended
     _strat['extended'] = extended
-    bot.edit(bot_id=bot_id, strat=_strat)
+    bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
     logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
-    # New bot #6
+    # New bot #7
     BOT = {
         'user': uid,
         'name': 'FOREST SHORT BTC/USDC',
@@ -521,11 +584,11 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "threshold": "0.35"
           }
     _strat['extended'] = extended
-    bot.edit(bot_id=bot_id, strat=_strat)
+    bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
     logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
-    # New bot #7
+    # New bot #8
     BOT = {
         'user': uid,
         'name': 'FOREST SHORT ETH/USDC',
@@ -578,11 +641,11 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "threshold": "0.35"
           }
     _strat['extended'] = extended
-    bot.edit(bot_id=bot_id, strat=_strat)
+    bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
     logger.info(f"Bot {bot_id} has been installed")
 
     # -------------------------------------------------------
-    # New bot #8
+    # New bot #9
     BOT = {
         'user': uid,
         'name': 'FOREST SHORT SOL/USD',
@@ -636,8 +699,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           "threshold": "0.35"
           }
     _strat['extended'] = extended
-    bot.edit(bot_id=bot_id, strat=_strat)
-
+    bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
 
 
 def install_crawler_follows(uid: int):

@@ -152,7 +152,7 @@ class BotManager:
             bots.append(bot)
         return bots
 
-    def bot_details(self, bot_id: int) -> List[Dict[str, Any]]:
+    def bot_details(self, bot_id: int) -> Dict[str, Any]:
         """
         Fetches bot parameters, feeds, and strategy details for a bot from the database, given its unique bot ID. 
 
@@ -166,7 +166,7 @@ class BotManager:
             Dict[str, Any]: A dictionary with bot parameters, feeds, and strategy details. Returns an empty
                             dictionary if the bot ID does not exist.
         """
-        details = []
+        details = {}
         with Database() as dbase:
             _details = dbase.get_bot_params(bot_id=bot_id)
             if _details:
@@ -174,18 +174,19 @@ class BotManager:
                     _feeds = dbase.get_bot_feeds(bot_id=bot_id)
                     feeds = {}
                     for num, feed in enumerate(_feeds):
-                        feeds[f"{num}"] = {
-                                      'str_id': feed.str_id,
-                                      'symbol': feed.symbol,
-                                      'exchange': feed.exchange_name,
-                                      'compression': feed.compression,
-                                      'period': feed.period,
-                                      'feed_id': feed.feed_id
-                                      }
+                        if feed.str_id == detail['str_id']:
+                            feeds[f"{num}"] = {
+                                          'str_id': feed.str_id,
+                                          'symbol': feed.symbol,
+                                          'exchange': feed.exchange_name,
+                                          'compression': feed.compression,
+                                          'period': feed.period,
+                                          'feed_id': feed.feed_id
+                                          }
                     detail['feeds'] = feeds
-                    extended = dbase.get_str_params(bot_id=bot_id)
-                    detail['extended'] = dict(extended)
-                details.append(detail)
+                    extended = dbase.get_str_params(bot_id=bot_id, str_id=detail['str_id'])
+                    detail['extended'] = extended[0]
+                    details[detail['str_id']] = detail
         return details
 
     def get_bot_feeds(self) -> Dict[str, Dict[str, Any]]:
@@ -246,20 +247,37 @@ class BotManager:
         user = UserManager()
         return user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
-    def add_feeds(self, bot_id: int, feeds: dict) -> bool:
+    def add_feeds(self, str_id: int, feeds: dict) -> bool:
         """
         Adds an exchange to a bot
         """
         user = UserManager()
         for feed in feeds.values():
-            feed['bot_id'] = bot_id
+            feed['str_id'] = str_id
             if not user.add_feed_to_bot(feed=feed):
                 return False
         return True
 
-    def edit(self, bot_id: int, strat: dict) -> bool:
+    def edit(self, bot_id: int, strats: list) -> bool:
         """
-        Edit the specified bot.
+            Edit the specified bot.
+
+        Args:
+            bot_id (int): Bot to edit
+            start (list): list of strategies
+
+        Returns:
+            bool: True if the bot was successfully edited, False otherwise.
+        """
+        for strat in strats.values():
+            res = self.edit_bot_strat(bot_id=bot_id, strat=strat)
+            if not res:
+                return False
+        return True
+
+    def edit_bot_strat(self, bot_id: int, strat: dict) -> bool:
+        """
+        Edit the specified bot/ strategy
 
         Args:
             bot_id (int): Bot to edit
@@ -287,7 +305,7 @@ class BotManager:
             if 'active' in strat:
                 _bot['active'] = strat['active']
             if _bot:
-                _bot['bot_id'] = str_id
+                _bot['bot_id'] = bot_id
                 # Perform a sequence of database operations, stopping if any operation fails
                 if not (res := dbase.edit_bot(bot=_bot)):
                     return False
@@ -308,9 +326,6 @@ class BotManager:
                 if not (res := dbase.edit_feeds(str_id=str_id, feeds=feeds)):
                     return False
         return True
-
-        # All operations were successful
-        return res
 
     def dry_delete(self, bot_id: int) -> None:
         """

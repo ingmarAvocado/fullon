@@ -15,7 +15,6 @@ import backtrader as bt
 import json
 import arrow
 from time import sleep
-from decimal import Decimal
 
 logger = log.fullon_logger(__name__)
 
@@ -153,7 +152,6 @@ class Strategy(Strategy):
         """
         datas_num: int = int(trade.data._name)
         _trade = self._bt_trade_to_struct(trade)
-        reason = "strategy"
         if trade.justopened:
             self.datas[datas_num].pos = _trade.volume
             cash = self.cash[datas_num] - _trade.cost
@@ -322,6 +320,7 @@ class Strategy(Strategy):
         bot = {
             "bot_id": bot_id,
             "ex_id": datas.feed.ex_id,
+            "str_id": self.p.str_id,
             "bot_name": self.helper.bot_name,
             "symbol": datas.symbol,
             "exchange": datas.feed.exchange_name,
@@ -336,7 +335,7 @@ class Strategy(Strategy):
             "roi pct": roi_pct,
             "orders": "",
             "live": is_live,
-            "strategy": self.helper.strategy,
+            "strategy": self.p.cat_name,
             "base": datas.feed.base,
             "params": params
         }

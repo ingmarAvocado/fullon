@@ -6,10 +6,10 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def exchange_struct(db_session):
+def exchange_struct(dbase):
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
-    exch = db_session.get_exchange(user_id=uid)[0]
+    exch = dbase.get_exchange(user_id=uid)[0]
     yield exch
 
 

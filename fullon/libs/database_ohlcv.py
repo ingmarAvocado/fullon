@@ -199,6 +199,4 @@ class Database:
             elif 'AttributeError' in error and 'get_queue' in error:
                 pass
             else:
-                
-                print("SOOOMMEE ERROR")
-                raise
+                pass

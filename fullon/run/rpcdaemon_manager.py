@@ -126,6 +126,7 @@ def start_tickers() -> str:
 def start_crawler() -> str:
     """
     """
+    return "Crawler not started, manual disabled in code"
     if not component_on('crawler'):
         handler['crawler'].run_loop()
         return "Crawler Launched"
@@ -180,7 +181,7 @@ def stop_full():
 
 def check_services() -> bool:
     """ description """
-    services = ['ohlcv', 'tick', 'account', 'bot_status', 'crawler']
+    services = ['ohlcv', 'tick', 'account', 'bot_status']
     for service in services:
         if not component_on(service):
             return False
@@ -571,11 +572,12 @@ def bots(cmd, params: dict = {}):
         case 'live_list':
             results = handler['bot'].bots_live_list()
         case 'edit':
-            bot = params.get('bot')
-            if bot is None:
-                results = "Error: Missing 'bot' parameter for 'edit' command."
+            bot_id = params.get('bot_id')
+            strats = json.loads(params.get('strats'))
+            if bot_id is None or strats is None:
+                results = "Error: Missing 'bot_id or strats' parameter for 'edit' command."
             else:
-                results = handler['bot'].edit(bot=bot)
+                results = handler['bot'].edit(bot_id=bot_id, strats=strats)
         case 'start':
             if params.get('bot_id') is None:
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
@@ -589,7 +591,7 @@ def bots(cmd, params: dict = {}):
             if params.get('bot_id') is None:
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
             else:
-                results = handler['bot'].stop_bot(bot_id=params['bot_id'])
+                results = handler['bot'].stop(bot_id=params['bot_id'])
         case 'delete':
             if params.get('bot_id') is None:
                 result = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
@@ -601,7 +603,7 @@ def bots(cmd, params: dict = {}):
             if params.get('bot_id') is None:
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
             else:
-                results = handler['bot'].bot_details(bot_id=int(params['bot_id']))
+                results = json.dumps(handler['bot'].bot_details(bot_id=int(params['bot_id'])))
         case 'test':
             if params.get('bot_id') is None:
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
@@ -623,11 +625,11 @@ def bots(cmd, params: dict = {}):
                 results = f"Error: Missing 'bot_id' or exchange parameter for '{cmd}' command."
             results = handler['bot'].add_exchange(bot_id=bot_id, exchange=exchange)
         case 'add_feeds':
-            bot_id = params.get('bot_id', None)
+            str_id = params.get('str_id', None)
             feeds = params.get('feeds', None)
-            if bot_id is None or feeds is None:
-                results = f"Error: Missing 'bot_id' or exchange parameter for '{cmd}' command."
-            results = handler['bot'].add_feeds(bot_id=bot_id, feeds=feeds)
+            if str_id is None or feeds is None:
+                results = f"Error: Missing 'str_id' or feed parameter for '{cmd}' command."
+            results = handler['bot'].add_feeds(str_id=str_id, feeds=feeds)
         case 'dry_reset':
             if params.get('bot_id') is None:
                 results = f"Error: Missing 'bot_id' parameter for '{cmd}' command."
@@ -720,7 +722,10 @@ def shutdown(message: str = "") -> None:
 def pre_rpc_server(full, services, stop_event):
     """ description """
     daemon_startup()
-    which_startup(full, services)
+    from threading import Thread
+    thread = Thread(target=which_startup, args=(full, services))
+    # Start the thread
+    thread.start()
     rpc_server(logs=False, stop_event=stop_event)
     stop_full()
 

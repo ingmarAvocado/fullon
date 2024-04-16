@@ -12,4 +12,4 @@ fullon/backups/
 fullon/catboostinfo/
 fullon/crawler_media/
 conf/fullon.conf
-
+conf/fullon_hush.json

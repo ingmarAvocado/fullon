@@ -365,6 +365,7 @@ class Database(database.Database):
                 b.active,
                 b.uid,
                 s.str_id,
+                st.name as strategy,
                 s.take_profit,
                 s.stop_loss,
                 s.trailing_stop,
@@ -377,8 +378,11 @@ class Database(database.Database):
             FROM
                 public.bots b
                 INNER JOIN public.strategies s ON b.bot_id = s.bot_id
-            WHERE b.bot_id = %s
-            ORDER BY s.str_id
+                INNER JOIN public.cat_strategies st ON s.cat_str_id = st.cat_str_id -- Use the aliases here
+            WHERE
+                b.bot_id = %s
+            ORDER BY
+                s.str_id
         """
         try:
             with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -446,23 +450,24 @@ class Database(database.Database):
             A list of dictionaries containing bot details or None if an error occurred.
         """
         sql = """
+
             SELECT
-                public.bots.bot_id,
-                public.users.mail,
-                public.cat_strategies.name as strategy,
-                public.bots.name,
-                public.bots.dry_run,
-                public.bots.active,
-                public.bots.timestamp
+                b.bot_id,
+                u.mail,
+                STRING_AGG(cs.name, ', ') AS strategy,  -- Aggregate strategy names
+                b.name,
+                b.dry_run,
+                b.active,
+                b.timestamp
             FROM
-                public.bots
-                INNER JOIN public.users
-                 ON public.bots.uid = public.users.uid
-                INNER JOIN public.strategies
-                 ON public.bots.bot_id = public.strategies.bot_id
-                INNER JOIN public.cat_strategies
-                 ON public.strategies.cat_str_id = public.cat_strategies.cat_str_id
-            ORDER BY  bot_id ASC
+                public.bots b
+                INNER JOIN public.users u ON b.uid = u.uid
+                INNER JOIN public.strategies s ON b.bot_id = s.bot_id
+                INNER JOIN public.cat_strategies cs ON s.cat_str_id = cs.cat_str_id
+            GROUP BY
+                b.bot_id, u.mail, b.name, b.dry_run, b.active, b.timestamp
+            ORDER BY
+                b.bot_id ASC
             LIMIT %s OFFSET %s
         """
         try:

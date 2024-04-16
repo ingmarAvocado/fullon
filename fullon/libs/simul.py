@@ -28,7 +28,9 @@ class simul:
         """description"""
         pass
 
-    def echo_results(self, bot: dict, results: list,
+    def echo_results(self,
+                     bot: dict,
+                     results: dict,
                      sharpe_filter: float = 0.0,
                      montecarlo: bool = False):
         """
@@ -40,7 +42,22 @@ class simul:
         Note:
             This function creates an instance of the 'simul' class to parse results and deletes it afterwards.
         """
+        for str_id, result in results.items():
+            self.echo_result(bot=bot, results=result, sharpe_filter=sharpe_filter, montecarlo=montecarlo)
 
+    def echo_result(self, bot: dict,
+                    results: list,
+                    sharpe_filter: float = 0.0,
+                    montecarlo: bool = False):
+        """
+         Processes the simulation results for output based on given filters.
+        Args:
+            results (list): A list of tuples containing bot configurations and their corresponding simulation results.
+            sharpe_filter (float): Sharpe ratio filter for the results.
+            short (bool): A flag for whether to shorten the output.
+        Note:
+            This function creates an instance of the 'simul' class to parse results and deletes it afterwards.
+        """
         try:
             if not results[0][1]:
                 print("Simulation produced no results, maybe a problem with your parameters")

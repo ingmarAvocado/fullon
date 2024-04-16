@@ -69,7 +69,8 @@ class Strategy(strategy.Strategy):
             if not self.order_placed:
                 self.next_event_no_pos()
         else:
-            filter_date = pandas.to_datetime(self.curtime[0].format('YYYY-MM-DD HH:mm:ss'))
+            stime = self.datas[-1].bar_size_minutes
+            filter_date = pandas.to_datetime(self.curtime[0].shift(minutes=-stime).format('YYYY-MM-DD HH:mm:ss'))
             self.indicators_df = self.indicators_df[self.indicators_df.index > filter_date]
             self._check_end_simul()
             self.risk_management()

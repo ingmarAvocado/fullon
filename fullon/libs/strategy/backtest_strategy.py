@@ -100,7 +100,7 @@ class Strategy(strategy.Strategy):
             else:
                 last_side = 'Sell'
         else:
-            last_side = self.helper.simulresults[datas_num][-1]['side']
+            last_side = self.helper.simulresults[self.p.str_id][datas_num][-1]['side']
             if last_side == 'Buy':
                 last_side = 'Sell'
             else:
@@ -108,13 +108,13 @@ class Strategy(strategy.Strategy):
 
         timestamp = self.datas[0].datetime.datetime(0)
         last_ref = -1
-        if len(self.helper.simulresults[datas_num]) > 0:
-            last_ref = self.helper.simulresults[datas_num][-1]['ref']
+        if len(self.helper.simulresults[self.p.str_id][datas_num]) > 0:
+            last_ref = self.helper.simulresults[self.p.str_id][datas_num][-1]['ref']
         if last_ref == trade.ref:  # This is a closing trade
-            amount = abs(self.helper.simulresults[datas_num][-1]['amount'])
-            last_comm = self.helper.simulresults[datas_num][-1]['fee']
+            amount = abs(self.helper.simulresults[self.p.str_id][datas_num][-1]['amount'])
+            last_comm = self.helper.simulresults[self.p.str_id][datas_num][-1]['fee']
             trade.commission = trade.commission - last_comm
-            prev_cost = self.helper.simulresults[datas_num][-1]['cost']
+            prev_cost = self.helper.simulresults[self.p.str_id][datas_num][-1]['cost']
             cost = trade.price * amount
 
             if last_side == "Buy":  # closing a short
@@ -122,7 +122,7 @@ class Strategy(strategy.Strategy):
             else:  # closing a long
                 trade.pnlcomm = cost - prev_cost - trade.commission
 
-            cash = self.helper.simulresults[datas_num][-1]['cash'] + \
+            cash = self.helper.simulresults[self.p.str_id][datas_num][-1]['cash'] + \
                 prev_cost + trade.pnlcomm
             assets = cash # we need to use this variable, as we also use cash variable
             self.broker.cash = cash
@@ -156,4 +156,4 @@ class Strategy(strategy.Strategy):
             "assets": assets,
             "reason": self.lastclose[datas_num]}
         r.update(vars(self.indicators))
-        self.helper.simulresults[datas_num].append(r)
+        self.helper.simulresults[self.p.str_id][datas_num].append(r)

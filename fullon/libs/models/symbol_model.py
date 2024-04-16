@@ -32,15 +32,12 @@ class Database(database.Database):
                 else:
                     sql = "DELETE FROM symbols WHERE symbol = %s and cat_ex_id = %s"
                     params = (symbol.symbol, symbol.cat_ex_id)
-
                 cur.execute(sql, params)
                 self.con.commit()
-
                 # Check if any row was affected (i.e., the symbol was deleted)
                 return cur.rowcount > 0
-
         except (Exception, psycopg2.DatabaseError) as error:
-            self.con
+            logger.error(str(error))
         return False
 
     def install_symbol(self, symbol: SymbolStruct) -> int:

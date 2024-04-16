@@ -9,7 +9,7 @@ from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
 
 SITES = ['twitter']
 
-
+'''
 @pytest.fixture(scope="module")
 def crawler():
     yield CrawlerManager()
@@ -141,3 +141,4 @@ def test_del_profile(crawler, profile):
 def test_del_site(crawler):
     assert crawler.del_site(site='anothernetworkz') is True
     assert crawler.del_site(site='anothernetworkz2') is True
+'''

@@ -190,5 +190,5 @@ class Database:
                 if isinstance(result, tuple) and result[0] == ControlSignals.STOP.value:
                     raise WorkerError(f"Error in worker process: {result[1]}")
                 return result
-        except RuntimeError:
+        except (RuntimeError, AttributeError):
             pass

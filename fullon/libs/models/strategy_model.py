@@ -50,12 +50,13 @@ class Database(database.Database):
             )
             return None
 
-    def get_str_params(self, bot_id: int) -> List[Dict[str, Any]]:
+    def get_str_params(self, bot_id: int, str_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Gets strategy parameters associated with a given bot_id, dynamically adding parameters as key-value pairs in dictionaries.
 
         Args:
             bot_id (int): The ID of the bot for which to retrieve strategy parameters.
+            str_id (int): Filter by str)id
 
         Returns:
             List[Dict[str, Any]]: A list of dictionaries, each representing a strategy with its ID ('str_id') and
@@ -67,9 +68,14 @@ class Database(database.Database):
         INNER JOIN strategies s ON sp.str_id = s.str_id
         WHERE s.bot_id = %s
         """
+        if str_id:
+            sql += " AND s.str_id=%s"
+            sql_params = (bot_id, str_id)
+        else:
+            sql_params = (bot_id, )
         try:
             with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute(sql, (bot_id,))
+                cur.execute(sql, sql_params)
                 rows = cur.fetchall()
 
                 strategy_params = {}
@@ -97,6 +103,8 @@ class Database(database.Database):
         :return: True if the operation was successful, False otherwise
         """
         # Build the SQL statement
+        _ = params.pop('strategy', None)
+        _ = params.pop('str_id', None)
         sql = "UPDATE strategies SET "
         sql += ", ".join(f"{key} = %s" for key in params.keys())
         sql += " WHERE  str_id = %s"
@@ -182,18 +190,20 @@ class Database(database.Database):
 
     def add_bot_strategy(self, strategy: dict) -> Optional[int]:
         """
-        Adds a strategy to the database.
+        Adds a strategy to the database and returns the strategy ID on success.
 
         Args:
             strategy (dict): A dictionary containing the strategy details.
 
         Returns:
-            bool: True if success.
+            Optional[int]: Strategy ID if successful, None otherwise.
 
         Raises:
             psycopg2.DatabaseError: If an error occurs while inserting the strategy or its parameters.
         """
         defaults = self.get_cat_strategy(cat_str_id=strategy['cat_str_id']).to_dict()
+        defaults['leverage'] = 2
+        defaults['size_pct'] = 2
         strategy = {**defaults, **strategy}
         insert_strategy_sql = """
             INSERT INTO strategies (
@@ -203,38 +213,43 @@ class Database(database.Database):
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING str_id
         """
         insert_params_sql = "INSERT INTO strategies_params(str_id, name, value) VALUES(%s, %s, %s)"
+        strategy_values = (
+            strategy.get('bot_id'),
+            strategy['cat_str_id'],
+            strategy.get('take_profit'),
+            strategy.get('stop_loss'),
+            strategy.get('trailing_stop'),
+            strategy.get('timeout'),
+            strategy.get('leverage', 2),
+            strategy.get('size_pct', 10),
+            strategy.get('size'),
+            strategy.get('size_currency', 'USD'),
+            strategy.get('pre_load_bars'),
+            strategy.get('feeds'),
+            strategy.get('pairs')
+        )
+
         try:
             with self.con.cursor() as cur:
-                # Insert strategy and get str_id
-                cur.execute(insert_strategy_sql, (
-                    strategy.get('bot_id'),
-                    strategy['cat_str_id'],
-                    strategy.get('take_profit'),
-                    strategy.get('stop_loss'),
-                    strategy.get('trailing_stop'),
-                    strategy.get('timeout'),
-                    strategy.get('leverage', 2),  # Fixed typo here from 'levergage' to 'leverage'
-                    strategy.get('size_pct', 10),
-                    strategy.get('size'),
-                    strategy.get('size_currency', 'USD'),
-                    strategy.get('pre_load_bars'),
-                    strategy.get('feeds'),
-                    strategy.get('pairs')
-                ))
-                str_id = cur.fetchone()[0]  # Assuming RETURNING str_id works as expected
-                # Insert parameters for the strategy
+                cur.execute(insert_strategy_sql, strategy_values)
+                str_id = cur.fetchone()
                 if str_id:
+                    str_id = str_id[0]
                     params = self.get_cat_strategies_params(cat_str_id=strategy['cat_str_id'])
-                    if params:
-                        for param in params:
-                            cur.execute(insert_params_sql, (str_id, param.name, param.value))
-                    # Link the strategy with a bot
+                    for param in params:
+                        cur.execute(insert_params_sql, (str_id, param.name, param.value))
                     self.con.commit()
                     return str_id
-        except (Exception, psycopg2.DatabaseError) as error:
+                else:
+                    self.con.rollback()
+                    return None
+        except psycopg2.DatabaseError as error:
             self.con.rollback()
-            logger.warning(f"Error in add_bot_strategy: {error}")
-        return False
+            msg = f"Error in add_bot_strategy: {error}"
+            msg += f"Failed SQL: {insert_strategy_sql}"
+            msg += f"With values: {strategy_values}"
+            logger.error(msg)
+            return None
 
     def del_bot_strategy(self, bot_id: int) -> bool:
         """

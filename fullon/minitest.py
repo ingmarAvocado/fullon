@@ -17,11 +17,11 @@ signal = Event()
 #ins.install_strategies()
 
 
-bot1 = Bot(1)
+bot1 = Bot(2)
 bot1.dry_run = True
 print("starting")
 try:
-    bot1.run_loop(test=False, stop_signal=signal)
+    bot1.run_loop(test=True, stop_signal=signal)
 except KeyboardInterrupt:
     print("hola")
 

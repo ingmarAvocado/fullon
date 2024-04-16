@@ -30,17 +30,17 @@ params2 = {
 params2 = {"size_pct": "10"}
 #params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
 BOT = {"bot_id": 3,
-       "periods": 30,
+       "periods": 460,
        "warm_up": 1,
        "xls": False,
-       "verbose": False,
+       "verbose": True,
        "visual": False}
 filename = None
 feeds = {}
 #filename = "rsi2long2.csv"
 #feeds = {2: {'compression': 30}, 3: {'compression': 30}}
 #feeds = {1: {'compression': 480}}
-
+'''
 abot = Bot(BOT['bot_id'], BOT['periods'])
 params3 = {}
 for p, key in params2.items():
@@ -66,7 +66,7 @@ simul.bot_simul(bot=BOT,
                 filename=filename,
                 montecarlo=1,
                 sharpe_filter=-10.00)
-'''
+
 
 stop_database()
 stop_ohlcv()

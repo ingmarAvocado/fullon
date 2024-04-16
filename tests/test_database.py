@@ -9,21 +9,13 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def dbase():
-    return database.Database()
-
-@pytest.fixture(scope="module")
-def uid():
-    user = UserManager()
-    return user.get_user_id(mail='admin@fullon')
-
-@pytest.fixture(scope="module")
 def params():
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
     with database.Database() as dbase:
         params = dbase.get_exchange(user_id=uid)[0]
     return params
+
 
 @pytest.fixture
 def mock_trade():

@@ -322,6 +322,9 @@ class TradeCalculator:
         with Database() as dbase:
             all_trades: List[TradeStruct] = dbase.get_trades(ex_id=exch.ex_id)
 
+        if not all_trades:
+            return
+
         # Create a dictionary mapping trade timestamps to their index in the all_trades list
         trade_timestamp_to_index = {trade.timestamp: i for i, trade in enumerate(all_trades)}
 

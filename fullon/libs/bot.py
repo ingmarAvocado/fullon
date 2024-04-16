@@ -51,7 +51,7 @@ class Bot:
             self.bot_name = bot.name
             self.dry_run = bot.dry_run
             self.start_time = arrow.utcnow()
-            self.simulresults = {}
+            self.pre_load_bars = 0
             self.str_params = self._str_set_params(dbase=dbase)
             self.cache = cache.Cache()
             self.str_feeds = self._set_feeds(dbase=dbase)
@@ -59,6 +59,9 @@ class Bot:
                 logger.error(
                     "__init__: It is not possible to run a simulation without feeds")
                 exit("bye")
+            self.simulresults = {}
+            for str_id in self.str_feeds.keys():
+                self.simulresults[str_id] = {}
 
     def __del__(self) -> None:
         """
@@ -142,6 +145,8 @@ class Bot:
             param.pop('name')
             param['uid'] = self.uid
             param['bot_id'] = self.uid
+            if self.pre_load_bars < param['pre_load_bars']:
+                self.pre_load_bars = param['pre_load_bars']
             ret_params[param['str_id']] = param
         return ret_params
 
@@ -388,7 +393,7 @@ class Bot:
                 if key in loaded:
                     continue
                 # Clear the simulation results list for this feed
-                self.simulresults[num] = []
+                self.simulresults[str_id][num] = []
                 # Set the timeframe for the feed
                 timeframe = self._set_timeframe(period=feed.period)
                 not_tick = True
@@ -496,21 +501,23 @@ class Bot:
             p = ""
             for key, value in test_params.items():
                 p = p + str(key) + "_" + str(value) + "_"
-            imgtitle = "tmp/simul_" + self.strategy + "_" + p + "_" + now + ".png"
+            imgtitle = "tmp/simul_" + "me" + "_" + p + "_" + now + ".png"
             cerebro.plot(style='candles', saveimg=imgtitle)
-        '''
-        self.str_params.pop('helper', None)
-        self.str_params.pop('pre_load_bars', None)
-        for num in range(0, len(self.simulresults)):
-            self.simulresults[num].append({"strategy": self.strategy,
-                                           "params": self.str_params,
-                                           "feed": self.str_feeds[num],
-                                           "imgtitle": imgtitle})
-        '''
+        str_id = ""
+        for str_id, params in self.str_params.items():
+            params.pop('helper', None)
+            params.pop('pre_load_bars', None)
+            params.pop('cat_str_id', None)
+            strategy_name = params.pop('cat_name')
+            for num in range(0, len(self.simulresults[str_id])):
+                self.simulresults[str_id][num].append({"strategy": strategy_name,
+                                                       "params": params,
+                                                       "feed": self.str_feeds[str_id][num],
+                                                       "imgtitle": imgtitle})
         del cerebro
         return self.simulresults
 
-    def _load_live_feeds(self, cerebro: bt.Cerebro, bars: int):
+    def _load_live_feeds(self, cerebro: bt.Cerebro):
         """
         Loads the feeds into the cerebro instance for backtesting.
 
@@ -524,7 +531,9 @@ class Bot:
         feed_map = {}
         index = 0
         for str_id, feeds in self.str_feeds.items():
-            fromdate, fromdate2 = self.backload_from(str_id=str_id, bars=bars)
+            fromdate, fromdate2 = self.backload_from(
+                                    str_id=str_id,
+                                    bars=self.pre_load_bars)
             for num, feed in enumerate(feeds):
                 compression = int(feed.compression)
                 period = feed.period
@@ -561,7 +570,7 @@ class Bot:
                                                           name=f'{index}')
                     sampler = FullonFeedResampler()
                     sampler.prepare(data=resampled_data,
-                                    bars=bars,
+                                    bars=self.pre_load_bars,
                                     timeframe=timeframe,
                                     compression=compression,
                                     feed=feed,
@@ -613,6 +622,8 @@ class Bot:
             test (Optional[bool]): Whether to run the bot in test mode. Defaults to False.
             stop_signal (Optional[threading.Event]): An event object to signal the loop to stop. Defaults to None.
         """
+        if test:
+            self.test = True
         setproctitle(f"Fullon Bot {self.id}")
         if no_check is True:
             time.sleep(5)
@@ -623,11 +634,10 @@ class Bot:
         cerebro = bt.Cerebro()
         broker = self.get_broker()
         cerebro.setbroker(broker)
-        self._load_live_feeds(cerebro=cerebro, bars=self.str_params['pre_load_bars'])
+        self._load_live_strategies(cerebro=cerebro, stop_signal=stop_signal)
+        self._load_live_feeds(cerebro=cerebro)
         logger.info("Starting Bot...")
-        # print(len(cerebro.datas))
-        #try:
-        return
-        cerebro.run(live=True)
-        #except KeyboardInterrupt:
-        #    exit()
+        try:
+            cerebro.run(live=True)
+        except KeyboardInterrupt:
+            exit()

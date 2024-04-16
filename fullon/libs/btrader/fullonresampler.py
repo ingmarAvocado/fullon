@@ -47,7 +47,6 @@ class FullonFeedResampler:
         setattr(data, 'symbol', feed.symbol)
         setattr(data, '_table', self._get_table(exchange=data.exchange,
                                                 symbol=data.symbol))
-
         # Set the dataframe and append_row method as attributes of the data feed
         setattr(data, 'dataframe', dataframe)
         setattr(data, 'append_row', self.append_row.__get__(data))

@@ -69,7 +69,22 @@ class ProcessManager:
                     time.sleep(0.5)
         setproctitle("Fullon process checker")
         logger.info("Strating process monitor")
-        task(stop_event)
+        count = 0
+        while not stop_event.is_set():
+            response = 'No response'
+            try:
+                response = self.rpc.rpc_test()
+                if "fullon" in str(response):
+                    logger.warning("Connected to RPC server")
+                    task(stop_event)
+
+            except ConnectionRefusedError:
+                logger.warning("Can't connect to RPC server, trying again.")
+                time.sleep(10)
+            count += 1
+            if count == 20:
+                logger.error("Can't connect to rpc server for some reason")
+                break
 
     def _check_global_errors(self):
         """
@@ -85,7 +100,13 @@ class ProcessManager:
                 failures.append(failure)
         if failures:
             logger.info(f"Restarting all services")
-            self.rpc.services('services', 'restart')
+            try:
+                self.rpc.services('services', 'restart')
+            except ConnectionRefusedError:
+                logger.error("Can't connect to RPC server")
+                time.sleep(1)
+            except xmlrpc.client.Fault:
+                logger.error("XMLRPC couldnt iterate response")
 
     def _check_ohlcv_services(self):
         """

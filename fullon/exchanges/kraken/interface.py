@@ -13,6 +13,7 @@ from collections import defaultdict
 import uuid
 from collections import Counter
 import threading
+from  ccxt.base.errors import RequestTimeout
 
 logger = log.fullon_logger(__name__)
 
@@ -38,8 +39,8 @@ class Interface(Ccxt_Interface):
         self.ohlcv_needs_trades = True
         self.delete_trades = False
         self._sleep = float(settings.KRAKEN_TIMEOUT)
-        if not self.ws.markets:
-            self.ws.load_markets()
+        self._load_markets()
+
         if not self.currencies:
             self.set_currencies()
         if not self.pairs:
@@ -56,6 +57,33 @@ class Interface(Ccxt_Interface):
 
     def __del__(self) -> None:
         self.stop()
+
+    def _load_markets(self):
+        """
+        load markets and if time out try every 5 seconds unitl 2 hours.
+        Define the end time of the loop (2 hours from now)
+        """
+        end_time = time.time() + 2 * 60 * 60  # 2 hours in seconds
+        end_time = time.time() + 1  # minute hours in seconds
+
+        while time.time() < end_time:
+            try:
+                # Attempt to load markets if they are not loaded
+                if not self.ws.markets:
+                    self.ws.load_markets()
+                break  # If load_markets succeeds, break out of the loop
+            except RequestTimeout:
+                # Sleep for some time before retrying (e.g., 1 second)
+                logger.error("Cann't connect to kraken, seems connection has been timedout")
+                time.sleep(5)
+            except Exception as e:
+                # Handle any other exceptions that may arise
+                raise e  # or log the error, etc.
+
+        # If the loop ends due to the timeout without successful loading, you might want to raise an error
+        else:
+            pass
+            #raise RuntimeError("Failed to load markets within 2 hours")
 
     def stop(self):
         """

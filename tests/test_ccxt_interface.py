@@ -10,11 +10,11 @@ exchange_list = ['kraken']
 
 
 @pytest.fixture(scope="module", params=exchange_list)
-def exchange_struct(request, db_session):
+def exchange_struct(request, dbase):
     exchange_name = request.param
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
-    exch = db_session.get_exchange(user_id=uid)[0]
+    exch = dbase.get_exchange(user_id=uid)[0]
     iface = Interface(exchange_name, params=exch)
     yield iface
     iface.stop()

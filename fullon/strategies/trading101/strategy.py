@@ -14,11 +14,11 @@ strat = loader.strategy
 class Strategy(strat.Strategy):
     """description"""
 
-    params = (('sma1', 45), ('pre_load_bars', 1))
+    params = (('sma1', 45), ('pre_load_bars', 100))
 
     def local_init(self):
         """description"""
-        self.verbose = False
+        self.verbose = True
         self.order_cmd = "spread"
         self.count = 0
         return None
@@ -26,10 +26,8 @@ class Strategy(strat.Strategy):
     def local_next(self):
         """ description """
         self.count = 0
-        print("hola")
         time.sleep(1)
         if self.entry_signal[0]:
-            print("vamos a comprar")
             self.open_pos(0)
 
     def get_entry_signal(self):
@@ -37,6 +35,5 @@ class Strategy(strat.Strategy):
         pass
 
     def risk_management(self):
-        print("in risk")
         time.sleep(1)
         res = self.check_exit()

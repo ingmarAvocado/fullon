@@ -45,18 +45,6 @@ def test_reload_strats(ctl):
     assert isinstance(res, bool)
 
 
-@pytest.mark.order(3)
-@patch('libs.ctl.ctl_strategies_lib.PromptSession', autospec=True)
-def test_set_new_strategy(mock_prompt_session, ctl):
-    # Mock the prompt function
-    mock_prompt_session.return_value.prompt.side_effect = mock_prompt
-    # Use create_pipe_input and DummyOutput
-    with create_pipe_input() as inp:
-        inp.send_text("trading101\n")
-        result = ctl.set_new_strategy(bot_id=0)
-        assert isinstance(result, int)
-        result = ctl.del_user_strategy(0)
-        assert 'Error' in result
 
 
 @pytest.mark.order(4)

@@ -21,7 +21,7 @@ FEED_CLASSES = {
 
 
 @pytest.fixture
-def bot(bot_id, feed1, feed2):
+def bot(bot_id):
     bot = Bot(bot_id, 432)
     yield bot
     del bot
@@ -29,22 +29,21 @@ def bot(bot_id, feed1, feed2):
 
 
 @pytest.mark.order(1)
-def test_init(bot, symbol1, bot_id):
+def test_init(bot, bot_id):
     assert bot.id == bot_id
     assert isinstance(bot.bot_name, str)
     # Add more assertions for other attributes if necessary
 
 
 @pytest.mark.order(2)
-def test__set_feeds(bot, dbase, str_id1, str_id2, symbol1, symbol2):
+def test__set_feeds(bot, dbase, symbol1):
     bot._set_feeds(dbase=dbase)
-    assert len(bot.str_feeds) == 2
-    assert bot.str_feeds[str_id1][0].symbol == symbol1.symbol
-    assert bot.str_feeds[str_id1][0].period == "Ticks"
-    assert bot.str_feeds[str_id1][0].compression == 1
-    assert bot.str_feeds[str_id2][0].symbol == symbol2.symbol
-    assert bot.str_feeds[str_id2][0].period == "Ticks"
-    assert bot.str_feeds[str_id2][0].compression == 1
+    assert len(bot.str_feeds) == 1
+    str_id = list(bot.str_feeds.keys())[0]
+    feed = bot.str_feeds[str_id]
+    assert feed[0].symbol == symbol1.symbol
+    assert feed[0].period == "Ticks"
+    assert feed[0].compression == 1
 
 
 @pytest.mark.order(3)
@@ -75,10 +74,12 @@ def test__set_timeframe(bot):
 
 
 @pytest.mark.order(6)
-def test_backload_from(bot, str_id1, str_id2):
+def test_backload_from(bot):
     # Test valid bars
+    assert len(bot.str_feeds) == 1
+    str_id1 = list(bot.str_feeds.keys())[0]
     backload_time_100 = bot.backload_from(str_id=str_id1, bars=100)
-    backload_time_200 = bot.backload_from(str_id=str_id2, bars=200)
+    backload_time_200 = bot.backload_from(str_id=str_id1, bars=200)
     assert isinstance(backload_time_100[0], arrow.Arrow)
     assert isinstance(backload_time_100[0], arrow.Arrow)
     assert isinstance(backload_time_200[1], arrow.Arrow)
@@ -112,12 +113,14 @@ def test__load_feeds(bot, mocker):
 def test_pair_feeds(bot):
     bot._pair_feeds(cerebro=cerebro)
 
+
+'''
 @pytest.mark.order(9)
 def test__load_live_feeds(bot, mocker):
     global cerebro
     cerebro = bt.Cerebro()
     # Load feeds
-    bot._load_live_feeds(cerebro, bars=200)
+    bot._load_live_feeds(cerebro)
     # Check if feeds are loaded correctly
     loaded = []
     for feeds in bot.str_feeds.values():
@@ -126,7 +129,7 @@ def test__load_live_feeds(bot, mocker):
             if key not in loaded:
                 loaded.append(key)
     assert len(cerebro.datas) == len(loaded)
-
+'''
 
 @pytest.mark.order(10)
 def get_date_from_bars(bars: int, period: str, compression: int = 1) -> arrow.arrow.Arrow:

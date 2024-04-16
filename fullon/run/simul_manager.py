@@ -265,7 +265,10 @@ class SimulManager():
         if not params:
             sim_list = [{}]
         progress_bar = tqdm(total=len(sim_list)*montecarlo, desc="Running Simulations")
-        results = []
+        # aqui este results regresa (datos_bot, resultados_simulacion)
+        # tendrai que quedar results[str_id] = [(datos_bot, resultados_simulacion),(etc)]
+
+        results = {}
         start_time = time.perf_counter()
         with ThreadPoolExecutor() as executor:
             futures = {}
@@ -278,7 +281,12 @@ class SimulManager():
                     futures[future] = sim_param
             for future in futures:
                 result = future.result()
-                results.append((bot, result))
+                str_id = list(result.keys()).pop()
+                try:
+                    results[str_id].append((bot, result[str_id]))
+                except KeyError:
+                    results[str_id] = []
+                    results[str_id].append((bot, result[str_id]))
         progress_bar.close()
         sim = simul.simul()
         sim.echo_results(bot=bot,
