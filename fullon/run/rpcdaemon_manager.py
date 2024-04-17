@@ -126,7 +126,6 @@ def start_tickers() -> str:
 def start_crawler() -> str:
     """
     """
-    return "Crawler not started, manual disabled in code"
     if not component_on('crawler'):
         handler['crawler'].run_loop()
         return "Crawler Launched"
@@ -198,8 +197,6 @@ def start_services():
         logger.info(start_ohlcv())
     if not component_on('bot_status'):
         logger.info(start_bot_status())
-    if not component_on('crawler'):
-        logger.info(start_crawler())
     return "Services started"
 
 

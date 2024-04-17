@@ -153,7 +153,6 @@ def rpc_client(server):
         yield xmlrpc.client.ServerProxy(f"http://{settings.XMLRPC_HOST}:{settings.XMLRPC_PORT}", allow_none=True)
 
 def get_symbol_struct():
-    symbol_name = 'agld/usd'
     VIEW_NAME = "kraken_agld_usd.candles1m"
     OHLCV = f"""
     CREATE MATERIALIZED VIEW kraken_agld_usd.candles1m

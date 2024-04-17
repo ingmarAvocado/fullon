@@ -6,7 +6,6 @@ from __future__ import unicode_literals, print_function
 import json
 from clint.textui import puts, colored
 from run import avail_components as comp
-from libs.settings_config import fullon_settings_loader
 from libs import log
 from libs.ctl.ctl_lib import CTL
 from tabulate import tabulate
@@ -16,6 +15,7 @@ from run import avail_components as comp
 from typing import List
 import arrow
 import os
+
 
 logger = log.fullon_logger(__name__)
 

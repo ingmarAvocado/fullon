@@ -45,8 +45,6 @@ def test_reload_strats(ctl):
     assert isinstance(res, bool)
 
 
-
-
 @pytest.mark.order(4)
 @patch('libs.ctl.ctl_strategies_lib.PromptSession', autospec=True)
 def test_delete_strategy(mock_prompt_session, ctl):

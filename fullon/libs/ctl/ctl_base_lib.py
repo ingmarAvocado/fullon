@@ -4,6 +4,7 @@ Comments
 
 import xmlrpc.client
 from libs import settings
+from libs.settings_config import fullon_ctl_settings_loader
 
 
 class CTL():
