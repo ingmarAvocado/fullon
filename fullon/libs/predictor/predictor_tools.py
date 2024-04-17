@@ -84,12 +84,25 @@ def _create_empty_flagfile(filename):
     Parameters:
         filename (str): The path to the flag file.
     """
+    def pickle_exists():
+        """
+        if pickle folder doest exist, make it!
+        """
+        if not os.path.exists("pickle"):
+            os.makedirs("pickle")
+    if filename.startswith("fullon"):
+        pickle_exists()
+    else:
+        pickle_exists()
     try:
         with open(filename, 'w'):
-            pass
+            return True
     except FileNotFoundError:
-        with open("fullon/"+filename, 'w'):
-            pass
+        if os.path.exists(filename):
+            with open("fullon/"+filename, 'w'):
+                return True
+    logger.error("Seems There is an issue with creating pickle file, check it")
+    return False
 
 
 def _fetch_data_from_db(feed: FullonFeed,
