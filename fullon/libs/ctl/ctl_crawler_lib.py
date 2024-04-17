@@ -77,7 +77,7 @@ class CTL(CTL):
             completer = WordCompleter(['True', 'False'], ignore_case=True)
             contra = session.prompt("(Crawler Shell/Add Profile) is a contra > ",
                                     completer=completer)
-            contra = True if contra is 'True' else False
+            contra = True if contra == 'True' else False
             profile = {"uid": uid,
                        "site": site,
                        "account": account,

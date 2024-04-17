@@ -533,7 +533,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     # New bot #7
     BOT = {
         'user': uid,
-        'name': 'FOREST SHORT BTC/USDC',
+        'name': 'FOREST SHORT BTC/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -550,14 +550,14 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 7,
+        "symbol_id": 1,
         "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 7,
+        "symbol_id": 1,
         "str_id": str_id,
         "period": 'Days',
         "compression": 1,
@@ -591,7 +591,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     # New bot #8
     BOT = {
         'user': uid,
-        'name': 'FOREST SHORT ETH/USDC',
+        'name': 'FOREST SHORT ETH/USD',
         'dry_run': 'True',
         'active': 'True'
     }
@@ -607,14 +607,14 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     str_id = user.add_bot_strategy(strategy=STRAT)
 
     feed = {
-        "symbol_id": 9,
+        "symbol_id": 2,
         "str_id": str_id,
         "period": 'Ticks',
         "compression": 1,
         "order": 1}
     user.add_feed_to_bot(feed=feed)
     feed = {
-        "symbol_id": 9,
+        "symbol_id": 2,
         "str_id": str_id,
         "period": 'Days',
         "compression": 1,

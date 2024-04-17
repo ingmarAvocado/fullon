@@ -77,7 +77,6 @@ def _wait_for_flagfile(filename, max_loops=600, sleep_time=0.5):
     if loop_count >= max_loops:
         raise Exception("Timeout waiting for flagfile to be deleted.")
 
-
 def _create_empty_flagfile(filename):
     """
     Create an empty flag file with the given filename.
@@ -325,6 +324,7 @@ def save_scaler(fromdate: str,
     Returns:
     bool
     """
+    scaler_file = ''
     try:
         symbol = feed.symbol.replace('/', '_')
         pre_fix = f"scaler_{feed.strategy_name}_{symbol}_{feed.compression}_{feed.period}"
