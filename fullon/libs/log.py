@@ -4,6 +4,7 @@ Setting to log
 import logging
 from os import mkdir
 from libs import settings
+from colorlog import ColoredFormatter
 
 
 class LogFilter():
@@ -22,9 +23,9 @@ class LogFilter():
         return log_record.levelno <= self.__level
 
 
-def fullon_logger(name: str) -> logging.getLogger:
+def fullon_logger(name: str) -> logging.Logger:
     """
-    Configures a fullon logger
+    Configures a fullon logger with colorized output
     """
     try:
         console = settings.CONSOLE_LOG
@@ -48,16 +49,29 @@ def fullon_logger(name: str) -> logging.getLogger:
                 log_level = logging.ERROR
     except AttributeError:
         log_level = logging.ERROR
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(module)s (L: %(lineno)d) - %(message)s')
+
+    # Setup the colorized formatter
+    color_formatter = ColoredFormatter(
+        '%(log_color)s%(asctime)s - %(levelname)s - %(module)s (L: %(lineno)d) - %(message)s',
+        log_colors={
+            'DEBUG': 'cyan',
+            'INFO': 'white',
+            'WARNING': 'light_yellow',
+            'ERROR': 'light_red',
+            'CRITICAL': 'light_red'
+        }
+    )
+
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
     if logger.hasHandlers():
         logger.handlers.clear()
+
     if console:
         stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
+        stream_handler.setFormatter(color_formatter)
         logger.addHandler(stream_handler)
+
     if filename:
         try:
             file_handler = logging.FileHandler(filename)
@@ -67,8 +81,9 @@ def fullon_logger(name: str) -> logging.getLogger:
             dirname = '/'.join(filename.split("/")[:-1])
             mkdir(dirname)
             file_handler = logging.FileHandler(filename)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(color_formatter)
         logger.addHandler(file_handler)
+
     return logger
 
 

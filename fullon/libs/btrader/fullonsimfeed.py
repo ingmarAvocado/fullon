@@ -29,7 +29,7 @@ class FullonSimFeed(FullonFeed):
     last_date: Optional[arrow.arrow.Arrow] = None
     dataframe = None
     MAX_TRADE_MINUTES = 525600  # bars
-    noise = settings.NOISE
+    noise = False
 
     def _load(self):
         """Description"""
@@ -49,6 +49,7 @@ class FullonSimFeed(FullonFeed):
         self.last_moments = self.params.mainfeed.last_date.shift(  # pylint: disable=no-member
             seconds=-self.time_factor)
         self.last_moments = bt.date2num(self.last_moments.datetime)
+        self.noise = self.helper.noise
         seed_value = int(time.time()) + os.getpid()
         np.random.seed(seed_value)
 
@@ -129,7 +130,8 @@ class FullonSimFeed(FullonFeed):
                 rows = new_df.values.tolist()
 
         except FileNotFoundError:
-            logger.error(f"Pickle file ({filename}) not found")
+            logger.warning(f"Pickle file ({filename}) not found")
+            logger.info("Creating file then")
         return rows
 
     def _add_gaussian_noise(self, std_scale=0.003):

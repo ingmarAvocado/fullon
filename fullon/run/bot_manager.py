@@ -340,9 +340,12 @@ class BotManager:
     @staticmethod
     def launch_simul(   # pylint: disable=too-many-arguments
             bot_id: int,
+            fee: float,
+            leverage: int = 1,
             periods: int = 500,
             visual: int = 0,
             event: bool = False,
+            noise: bool = False,
             feeds: list = [],
             warm_up: Optional[Any] = None,
             test_params: Optional[Any] = None) -> Dict[str, Any]:
@@ -358,7 +361,7 @@ class BotManager:
         """
         try:
             response_queue = simulator.new_queue()
-            request = (bot_id, periods, visual, event, feeds, warm_up, test_params, response_queue)
+            request = (bot_id, leverage, fee, periods, visual, event, noise, feeds, warm_up, test_params, response_queue)
             simulator.request_queue.put(request)
             results = response_queue.get()
             del response_queue

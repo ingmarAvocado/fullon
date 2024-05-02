@@ -173,7 +173,7 @@ def test_minimum_order_cost(exchange_struct):
 
 @pytest.mark.order(22)
 def test_quote_symbol(exchange_struct):
-    return
+    pass
 
 
 @pytest.mark.order(23)

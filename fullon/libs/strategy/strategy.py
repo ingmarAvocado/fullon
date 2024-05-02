@@ -25,6 +25,8 @@ class Strategy(bt.Strategy):
     """ description """
 
     verbose = False
+    cash = {}
+    totalfunds = {}
 
     params = (
         ('helper', None),
@@ -48,33 +50,6 @@ class Strategy(bt.Strategy):
         ('cat_name', None)
     )
 
-    name = ""
-    pos = {}
-    pos_price = {}
-    price_pct = {}
-    anypos = 0
-    tick = {}
-    curtime = {}
-    curtime_prev = {}
-    cash = {}
-    totalfunds = {}
-    last_candle_date = {}
-    new_candle = {}
-    orders = {}
-    bot_vars = {}
-    entry_signal = {}
-    take_profit = {}
-    stop_loss = {}
-    timeout = {}
-    feed_timeout = {}
-    lastclose = {}
-    closed_this_loop = {}
-    order_placed = False
-    indicators_df: pandas.DataFrame = pandas.DataFrame()
-    open_trade: Dict = {}
-    indicators: object = indicators()
-    size: dict = {}
-
     def __init__(self):
         """
         Initialize the class.
@@ -95,6 +70,8 @@ class Strategy(bt.Strategy):
             entry_signal (list): List of entry signals.
             open_trade (dict): Details of open trades.
         """
+        self._instance_variables()
+        self._set_datafeeds()
         self.last_candle_date = {}
         self.dbase = Database()
         self.helper = self.p.helper
@@ -103,31 +80,75 @@ class Strategy(bt.Strategy):
         self.order_cmd = "process_now"
         self.on_exchange = False
 
-        if len(self.datas) < self.p.feeds:
+        if len(self.str_feed) < self.p.feeds:
             logger.error("Bot %s doesnt have enough feeds, needs %s has %s ",
-                         self.helper.id, self.p.feeds, len(self.datas))
-            exit()
+                         self.helper.id, self.p.feeds, len(self.str_feed))
+            self.cerebro.runstop()
 
         for param in ['take_profit', 'stop_loss', 'trailing_stop', 'timeout']:
             if getattr(self.p, param) == 'false':
                 setattr(self.p, param, False)
         if self.p.trailing_stop:
             self.p.stop_loss = self.p.trailing_stop
-
         """
         each feed should have its own bot_vars variable according to its feed parameters
         """
-
-        self.take_profit = {n: None for n in range(len(self.datas))}
-        self.stop_loss = {n: None for n in range(len(self.datas))}
-        self.timeout = {n: None for n in range(len(self.datas))}
-        self.size = {n: self.p.size for n in range(len(self.datas))}
-        self.bot_vars = {n: ['time', 'status', 'take_profit', 'timeout'] for n in range(len(self.datas))}
+        self.take_profit = {n: None for n in range(len(self.str_feed))}
+        self.stop_loss = {n: None for n in range(len(self.str_feed))}
+        self.timeout = {n: None for n in range(len(self.str_feed))}
+        self.size = {n: self.p.size for n in range(len(self.str_feed))}
+        self.bot_vars = {n: ['time', 'status', 'take_profit', 'timeout'] for n in range(len(self.str_feed))}
         for n in self.bot_vars:
             if self.p.stop_loss:
                 self.bot_vars[n].extend(['stop_loss', 'rolling_loss'])
 
-        # Handle trading attribute for feeds
+        self.exectype = bt.Order.Limit if int(self.params.mktorder) == 0 else bt.Order.Market
+        self.nextstart_done = False
+        self.local_init()
+        self.entry_signal = [None] * len(self.str_feed)
+        self.open_trade = {num: TradeStruct for num, data in enumerate(self.str_feed) if data.timeframe == bt.TimeFrame.Ticks}
+        if not self.p.size_pct and not self.p.size:
+            msg = f"Parameters size({self.p.size}) or size_pct {self.p.size_pct} not set"
+            logger.error(msg)
+            self.cerebro.runstop()
+        logger.info("Bot %s completed init sequence", self.helper.id)
+
+    def __del__(self):
+        """ description """
+        return None
+
+    def _instance_variables(self) -> None:
+        """
+        """
+        self.name = ""
+        self.pos = {}
+        self.pos_price = {}
+        self.price_pct = {}
+        self.anypos = 0
+        self.tick = {}
+        self.curtime = {}
+        self.last_candle_date = {}
+        self.new_candle = {}
+        self.orders = {}
+        self.bot_vars = {}
+        self.entry_signal: dict[Any, Any] = {}
+        self.take_profit: dict[Any, Any] = {}
+        self.stop_loss: dict[Any, Any] = {}
+        self.timeout = {}
+        self.feed_timeout = {}
+        self.lastclose = {}
+        self.closed_this_loop = {}
+        self.order_placed = False
+        self.indicators_df: pandas.DataFrame = pandas.DataFrame()
+        self.open_trade: Dict = {}
+        self.indicators: object = indicators()
+        self.size: dict = {}
+        self.str_feed: list = []
+
+    def _set_datafeeds(self):
+        """
+        Configures datafeeds in a bit more friendly way
+        """
         for num, data in enumerate(self.datas):
             try:
                 data.feed.trading
@@ -140,27 +161,16 @@ class Strategy(bt.Strategy):
                     logger.error("Bot %s produces empty dataframe for feed %s and symbol %s",
                                  self.helper.id, num, data.symbol)
                     self.cerebro.runstop()
-        self.exectype = bt.Order.Limit if int(self.params.mktorder) == 0 else bt.Order.Market
-        self.nextstart_done = False
-        self.local_init()
-        self.entry_signal = [None] * len(self.datas)
-        self.open_trade = {num: TradeStruct for num, data in enumerate(self.datas) if data.timeframe == bt.TimeFrame.Ticks}
-        if not self.p.size_pct and not self.p.size:
-            msg = f"Parameters size({self.p.size}) or size_pct {self.p.size_pct} not set"
-            logger.error(msg)
-            self.cerebro.runstop()
-        logger.info("Bot %s completed init sequence", self.helper.id)
-
-    def __del__(self):
-        """ description """
-        return None
+            if data.feed.str_id == self.p.str_id:
+                self.str_feed.append(self.datas[num])
+                self.datas[num]._name = str(len(self.str_feed)-1)
 
     def set_indicators_df(self):
         pass
 
     def feeds_have_futures(self):
         """ check if a trading feed supports futures """
-        for _, data in enumerate(self.datas):
+        for _, data in enumerate(self.str_feed):
             if data.timeframe == bt.TimeFrame.Ticks:
                 if not data.feed.futures:
                     return False
@@ -186,11 +196,14 @@ class Strategy(bt.Strategy):
     def local_nextstart(self):
         pass
 
+    def local_next_event(self):
+        pass
+
     def _check_datas_lengths(self):
         lengths = []
-        for num, _ in enumerate(self.datas):
-            if self.datas[num].timeframe == bt.TimeFrame.Ticks:
-                lengths.append(len(self.datas[num].result))
+        for num, _ in enumerate(self.str_feed):
+            if self.str_feed[num].timeframe == bt.TimeFrame.Ticks:
+                lengths.append(len(self.str_feed[num].result))
         first_length = lengths[0]
         for length in lengths[1:]:
             if length != first_length:
@@ -203,7 +216,7 @@ class Strategy(bt.Strategy):
         """
         Gets starting date of bot data feed
         """
-        return self.datas[0].params.fromdate
+        return self.str_feed[0].params.fromdate
 
     def _state_variables(self) -> None:
         """
@@ -213,8 +226,8 @@ class Strategy(bt.Strategy):
             None
         """
         any_pos: int = 0
-        for num, datas in enumerate(self.datas):
-            if self.datas[num].feed.trading:
+        for num, datas in enumerate(self.str_feed):
+            if self.str_feed[num].feed.trading:
                 self.closed_this_loop[num] = False
                 position = self.getposition(datas)
                 self.pos[num] = position.size
@@ -225,9 +238,8 @@ class Strategy(bt.Strategy):
                     self.price_pct[num] = round((self.tick[num] - self.pos_price[num]) / self.pos_price[num] * 100, 2)  # if long
                 elif self.pos[num] < 0:
                     self.price_pct[num] = round((self.pos_price[num] - self.tick[num]) / self.pos_price[num] * 100, 2)  # if short
-
                 self.cash[num] = self.broker.getcash()
-                self.totalfunds[num] = self.get_value(num=num)
+                self.totalfunds[num] = self.broker.getvalue()
                 if position.size != 0:
                     self.update_trade_vars(feed=num)
                     any_pos = 1
@@ -241,12 +253,6 @@ class Strategy(bt.Strategy):
             self.curtime[num] = curtime
             self.new_candle[num] = self._is_new_candle(feed=num)
         self.anypos = any_pos
-
-    def get_value(self, num: Optional[int] = None):
-        """
-        returns how much value there is in an exchange
-        """
-        return self.broker.getvalue()
 
     def set_indicator(self, name: str, value: Any) -> None:
         """
@@ -271,6 +277,21 @@ class Strategy(bt.Strategy):
     def set_indicators(self):
         pass
 
+    def _this_indicators(self, current_time: arrow.Arrow, fields: list):
+        """
+        helps sets the indicators for a strategy, as self.indicator.[field]
+
+        Args:
+            current_time (arrow):  dataframe index time to get the indicator value
+            fields  (list):  fields available in self.indicator_df to get
+        """
+        for indicator in fields:
+            try:
+                value = self.indicators_df.loc[current_time, indicator]
+                self.set_indicator(indicator, value)
+            except KeyError:
+                self.set_indicator(indicator, None)
+
     def _print_position_variables(self, feed: int) -> None:
         """
         Prints the current position variables for a given data feed.
@@ -282,8 +303,8 @@ class Strategy(bt.Strategy):
             None
         """
         print("----------------------------")
-        print(f"Feed: {feed}, Exchange: {self.datas[feed].feed.exchange_name} symbol: {self.datas[feed].symbol}")
-        print(f"Loop: {self.datas[0].buflen()}")
+        print(f"Feed: {feed}, Exchange: {self.str_feed[feed].feed.exchange_name} symbol: {self.str_feed[feed].symbol}")
+        print(f"Loop: {self.str_feed[0].buflen()}")
         print("Tick: ", self.tick[feed])
         print("Date: ", self.curtime[feed])
         print("Availabe Balance: ", self.cash[feed])
@@ -331,7 +352,7 @@ class Strategy(bt.Strategy):
     def check_exit(self) -> bool:
         """ description """
         result = False
-        for num, datas in enumerate(self.datas):
+        for num, datas in enumerate(self.str_feed):
             if datas.feed.trading:
                 if self.pos[num] != 0:
                     # If timeout reached, then get out.
@@ -418,7 +439,7 @@ class Strategy(bt.Strategy):
             return False
 
         # Get the current date of the feed
-        current_date = self.datas[feed].datetime[0]
+        current_date = self.str_feed[feed].datetime[0]
 
         # Check if a new candle has been formed
         new_candle_formed = (
@@ -495,32 +516,6 @@ class Strategy(bt.Strategy):
         percentage = float(percentage)
         return tick + float(tick) * float(percentage) / 100 if is_positive else tick - tick * percentage / 100
 
-    def handle_open_pos(self, datas_num: int, is_buy: bool, tick: Optional[float] = None) -> Any:
-        """
-        Handles opening position for both buy and sell operations
-        """
-        if not tick:
-            tick = self.tick[datas_num]
-        is_positive = is_buy
-        if is_buy:
-            order = self.open_long(datas_num)
-        else:
-            order = self.open_short(datas_num)
-
-        if self.p.take_profit:
-            self.take_profit[datas_num] = self.calculate_trade_variable(
-                tick=tick,
-                percentage=self.p.take_profit,
-                is_positive=is_positive  # true for long, false for short
-            )
-        if self.p.stop_loss:
-            self.stop_loss[datas_num] = self.calculate_trade_variable(
-                tick=tick,
-                percentage=self.p.stop_loss,
-                is_positive=not is_positive  # false for long, true for short
-            )
-        return order
-
     def open_pos(self,
                  datas_num: int = 0,
                  otype: Optional[str] = None) -> bool:
@@ -535,29 +530,45 @@ class Strategy(bt.Strategy):
             Optional[bool]: Returns True if the operation was successful, 
                            None if the operation was not successful (e.g., if it is the last moment).
         """
-
-        # if its not blocked, lets block ---> the problem is that the bot_status_could be a problem, 
-        # specially if its a like a long order no?
-
-        # if bot not blocked
-        # then block using a new key,, say bot is opening position
-        if self.datas[0].last_moments is True:
+        if self.str_feed[0].last_moments is True:
             return False
+        is_long = False
+        signal = "Buy"
         if self.entry_signal[datas_num] == "Buy":
-            order = self.handle_open_pos(datas_num, is_buy=True)
+            is_long = True
         elif self.entry_signal[datas_num] == "Sell":
-            order = self.handle_open_pos(datas_num, is_buy=False)
-        else:
-            logger.info("Can't open a position if no signal is set")
+            signal = "Sell"
+            is_long = False
+        if is_long and not self.str_feed[datas_num].feed.futures:
+            logger.error("Not allowed to open short on this exchange ")
             return False
+        value = self.entry(datas_num=datas_num)
+        self.lastclose[datas_num] = 'Open'
+        order = self.place_order(signal=signal,
+                                 size=value,
+                                 datas_num=datas_num,
+                                 otype=otype)
+
         if self.p.timeout:
             self.timeout[datas_num] = self.curtime[datas_num].shift(minutes=self.p.timeout)
         if order:
+            if self.p.take_profit:
+                self.take_profit[datas_num] = self.calculate_trade_variable(
+                    tick=self.tick[datas_num],
+                    percentage=self.p.take_profit,
+                    is_positive=is_long  # true for long, false for short
+                )
+            if self.p.stop_loss:
+                self.stop_loss[datas_num] = self.calculate_trade_variable(
+                    tick=self.tick[datas_num],
+                    percentage=self.p.stop_loss,
+                    is_positive=not is_long  # false for long, true for short
+                )
             self.save_log(order=order, num=datas_num)
             if self.verbose:
                 print(
-                    "------------OPEN  feed(" + str(datas_num) + ")----------" +
-                    "\nopening on: " + str(self.curtime[0].format()) +
+                    "------------Add pos  feed(" + str(datas_num) + ")----------" +
+                    "\nDate: " + str(self.curtime[0].format()) +
                     "\nsignal: " + str(self.entry_signal[datas_num]) +
                     "\ntick: " + str(self.tick[datas_num]) +
                     "\nstop loss: " + str(self.stop_loss[datas_num]) +
@@ -570,7 +581,6 @@ class Strategy(bt.Strategy):
 
     def close_position(self, feed: int = 0, reason: str = "No reason", otype=None) -> bool:
         """ description """
-        datas = self.datas[feed]
         if self.pos[feed] is None:
             logger.error("problem here", feed)
             return False
@@ -579,9 +589,8 @@ class Strategy(bt.Strategy):
             return False
         self.take_profit[feed] = None
         self.stop_loss[feed] = None
-        self.datas[feed].event_timeout = None
+        self.str_feed[feed].event_timeout = None
         order = None
-        kwargs = {'reason': reason}
         self.lastclose[feed] = reason
         signal = ''
         if self.pos[feed] < 0:
@@ -590,18 +599,66 @@ class Strategy(bt.Strategy):
             signal = "Sell"
         order = self.place_order(signal=signal,
                                  otype=otype,
-                                 entry=self.pos[feed],
-                                 datas=datas,
+                                 size=self.pos[feed],
+                                 datas_num=feed,
                                  reason=reason)
         self.save_log(order=order, num=feed)
         self.closed_this_loop[feed] = True
         if self.verbose:
-            msg = (f"--------- CLOSED ------------\nPosition closed on:\n{self.curtime[0].format()}\nwith signal: {signal}\n--------------\n\n")
-            #logger.warning(msg)
+            msg = ("--------- CLOSED ------------\nPosition closed on: " +
+                   f"\n{self.curtime[0].format()}\nwith signal: {signal}\n" +
+                   f"reason: {reason}\n--------------\n\n")
             print(msg)
         return True
 
-    def entry(self, datas_num: int, price: Optional[float] = None) -> float:
+    def change_position(self,
+                        size: float,
+                        datas_num: int = 0,
+                        otype: Optional[str] = None,
+                        reason: Optional[str] = None) -> bool:
+        """
+        Changes a position for a given feed.
+
+        Args:
+            size (float): The amount to change the position
+            datas_num (int, optional): The index of the data feed. Defaults to 0.
+            otype (Optional[str], optional): The type of operation. Defaults to None.
+
+        Returns:
+            Optional[bool]: Returns True if the operation was successful, 
+                           None if the operation was not successful (e.g., if it is the last moment).
+        """
+
+        # if its not blocked, lets block ---> the problem is that the bot_status_could be a problem, 
+        # specially if its a like a long order no?
+
+        # if bot not blocked
+        # then block using a new key,, say bot is opening position
+        if self.str_feed[0].last_moments is True:
+            return False
+        signal = "Sell"
+        if size > 0:
+            signal = "Buy"
+        order = self.place_order(signal=signal,
+                                 size=size,
+                                 otype=otype,
+                                 datas_num=datas_num,
+                                 reason=reason)
+
+        if order:
+            self.save_log(order=order, num=datas_num)
+            if self.verbose:
+                print(
+                    "------------Change pos  feed(" + str(datas_num) + ")----------" +
+                    "\nDate: " + str(self.curtime[0].format()) +
+                    "\ntick: " + str(self.tick[datas_num]) +
+                    "\n------------------\n"
+                )
+        else:
+            logger.warning("Could not open order")
+        return True
+
+    def entry(self, datas_num: int, price: Optional[float] = None) -> Optional[float]:
         """
         Compute the position size for trading, considering either a set position size,
         a percentage of available cash, or defaulting to the latest tick price.
@@ -618,31 +675,29 @@ class Strategy(bt.Strategy):
         """
         # Defaulting to tick data if price not provided
         if not price:
-            price = self.tick[datas_num]
+            price = self.str_feed[datas_num].close[0]
+        fee_pct = self.broker.getcommissioninfo(self.datas[0]).p.commission
         if self.size[datas_num]:
-            entry = (self.size[datas_num] / price * self.p.leverage)
+            cash_for_trade = self.size[datas_num] / (1 + fee_pct)
+            entry = cash_for_trade / price
         else:
-            # Get the cash available for the dataset
-            available_cash = self.cash[datas_num]
-            # Calculate the total cash to be used for the trade
-            cash_for_trade = available_cash * (self.p.size_pct / 100)
-            # Apply leverage
-            cash_with_leverage = cash_for_trade * self.p.leverage
-            # Calculate entry size
-            entry = cash_with_leverage / price
+            buffered_size_pct = round(self.p.size_pct / (1 + fee_pct), 2)
+            sizer = bt.sizers.PercentSizer(percents=buffered_size_pct)
+            self.setsizer(sizer)
+            entry = None
         return entry
 
     def kill_orders(self):
         """ description """
         if self.dry_run:
-            orders = self.broker.get_orders_open(self.datas[0])
+            orders = self.broker.get_orders_open(self.str_feed[0])
             for order in orders:
                 self.broker.cancel(order)
 
-    def place_stop_order(self, size, price, datas=None) -> bt.Order:
+    def place_stop_order(self, size, price, datas=None):
         """ description """
         self.order_placed = True
-        datas = self.datas[0] if not datas else datas
+        datas = self.str_feed[0] if not datas else datas
         if size < 0:
             return self.buy(datas,
                             exectype=bt.Order.StopLimit,
@@ -654,10 +709,10 @@ class Strategy(bt.Strategy):
                              size=size,
                              price=price)
 
-    def place_stop_limit_order(self, size, price, plimit, datas=None) -> bt.Order:
+    def place_stop_limit_order(self, size, price, plimit, datas=None):
         """ description """
         self.order_placed = True
-        datas = self.datas[0] if not datas else datas
+        datas = self.str_feed[0] if not datas else datas
         if size < 0:
             return self.buy(datas,
                             exectype=bt.Order.StopLimit,
@@ -671,61 +726,42 @@ class Strategy(bt.Strategy):
                              price=price,
                              plimit=plimit)
 
-    def place_order(self, signal, entry, otype=None, datas=None, reason=None) -> Optional[bt.Order]:
-        """ description """
+    def place_order(self,
+                    size: float,
+                    signal: str,
+                    otype=None,
+                    datas_num: int = 0,
+                    reason=None) -> Optional[bt.Order]:
+        """ Places an order in backtrader broker
+
+         Args:
+            size (float): The amount to change the position
+            value (float): The amount to change the position
+            datas_num (int, optional): The index of the data feed. Defaults to 0.
+            otype (Optional[str], optional): The type of operation. Defaults to None.
+
+        Returns:
+            Optional[bool]: Returns True if the operation was successful, 
+                           None if the operation was not successful (e.g., if it is the last moment).
+        """
+        '''
+        if size and value:
+            logger.info("Size and Value detected for trade, lets just use value")
+            size = None
+        elif not size and not value:
+            logger.error("A size or value input value is necessary")
+            return
+        '''
         self.order_placed = True
         if otype is None:
             otype = self.exectype
-        datas = self.datas[0] if not datas else datas
+        datas = self.str_feed[datas_num]
         kwargs = {'reason': reason}
-        if entry is None or entry == 0:
-            print("entry size is cero", entry)
-            exit()
-        # maybe here save bot_vars
         if signal == "Buy":
-            return self.buy(datas,
-                            exectype=otype,
-                            size=entry,
-                            command=self.order_cmd,
-                            **kwargs)
+            return self.buy(datas, exectype=otype, size=size, command=self.order_cmd, **kwargs)
         if signal == "Sell":
-            return self.sell(datas,
-                             exectype=otype,
-                             size=entry,
-                             command=self.order_cmd,
-                             **kwargs)
+            return self.sell(datas, exectype=otype, size=size, command=self.order_cmd, **kwargs)
         return None
-
-    def open_long(self, datas_num=0, otype=None) -> bt.Order:
-        """ description """
-        entry_size = self.entry(datas_num=datas_num,
-                                price=self.tick[datas_num])
-        self.lastclose[datas_num] = 'Open'
-        return self.place_order(signal="Buy",
-                                otype=otype,
-                                entry=entry_size,
-                                datas=self.datas[datas_num],
-                                reason='Open')
-
-    def open_short(self, datas_num=0, otype=None) -> Optional[bt.Order]:
-        """ description """
-        self.lastclose[datas_num] = 'Open'
-        if self.datas[datas_num].feed.futures:
-            entry_size = self.entry(datas_num=datas_num,
-                                    price=self.tick[datas_num]) 
-            return self.place_order(signal="Sell",
-                                    otype=otype,
-                                    entry=entry_size,
-                                    datas=self.datas[datas_num],
-                                    reason='Open')
-        return None
-
-    def notify_order(self, order):
-        """ description """
-        pass
-
-    def notify_trade(self, trade):
-        pass
 
     def time_to_next_bar(self, feed: int) -> arrow.Arrow:
         """
@@ -738,9 +774,9 @@ class Strategy(bt.Strategy):
             int: Number of minutes until the next bar.
         """
         current_time = self.curtime[feed]
-        compression = self.datas[feed].compression
+        compression = self.str_feed[feed].compression
         # Depending on the timeframe, calculate the time to the next bar
-        match self.datas[feed].timeframe:
+        match self.str_feed[feed].timeframe:
             case bt.TimeFrame.Minutes:
                 next_bar_time = current_time.shift(minutes=compression)
             case bt.TimeFrame.Days:

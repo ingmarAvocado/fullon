@@ -10,7 +10,7 @@ from run.install_manager import InstallManager
 logger = log.fullon_logger(__name__)
 startohlcv()
 startdb()
-exchange.start_all()
+#exchange.start_all()
 signal = Event()
 
 #ins = InstallManager()
@@ -18,15 +18,15 @@ signal = Event()
 
 
 bot1 = Bot(2)
-bot1.dry_run = True
+bot1.dry_run = False
 print("starting")
 try:
     bot1.run_loop(test=True, stop_signal=signal)
 except KeyboardInterrupt:
-    print("hola")
+    print("Keyboard")
 
 print("minitest complete")
-exchange.stop_all()
+#exchange.stop_all()
 stopdb()
 stopohlcv()
 print("Script over")

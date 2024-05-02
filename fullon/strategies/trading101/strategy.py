@@ -26,6 +26,8 @@ class Strategy(strat.Strategy):
     def local_next(self):
         """ description """
         self.count = 0
+        import ipdb
+        ipdb.set_trace()
         time.sleep(1)
         if self.entry_signal[0]:
             self.open_pos(0)

@@ -8,66 +8,72 @@ from libs.database_ohlcv import start as start_ohlcv, stop as stop_ohlcv
 from libs.simul_launcher import simulator
 from libs.bot import Bot
 import psutil
-settings.NOISE = False
 settings.LOG_LEVEL = 'INFO'
 start_database()
 start_ohlcv()
 simulator.start()
 
- 
-params2 = {
-          "stop_loss": "None",
-          'take_profit': "10",
-          'trailing_stop': "2.5",  # 12
-          "timeout": "None",
-          'rsi': "16",
-          'entry': "65",
-          'exit': "50",
+params1 = {
+          'rsi': "12",
+          'entry': "35",
+          'exit': "60",
           "leverage": "2",
-          "size_pct": "5",
-          "prediction_steps": "1",
-          "threshold": "0."}
-params2 = {"size_pct": "10"}
-#params = {"sma1": "30", "sma2": "13", "zshort": "-1", "zlong": "1", "zexitlow": "-0.75", "zexithigh": "0.75", "stop_loss": "4.1"}
-BOT = {"bot_id": 3,
-       "periods": 460,
-       "warm_up": 1,
-       "xls": False,
-       "verbose": True,
-       "visual": False}
-filename = None
+          "size_pct": "10"}
+params2 = {
+          'rsi': "12",
+          'entry': "35",
+          'exit': "55",
+          "leverage": "2",
+          "size_pct": "10"}
+#params = [params1, params2]
+#params = [params1]
+#params = [{'sma_period': '1', 'size_pct': '20'}, {'sma_period': '2', 'size_pct': '20'}, {'sma_period': '4', 'size_pct': '20'}, {'sma_period': '10', 'size_pct': '20'},{'sma_period': '20', 'size_pct': '20'}]
+#params = [{'sma_period': '20', 'size_pct': '50'}, {'sma_period': '14', 'size_pct': '50'}]
+#params = [{'sma_period': '20', 'size_pct': '80'}]
+params = [{"size_pct": "20"}]
+BOT = {"bot_id": 4,
+       "periods": 365*2,
+       "warm_up": 50}
+filename = ''
 feeds = {}
 #filename = "rsi2long2.csv"
 #feeds = {2: {'compression': 30}, 3: {'compression': 30}}
 #feeds = {1: {'compression': 480}}
-'''
-abot = Bot(BOT['bot_id'], BOT['periods'])
-params3 = {}
-for p, key in params2.items():
-    try:
-        params3[p] = float(key)
-    except ValueError:
-        if key == "None":
-            params3[p] = None
-        else:
-            raise
-
-abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params=params3, event=True)
-
-#abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params={}, event=True)
-#params2 = {}
-#params2 = {"size_pct": "10"}
-'''
-simul = SimulManager()
-simul.bot_simul(bot=BOT,
-                event_based=True,
-                feeds=feeds,
-                params=params2,
-                filename=filename,
-                montecarlo=1,
-                sharpe_filter=-10.00)
 
 
+def path1():
+    abot = Bot(BOT['bot_id'], BOT['periods'])
+    # Assuming params is a list of dictionaries
+    for param in params:
+        for key, value in param.items():
+            try:
+                param[key] = float(value)
+            except ValueError:
+                if value == "None":
+                    param[key] = None
+                else:
+                    raise ValueError(f"Could not convert value for {key}: '{value}'")
+
+    abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params=params, event=True)
+
+
+def path2():
+    simul = SimulManager()
+    simul.bot_simul(bot=BOT,
+                    event_based=True,
+                    feeds=feeds,
+                    params=params,
+                    filename=filename,
+                    montecarlo=18,
+                    sharpe_filter=-10.00,
+                    xls=False,
+                    verbose=False,
+                    visual=False,
+                    leverage=1)
+
+
+#path1()
+path2()
 stop_database()
 stop_ohlcv()
 simulator.stop()

@@ -105,7 +105,7 @@ def test__load_feeds(bot, mocker):
                 loaded.append(key)
     assert len(cerebro.datas) == len(loaded)
     for i, data in enumerate(cerebro.datas):
-        assert data._name == str(i)
+        assert isinstance(data.feed.str_id, int)
         assert isinstance(data, FullonSimFeed)
 
 

@@ -31,6 +31,8 @@ from libs.structs.order_struct import OrderStruct
 import ipdb
 settings.LOGLEVEL = 'logging.DEBUG'
 from run.install_manager import InstallManager
+from multiprocessing import Event
+
 
 startohlcv()
 startdb()
@@ -55,7 +57,7 @@ orderBuy = {"ex_id": exch.ex_id,
             "symbol": 'BTC/USD',
             "order_type": "market",
             "volume": 0.00013423432342,
-            "price": 25600.9,
+            "price": 57600,
             "plimit": None,
             "side": "Buy",
             "reason": 'signal',
@@ -71,7 +73,7 @@ orderSell = {"ex_id": exch.ex_id,
              "symbol": 'BTC/USD',
              "order_type": "market",
              "volume": 0.00013423432342,
-             "price": 28600,
+             "price": 58000,
              "plimit": None,
              "side": "Sell",
              "reason": 'signal',
@@ -88,7 +90,7 @@ orderStopLoss = {"ex_id": exch.ex_id,
                  "symbol": 'BTC/USD',
                  "order_type": "stop-loss",
                  "volume": 0.0001,
-                 "price": 22600,
+                 "price": 57600,
                  "plimit": None,
                  "side": "Sell",
                  "reason": 'signal',
@@ -124,19 +126,18 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 ohlcv = OhlcvManager()
 #ohlcv.run_ohlcv_loop(symbol='BTC/USD', exchange='kraken')
 ohlcv.run_loop()
-time.sleep(2000)
 #ohlcv.stop_all()
 #exch.get_positions()
 #exch.connect_websocket()
 #exch.socket_con0nected()
 #del exch
-#t = TickManager()
-#t.run_loop()
-#am = AccountManager()
-#am.run_account_loop()
+t = TickManager()
+t.run_loop()
+am = AccountManager()
+am.run_account_loop()
 #time.sleep(150000000)
-#om = OrderMethods()
 #print("\nplacing buy: \n")
+#_order = om._can_place_order(order=orderBuy)
 #_order = om.new_order(order=orderBuy)
 #print(_order.ex_order_id, " processed")
 #print("\nplacing stopbuy: \n")
@@ -151,111 +152,19 @@ time.sleep(2000)
 #time.sleep(100000)
 #print("turning off")
 
-'''
-#o = OhlcvManager()
-#o.run_ohlcv_loop(symbol='BTC/USD', exchange='kraken')
-#time.sleep(1000)
-#am = AccountManager()
-#result = am.update_user_account(ex_id=exch.ex_id, test=True)
-#am.run_account_loop()
-#time.sleep(120)
-#exchange.stop()
-#exit()
+bmanager = BotStatusManager()
+bmanager.run_loop()
 
-#t = TradeCalculator()
-#t.calculate_user_trades()
-
-'''
-#am = TradeManager()
-#am.update_user_trades(ex_id=exch.ex_id)
-#dbase = database.Database()
-#exch = dbase.get_exchange(UID, objects=True)[0]
-#am.run_user_trades()
-#time.sleep(10)
-#exchange.stop()
-#del am
-'''
-#trade = TradeManager()
-#trade.update_trades(user_ex=exch)
-#exch = exchange.Exchange(exchange='kraken', params=params)
-#print(exch.get_balances())
-#exch = exchange_methods.ExchangeMethods(exchange='kraken')
-#trades = exch.fetch_my_trades(since=1682451548.8832357)
-#exch.connect_websocket()
-#exch.start_my_trades_socket()
-#exch = exchange_methods.ExchangeMethods(exchange='kraken', params=params)
-#print(trades)
-#exch.connect_websocket()
-#time.sleep(4)
-#exch.stop_websockets()
-
-
-'''
-#trades = exch.fetch_my_trades(since=1682451548.8832357)
-#for t in trades:
-#    print(t['info'])
-
-#resp = exch.get_positions()
-#print(resp)
-
-#store = cache.Cache()
-#t = store.get_tickers(exchange="kraken")
-#print(t)
-
-#logger.info(len(exch.get_markets()))
-#bal = exch.test_authentication()
-#symbol = 'BTC/USD'
-#since = arrow.utcnow().shift(days=-30).timestamp() * 1000
-#trades = exch.fetch_my_trades(symbol=symbol, since=since, limit=1)
-#exch = exchange.Exchange(exchange='kraken', params=params)
-
-#exch = exchange_methods.ExchangeMethods(exchange='kraken', params=params)
-#logger.info(len(exch.get_markets()))
-#exch = exchange.Exchange('kraken')
-#print(exch.dry_run)
-#logger.info(len(exch.get_markets()))
-#exch.connect_websocket()
-#exch.start_ticker_socket(tickers=['BTC/USD', 'ETH/USD'])
-#exch.start_my_trades()
-#time.sleep(200)
-#print("is socket connected: ", exch.socket_connected())
-#exch.stop_websockets()
-
-
-#redis_worker.stop_workers()
-
-#exch = exchange.Exchange(exchange='kraken', params=params)
-#logger.info(len(exch.get_markets()))
-'''
-from multiprocessing import Event
-signal = Event()
 bot1 = Bot(2)
 bot1.dry_run = False
 print("starting")
 try:
-    #bot1.run_loop(test=True, stop_signal=signal)
-    print("no")
+    signal = Event()
+    bot1.run_loop(test=True, stop_signal=signal)
 except KeyboardInterrupt:
-    print("hola")
-#bot1
-'''
-'''
-manager = BotManager()
-manager.start(4)
-time.sleep(4)
-print("next one")
-manager.start(7)
-#print(manager.is_running(3))
-#ipdb.set_trace()
-#manager.start(3)
-#res = manager.bots_list()
-#manager.bots_live_list()
-'''
-time.sleep(1)
-print("minitest complete")
-ohlcv.stop_all()
-time.sleep(3)
-'''
+    print("Keyboard")
+
+
 try:
     am.stop_all()
     del am
@@ -271,8 +180,6 @@ try:
     del ohlcv
 except:
     pass
-time.sleep(3)
-'''
 exchange.stop_all()
 stopdb()
 stopohlcv()

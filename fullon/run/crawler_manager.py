@@ -294,6 +294,8 @@ class CrawlerManager:
         try:
             module = self._import_module(primary_module_name)
         except ImportError as primary_error:
+            if 'apify' in str(primary_error):
+                logger.error('No apify library installed, install it with pip3 install apify_client')
             try:
                 module = self._import_module(fallback_module_name)
             except ImportError as fallback_error:
@@ -509,6 +511,8 @@ class CrawlerManager:
             total_checks = int(sleep_time / check_interval)
 
             for _ in range(total_checks):
+                print("Aca")
+                return
                 if stop_signal.is_set():
                     logger.info("Stop signal received. Exiting pause loop.")
                     break

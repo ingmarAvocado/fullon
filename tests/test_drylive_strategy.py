@@ -94,13 +94,15 @@ def close_trade_sell():
 
 
 @pytest.fixture
-def strat():
+def strat(open_trade_buy):
     class strat_feed:
         ex_id = '1'
 
     class data:
         symbol = "BTC/USD"
         feed = strat_feed()
+        pos = 10
+        _name = 1
 
     class helper:
         uid = '1'
@@ -110,15 +112,16 @@ def strat():
     broker = cerebro.getbroker()
     cerebro.addstrategy(strategy.Strategy)
     strat = cerebro.strats[0][0][0]
-    strat.cash[0] = 1000
-    strat.tick[0] = 10
     datas = [data()]
     curtime = [arrow.utcnow().format()]
     setattr(strat, "p", MockStratParams(size_pct=10, leverage=1, take_profit=10, stop_loss=10, timeout=10, size=10))
     setattr(strat, "broker", broker)
     setattr(strat, "datas", datas)
+    setattr(strat, "str_feed", datas)
     setattr(strat, "helper", helper())
     setattr(strat, "curtime", curtime)
+    setattr(strat, "cash", [10000.0])
+    setattr(strat, "open_trade", [open_trade_buy])
     size = {0: 100}
     setattr(strat, "size", size)
     yield strat
@@ -128,19 +131,12 @@ def trade_updated(strat, trade):
     _trade = strat._update_trade_details(self=strat, trade=trade, datas_num=0)
     yield _trade
 
-
+@pytest.mark.order(1)
 def test_entry(strat):
     entry = strat.entry(self=strat, datas_num=0, price=10)
     assert entry == 10.0
 
-'''
-def test__save_status(strat):
-    with patch.object(strat, '_get_simul_status', return_value=True) as mock_method:
-        assert strat._save_status(self=strat) is True
-    mock_method.assert_called_once_with(datas_num=0)
-'''
-
-
+@pytest.mark.order(2)
 def test_kill_orders(strat):
 
     class MockOrder:
@@ -161,6 +157,14 @@ def test_notify_order(strat, order, caplog):
     order.status = 7
     strat.notify_order(self=strat, order=order)
     assert "Trying to buy more than can be afforded, check your entry" in caplog.text
+
+
+'''
+def test__save_status(strat):
+    with patch.object(strat, '_get_simul_status', return_value=True) as mock_method:
+        assert strat._save_status(self=strat) is True
+    mock_method.assert_called_once_with(datas_num=0)
+'''
 
 '''
 def test_bt_trade_to_struct_buy(strat, open_trade_buy, close_trade_buy):
@@ -206,6 +210,7 @@ def test_notify_trade(mock_save_dry_trade, mock_bt_trade_to_struct, strat, open_
     strat.take_profit = [10]
     strat.stop_loss = [10]
     strat.timeout = [10]
+    strat.datas[0].pos = 10
 
     # Create a sample trade structure.
     trade_struct = {
@@ -228,6 +233,7 @@ def test_notify_trade(mock_save_dry_trade, mock_bt_trade_to_struct, strat, open_
     # Call the notify_trade method.
     strat.notify_trade(self=strat, trade=open_trade_buy)
 
+
     # Assert that the _bt_trade_to_struct method was called with the correct arguments.
     mock_bt_trade_to_struct.assert_called_once_with(open_trade_buy)
 
@@ -243,3 +249,4 @@ def test_notify_trade(mock_save_dry_trade, mock_bt_trade_to_struct, strat, open_
     assert strat.p.stop_loss == 10
     assert strat.p.timeout == 10
     assert strat.datas[0].pos == open_trade_buy.size
+

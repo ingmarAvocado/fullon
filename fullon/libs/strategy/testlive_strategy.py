@@ -10,6 +10,7 @@ from libs import log
 from libs.strategy import live_strategy as strategy
 from libs.structs.trade_struct import TradeStruct
 from typing import Optional
+import arrow
 
 logger = log.fullon_logger(__name__)
 
@@ -39,7 +40,7 @@ class Strategy(strategy.Strategy):
         """
         # Check if data feed is live
         self._stop_signal()
-        if not self.datas[0].islive():
+        if not self.str_feed[0].islive():
             self.set_indicators_df()
             return
         self.status = "looping"
@@ -52,7 +53,7 @@ class Strategy(strategy.Strategy):
         self._pairs_test()
         # If there are no positions, call local_next, else call risk_management
         if self.anypos == 0:
-            for num, data in enumerate(self.datas):
+            for num, data in enumerate(self.str_feed):
                 try:
                     if data.feed.trading:
                         if self.entry_signal[num]:
@@ -72,8 +73,8 @@ class Strategy(strategy.Strategy):
         """ description """
         print("\n\n=======================================")
         print(f"Current loop: {self.loop}\n")
-        for num in range(0, len(self.datas)):
-            if self.datas[num].feed.trading:
+        for num in range(0, len(self.str_feed)):
+            if self.str_feed[num].feed.trading:
                 #print(f"Current feed: {num}")
                 self._test(num, side=self.test_side)
         print("========================================")
@@ -96,66 +97,95 @@ class Strategy(strategy.Strategy):
                 if self.pos[num] != 0:
                     print("Position when i shouldn't have")
                     self.cerebro.runstop()
-                print(f"\nTest simple buying 3 for rolling stop feed {num}")
                 self._print_position_variables(num)
                 self.new_candle[num] = False
-                self.entry_signal[num] = ""
+                self.entry_signal[num] = None
                 self.p.trailing_stop = None
             case 2:
                 print(f"\nCheck get_entry_signal feed {num}")
                 self.entry_signal[num] = ""
                 print(f"signal = {self.entry_signal[num]}")
             case 3:
-                print(f"\nTest simple buying 1 feed {num}")
+                print(f"\nTest simple buying #1 for feed {num}")
                 self.entry_signal[num] = side
                 print(f"signal = {side}")
                 self.p.take_profit = 1
                 self.p.stop_loss = 1
             case 4:
                 self._print_position_variables(num)
-                #import ipdb
-                #ipdb.set_trace()
+                if self.pos[num] == 0:
+                    print("No position when i should have")
+                    self.cerebro.runstop()
             case 5:
-                print("I bought, i should have a position")
+                size = self.pos[num]
+                print(f"Test increase position by {self.pos[num]}")
+                self.prev_pos = self.pos[num]
+                self.change_position(size=size, datas_num=num)
+            case 6:
+                print("I added, i should have a larger position")
                 self._print_position_variables(num)
-                print("Now lets proceed to sell: ", self.take_profit)
+                no_change_in_position = (
+                    (side == "Sell" and self.pos[num] > self.prev_pos) or
+                    (side != "Sell" and self.pos[num] < self.prev_pos)
+                )
+                if no_change_in_position:
+                    print("Ooops no change in position case 6")
+                    self.cerebro.runstop()
+            case 7:
+                size = -self.pos[num]/2
+                self.prev_pos = self.pos[num]
+                print(f"Test decrease position by {size}")
+                self.change_position(size=size, datas_num=num)
+            case 8:
+                print("I sold some, i should still have a position")
+                self._print_position_variables(num)
+                no_change_in_position = (
+                    (side == "Sell" and self.pos[num] < self.prev_pos) or
+                    (side != "Sell" and self.pos[num] > self.prev_pos)
+                )
+                if no_change_in_position:
+                    print("Ooops no change in position case 9")
+                    self.cerebro.runstop()
+            case 10:
+                print("Now lets proceed to close using take profit: ", self.take_profit)
+                print(f"I will close with {self.pos[num]}")
                 try:
                     self.tick[num] = self.take_profit[num] * 1.25 if self.pos[num] > 0 else self.take_profit[num] / 1.25
                     self.price_pct[num] = 10
                 except (KeyError, TypeError):
                     raise ValueError("Strategy doesn't open a position, when it should have.")
-            case 7:
+            case 11:
                 if self.pos[num] != 0:
                     print("Position when i shouldn't have")
                     self.cerebro.runstop()
                 self._print_position_variables(num)
                 self.entry_signal[num] = ""
-            case 8:
-                print(f"\nTest simple buying 2 feed {num} {side}")
+            case 12:
+                print(f"\nTest simple buying #2 for feed {num} {side}")
                 self.entry_signal[num] = side
-            case 9:
+            case 13:
                 if self.pos[num] == 0:
                     print("No position when i should have")
                     self.cerebro.runstop()
                 self._print_position_variables(num)
-            case 10:
+            case 14:
                 print(f"\nTest Stop Loss feed {num}")
                 self.tick[num] = self.stop_loss[num] * 1.15 if self.pos[num] > 0 else self.stop_loss[num] / 1.15
                 self.price_pct[num] = -10
-            case 11:
+            case 15:
                 self._print_position_variables(num)
                 self.entry_signal[num] = ""
-            case 12:
+            case 16:
                 if self.pos[num] != 0:
                     print("Position when i shouldn't have")
                     self.cerebro.runstop()
-                print(f"\nTest simple buying 3 for rolling stop feed {num}")
+                print(f"\nTest simple buying #3 for rolling stop  for feed {num}")
                 self.entry_signal[num] = side
                 self.p.trailing_stop = 2
                 self.p.stop_loss = 2
-            case 13:
+            case 17:
                 self._print_position_variables(num)
-            case 14:
+            case 18:
                 if self.pos[num] == 0:
                     print("No position when I should have")
                     self.cerebro.runstop()
@@ -169,17 +199,16 @@ class Strategy(strategy.Strategy):
                     print("Stop loss didn't update")
                     self.cerebro.runstop()
                 print("Now it should trigger a sale before next toop")
-
-            case 15:
+            case 19:
                 self._print_position_variables(num)
-            case 16:
+            case 20:
                 if self.pos[num] != 0:
                     print("Position when i shouldn't have")
                     self.cerebro.runstop()
                 if self.test_side == "Buy":
                     self.test_side = "Sell"
                     self.loop = 0
-            case 17:
+            case 21:
                 self.cerebro.runstop()
 
     def entry(self, datas_num, price=None):
@@ -192,10 +221,10 @@ class Strategy(strategy.Strategy):
                      datas_num=datas_num,
                      price=price)
         else:
-            entry = self.broker.get_min_entry(datas=self.datas[datas_num])
+            entry = self.broker.get_min_entry(datas=self.str_feed[datas_num])
         return entry
 
-    def open_pos(self, datas_num: int = 0, otype: Optional[str] = None) -> Optional[bool]:
+    def open_pos(self, datas_num: int = 0, otype: Optional[str] = None) -> bool:
         """
         Open a position for a given feed.
 
@@ -220,11 +249,9 @@ class Strategy(strategy.Strategy):
             return strategy.strategy.Strategy.notify_trade(
                 self=self, trade=trade)
         else:
-            print("check here")
-            exit()
             return super().notify_trade(trade=trade)
 
-    def time_to_next_bar(self, feed: int) -> int:
+    def time_to_next_bar(self, feed: int) -> arrow.Arrow:
         """
         Calculates the number of minutes until the next period/bar in the OHLCV data.
 
@@ -242,7 +269,7 @@ class Strategy(strategy.Strategy):
         """
         return self.open_trade[datas_num]
 
-    def get_value(self, num: Optional[int] = None):
+    def get_value(self, num: Optional[str] = None):
         """
         returns how much value there is in an exchange
         """

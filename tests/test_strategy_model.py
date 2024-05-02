@@ -63,12 +63,12 @@ def test_edit_str_params(dbase, bot_id):
     params = dbase.get_str_params(bot_id=bot_id)
     for param in params:
         str_id = param.pop('str_id')
-        param['rsi_period'] = 100
+        param['sma'] = 100
         result = dbase.edit_strat_params(str_id=str_id, params=param)
         assert result is True
     strats = dbase.get_str_params(bot_id=bot_id)
     for strat in strats:
-        assert int(strat['rsi_period']) == 100
+        assert int(strat['sma']) == 100
 
 
 @pytest.mark.order(10)

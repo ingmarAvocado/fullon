@@ -67,7 +67,7 @@ class Strategy(strategy.Strategy):
         The main method that runs on every iteration of the strategy.
         """
         # Check if data feed is live
-        if not self.datas[0].islive():
+        if not self.str_feed[0].islive():
             self.set_indicators_df()
             return
         self.status = "looping"
@@ -95,11 +95,7 @@ class Strategy(strategy.Strategy):
         """
         Checks if a bot is blocked, if it is, it wont proceed
         """
-        # self._sync_exchange_status()
         block_count = 0
-        if self._bot_is_blocked(bot_id=self.helper.id):
-            logger.warning("Exchange and symbol for bot %s is blocked", self.helper.id)
-            sleep(1)
         while self._bot_is_blocked(bot_id=self.helper.id):
             """
             here we loop for some time and then hard recheck after a while
@@ -113,7 +109,7 @@ class Strategy(strategy.Strategy):
 
     def save_log(self, order: bt.Order, num: int) -> None:
         """ description """
-        datas = self.datas[num]
+        datas = self.str_feed[num]
         if datas.feed.trading:
             with Database() as dbase:
                 dbase.save_bot_log(bot_id=self.helper.id,
@@ -134,7 +130,7 @@ class Strategy(strategy.Strategy):
         """
         res = False
         with cache.Cache() as store:
-            for _, datas in enumerate(self.datas):
+            for _, datas in enumerate(self.str_feed):
                 if datas.feed.trading:
                     blocked_by = store.is_blocked(ex_id=datas.feed.ex_id,
                                                   symbol=datas.symbol)
@@ -145,25 +141,18 @@ class Strategy(strategy.Strategy):
 
     def kill_orders(self):
         """ description """
-        for num in range(0, len(self.datas)):
-            self.datas[num].broker.cancel_all_orders(self.getdatas[0].symbol)
+        for num in range(0, len(self.str_feed)):
+            self.str_feed[num].broker.cancel_all_orders(self.getdatas[0].symbol)
 
     def _get_last_trade(self, datas_num):
-        datas = self.datas[datas_num]
+        datas = self.str_feed[datas_num]
         last_trade = self.dbase.get_trades(
                 ex_id=datas.feed.ex_id, symbol=datas.symbol, last=True)
         return last_trade[0]
 
     def notify_trade(self, trade: bt.Trade):
         print("hice un trade: ", trade)
-        exit()
         pass
-
-    def get_value(self, num: int):
-        """
-        returns how much value there is in an exchange
-        """
-        return self.broker.getvalue()
 
     def entry(self, datas_num: int, price: Optional[float] = None):
         """
@@ -183,7 +172,7 @@ class Strategy(strategy.Strategy):
         # Defaulting to tick data if price not provided
         if not price:
             price = self.tick[datas_num]
-        symbol = self.datas[datas_num].symbol
+        symbol = self.str_feed[datas_num].symbol
         # If the base currency isn't USD
         if not symbol.endswith("/USD"):
             base_currency = symbol.split("/")[1]
@@ -201,7 +190,7 @@ class Strategy(strategy.Strategy):
             volume = usd_equivalent / price
         return volume
 
-    def open_pos(self, datas_num: int = 0, otype: Optional[str] = None) -> Optional[bool]:
+    def open_pos(self, datas_num: int = 0, otype: Optional[str] = None) -> bool:
         """
         Open a position for a given feed.
 
@@ -214,10 +203,10 @@ class Strategy(strategy.Strategy):
                             None if the operation was not successful.
         """
         with Cache() as store:
-            if not store.is_opening_position(ex_id=self.datas[datas_num].feed.ex_id,
-                                             symbol=self.datas[datas_num].feed.symbol):
-                store.mark_opening_position(ex_id=self.datas[datas_num].feed.ex_id,
-                                            symbol=self.datas[datas_num].feed.symbol,
+            if not store.is_opening_position(ex_id=self.str_feed[datas_num].feed.ex_id,
+                                             symbol=self.str_feed[datas_num].feed.symbol):
+                store.mark_opening_position(ex_id=self.str_feed[datas_num].feed.ex_id,
+                                            symbol=self.str_feed[datas_num].feed.symbol,
                                             bot_id=self.helper.id)
             else:
                 logger.warning("Position opening is blocked as another bot is already opening it.")
@@ -242,8 +231,8 @@ class Strategy(strategy.Strategy):
                     self.cerebro.runstop()
                     return False
 
-            store.unmark_opening_position(ex_id=self.datas[datas_num].feed.ex_id,
-                                          symbol=self.datas[datas_num].feed.symbol)
+            store.unmark_opening_position(ex_id=self.str_feed[datas_num].feed.ex_id,
+                                          symbol=self.str_feed[datas_num].feed.symbol)
 
         return res
 
@@ -259,7 +248,7 @@ class Strategy(strategy.Strategy):
             Optional[bool]: Returns True if the operation was successful,
                             None if the operation was not successful.
         """
-        for _, datas in enumerate(self.datas):
+        for _, datas in enumerate(self.str_feed):
             if datas.feed.trading:
                 with Cache() as store:
                     if store.is_opening_position(ex_id=datas.feed.ex_id,

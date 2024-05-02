@@ -101,6 +101,7 @@ def strat():
     class data:
         symbol = "BTC/USD"
         feed = strat_feed()
+        _name = 0
 
     class helper:
         uid = 1
@@ -110,8 +111,6 @@ def strat():
     broker = cerebro.getbroker()
     cerebro.addstrategy(strategy.Strategy)
     strat = cerebro.strats[0][0][0]
-    strat.cash[0] = 1000
-    strat.tick[0] = 10
     datas = [data(), data()]
     curtime = [arrow.utcnow().format()]
     setattr(strat, "p", MockStratParams(size_pct=10, leverage=1, take_profit=10, stop_loss=10, timeout=10, size=10))
@@ -120,6 +119,8 @@ def strat():
     setattr(strat, "helper", helper())
     setattr(strat, "curtime", curtime)
     setattr(strat, "size", {0: 10})
+    setattr(strat, "str_feed", datas)
+    setattr(strat, "last_candle_date", {0: arrow.get('2023-07-17T00:00:00+00:00')})
     yield strat
 
 
@@ -132,7 +133,7 @@ def trade_updated(strat, trade):
 @pytest.mark.order(1)
 def test_entry(strat):
     entry = strat.entry(self=strat, datas_num=0, price=10)
-    assert entry == 1.0 #entry / price 
+    assert entry == 1.0 #entry / price
 
 
 @pytest.mark.order(2)

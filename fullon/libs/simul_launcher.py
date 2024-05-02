@@ -21,11 +21,12 @@ class FullonSimulator:
         setproctitle(f"Fullon simulator server")
         while True:
             try:
-                bot_id, periods, visual, event, feeds, warm_up, test_params, response_queue  = request_queue.get()
+                bot_id, leverage, fee, periods, visual, event, noise, feeds, warm_up, test_params, response_queue = request_queue.get()
                 bot = Bot(bot_id=bot_id, bars=periods)
                 results = bot.run_simul_loop(visual=visual, event=event,
                                              feeds=feeds, warm_up=warm_up,
-                                             test_params=test_params)
+                                             test_params=test_params,
+                                             noise=noise, leverage=leverage, fee=fee)
                 response_queue.put(results)
             except KeyboardInterrupt:
                 #response_queue.put(None)

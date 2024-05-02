@@ -59,6 +59,7 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
 
             if uid not in exchange_pool:
                 exchange_pool[uid] = ExchangeMethods(exchange=exchange, params=params)
+                msg = f"We got a connection to exchange {exchange} with params {params}"
                 expires[uid] = arrow.utcnow().shift(minutes=60*11.75)
             try:
                 class_method = getattr(exchange_pool[uid], method_name)

@@ -59,7 +59,7 @@ class FullonBroker(BrokerBase):
                   "command": command,
                   "subcommand": "",
                   "leverage": owner.p.leverage,
-                  "bot_id": "00000000-0000-0000-0000-000000000002"}
+                  "bot_id": ""}
         _order = OrderStruct.from_dict(_order)
         _order = self.store.create_order(order=_order)
         if _order:
@@ -109,8 +109,8 @@ class FullonBroker(BrokerBase):
         size, price = self.store.get_position(data=data)
         return Position(size, price)
 
-    def getvalue(self):
-        return self.store.get_value()
+    def getvalue(self, datas=None):
+        return self.store.get_value(datas)
 
     def get_symbol_value(self, symbol: str) -> Optional[float]:
         """

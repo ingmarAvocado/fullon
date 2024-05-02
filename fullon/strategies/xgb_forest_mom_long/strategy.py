@@ -70,14 +70,12 @@ class Strategy(strat.Strategy):
         """
         # Check for stop loss
         res = self.check_exit()
-        #import ipdb
-        #ipdb.set_trace()
         if not res:
             if self.pos[0] > 0 and self.indicators.exit:
                 res = self.close_position(feed=0, reason="strategy")
         if res:
             #self.next_open = self.time_to_next_bar(feed=1).shift(minutes=240*0)
-            self.next_open = self.time_to_next_bar(feed=1).shift(days=0)
+            self.next_open = self.time_to_next_bar(feed=1).shift(days=1)
             self.entry_signal[0] = ""
             time_difference = (self.next_open.timestamp() - self.curtime[0].timestamp())
             if time_difference <= 60:  # less than 60 seconds
@@ -297,35 +295,3 @@ class Strategy(strat.Strategy):
         data = data.drop(columns=columns_to_drop)
         data = data.dropna()
         return data
-
-    def event_in(self) -> Optional[arrow.Arrow]:
-        """
-        Find the date of the next buy or sell signal based on the current time.
-        """
-        curtime = pandas.to_datetime(self.next_open.format('YYYY-MM-DD HH:mm:ss'))
-
-        # Filter based on conditions and time
-        mask = (self.indicators_df['entry'] == True) \
-                & (self.indicators_df.index >= curtime)
-
-        filtered_df = self.indicators_df[mask]
-        # Check if the filtered dataframe has any rows
-        if not filtered_df.empty:
-            return arrow.get(str(filtered_df.index[0]))
-        # If the function hasn't returned by this point, simply return None
-
-    def event_out(self) -> Optional[arrow.Arrow]:
-        """
-        take profit and stop_loss are automatic
-        """
-        curtime = pandas.to_datetime(self.curtime[1].format('YYYY-MM-DD HH:mm:ss'))
-
-        # Check the position before proceeding
-        # Filter based on conditions and time for long exit
-        mask = (self.indicators_df['exit'] == True) & (self.indicators_df.index >= curtime)
-
-        filtered_df = self.indicators_df[mask]
-
-        # Check if the filtered dataframe has any rows
-        if not filtered_df.empty:
-            return arrow.get(str(filtered_df.index[0]))

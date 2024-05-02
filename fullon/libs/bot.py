@@ -15,6 +15,7 @@ from libs.database_ohlcv import Database as Database_ohlcv
 from libs.btrader.fullonbroker import FullonBroker
 from libs.btrader.basebroker import BaseBroker
 from libs.btrader.fullonresampler import FullonFeedResampler
+from libs.btrader.observers import CashInterestObserver
 from typing import Optional, Any, Tuple
 from setproctitle import setproctitle
 
@@ -55,6 +56,7 @@ class Bot:
             self.str_params = self._str_set_params(dbase=dbase)
             self.cache = cache.Cache()
             self.str_feeds = self._set_feeds(dbase=dbase)
+            self.noise = False
             if not self.str_feeds:
                 logger.error(
                     "__init__: It is not possible to run a simulation without feeds")
@@ -221,7 +223,6 @@ class Bot:
         Pair up the data feeds in the Cerebro object by setting the 'feed2' attribute of each feed to the
         corresponding feed in the pair.
         """
-        # Determine the number of data feeds in the Cerebro object
         for str_id, params in self.str_params.items():
             num_feeds = len(self.str_feeds[str_id])
             if params['feeds'] != num_feeds:
@@ -322,7 +323,10 @@ class Bot:
         """
         res = store.get_ticker(exchange=feed.exchange_name, symbol=feed.symbol)
         if res:
-            return arrow.get(res[1]).shift(seconds=600) > arrow.utcnow()
+            try:
+                return arrow.get(res[1]).shift(seconds=600) > arrow.utcnow()
+            except TypeError:
+                pass
         return False
 
     def check_account(self, store, feed) -> bool:
@@ -390,16 +394,17 @@ class Bot:
         for str_id, feeds in self.str_feeds.items():
             for num, feed in enumerate(feeds):
                 key = f"{feed.ex_id}:{feed.symbol}:{feed.period}:{feed.compression}"
-                if key in loaded:
-                    continue
                 # Clear the simulation results list for this feed
                 self.simulresults[str_id][num] = []
+                #if key in loaded:
+                #    continue
                 # Set the timeframe for the feed
                 timeframe = self._set_timeframe(period=feed.period)
                 not_tick = True
                 if feed.period.lower() == "ticks":
                     self.str_feeds[str_id][num].period = "minutes"
                     feed.period = "minutes"
+                    feed.trading = True
                     not_tick = False
                 compression = feed.compression
                 try:
@@ -433,7 +438,7 @@ class Bot:
                                  fromdate=fromdate,
                                  mainfeed=feed0)
                 # Add the data object to the cerebro instance
-                cerebro.adddata(data, name=f'{index}')
+                cerebro.adddata(data)
                 # Store the first feed object for later use
                 if index == 0:
                     feed0 = data
@@ -458,9 +463,12 @@ class Bot:
     def run_simul_loop(self,
                        feeds: dict = {},
                        visual: bool = False,
-                       test_params: dict = {},
+                       leverage: int = 1,
+                       test_params: list = [],
                        warm_up: int = 0,
-                       event: bool = False) -> Any:
+                       event: bool = False,
+                       noise: bool = False,
+                       fee: float = 0.0015) -> dict:
         """
         Run a simulation loop.
 
@@ -472,38 +480,43 @@ class Bot:
         :return: Simulation results or an error message.
         """
         if not self.id:
-            return False
+            return {}
+        if test_params:
+            str_ids = list(self.str_params.keys())
+            if len(str_ids) != len(test_params):
+                logger.critical("This # of strategies in tests_params do not match bots")
+                return {}
+            for num, str_id in enumerate(str_ids):
+                self.extend_str_params(str_id=str_id, test_params=test_params[num])
 
-        for str_id in self.str_feeds.keys():
-            self.extend_str_params(str_id=str_id, test_params=test_params)
-        cerebro = bt.Cerebro()
-        broker = self.get_broker(dry=True)
+        cerebro = bt.Cerebro(tradehistory=True)
+        broker = self.get_broker(dry=True, mult=leverage, fee=fee)
         cerebro.setbroker(broker)
-
+        self.noise = noise
         self._load_strategies(cerebro=cerebro, event=event)
+        main_str_id = list(self.str_params.keys())[0]
+        cerebro.addobserver(CashInterestObserver, interest_rate=0.04, main_str_id=main_str_id)
         if not self._load_feeds(cerebro=cerebro, warm_up=warm_up, event=event, ofeeds=feeds):
-            return False
+            return {}
         if not self._pair_feeds(cerebro=cerebro):
-            return False
-
+            return {}
         r = []
         try:
             r = cerebro.run(live=True)
         except:
             raise
-
         if r == []:
-            return [
-                "ERROR: Either nothing happened or could not pass strategy __init__, check log"]
+            return {"ERROR": "Either nothing happened or could not pass strategy __init__, check log"}
         imgtitle = ""
         if visual:
             now = arrow.utcnow().format('YYYY-MM-DD_HH:mm:ss')
             p = ""
-            for key, value in test_params.items():
-                p = p + str(key) + "_" + str(value) + "_"
-            imgtitle = "tmp/simul_" + "me" + "_" + p + "_" + now + ".png"
-            cerebro.plot(style='candles', saveimg=imgtitle)
-        str_id = ""
+            #for key, value in test_params.items():
+            #    p = p + str(key) + "_" + str(value) + "_"
+            #imgtitle = "tmp/simul_" + "me" + "_" + p + "_" + now + ".png"
+            imgtitle="some_sim"
+            cerebro.plot(style='lines', saveimg=imgtitle)
+        interests = r[0].observers.cashinterestobserver.totalinterest
         for str_id, params in self.str_params.items():
             params.pop('helper', None)
             params.pop('pre_load_bars', None)
@@ -513,7 +526,10 @@ class Bot:
                 self.simulresults[str_id][num].append({"strategy": strategy_name,
                                                        "params": params,
                                                        "feed": self.str_feeds[str_id][num],
-                                                       "imgtitle": imgtitle})
+                                                       "imgtitle": imgtitle,
+                                                       "starting_cash": broker.startingcash,
+                                                       "ending_assets": cerebro.broker.getvalue(),
+                                                       "interest_earned": interests})
         del cerebro
         return self.simulresults
 
@@ -542,9 +558,6 @@ class Bot:
                 feed_class = FEED_CLASSES['FullonFeed']
                 feed_module, feed_class_name = feed_class.rsplit(".", 1)
                 FeedClass = getattr(importlib.import_module(feed_module), feed_class_name)
-                # Create a new broker object for this feed
-                # Create a new data object using the chosen feed class
-                #  Since when the database should load
                 if timeframe == bt.TimeFrame.Ticks:
                     data = FeedClass(feed=feed,
                                      timeframe=1,
@@ -577,7 +590,7 @@ class Bot:
                                     fromdate=fromdate.format("YYYY-MM-DD HH:mm:ss"))
                     index += 1
 
-    def get_broker(self, dry=False) -> bt.brokers.BackBroker:
+    def get_broker(self, dry: bool = False, mult: int = 1, fee: float = 0.0015) -> bt.brokers.BackBroker:
         """
         Initializes and sets the brokers for each data feed.
 
@@ -588,13 +601,14 @@ class Bot:
             broker = BaseBroker()
             broker.setcash(10000)
             broker.setcommission(
-                commission=0.0015,
+                commission=fee,
                 margin=None,
-                mult=1,
-                interest=.001
+                mult=mult,
+                interest=0.000
             )
         else:
-            broker = FullonBroker(feed=self.str_feeds[0])
+            first_feed = list(self.str_feeds.keys())[0]
+            broker = FullonBroker(feed=self.str_feeds[first_feed][0])
         return broker
 
     def _load_live_strategies(self, cerebro: bt.Cerebro, stop_signal):

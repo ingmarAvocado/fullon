@@ -202,8 +202,8 @@ class Database(database.Database):
             psycopg2.DatabaseError: If an error occurs while inserting the strategy or its parameters.
         """
         defaults = self.get_cat_strategy(cat_str_id=strategy['cat_str_id']).to_dict()
-        defaults['leverage'] = 2
-        defaults['size_pct'] = 2
+        defaults['leverage'] = 1
+        defaults['size_pct'] = 10
         strategy = {**defaults, **strategy}
         insert_strategy_sql = """
             INSERT INTO strategies (
@@ -220,8 +220,8 @@ class Database(database.Database):
             strategy.get('stop_loss'),
             strategy.get('trailing_stop'),
             strategy.get('timeout'),
-            strategy.get('leverage', 2),
-            strategy.get('size_pct', 10),
+            strategy.get('leverage'),
+            strategy.get('size_pct'),
             strategy.get('size'),
             strategy.get('size_currency', 'USD'),
             strategy.get('pre_load_bars'),

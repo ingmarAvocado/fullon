@@ -52,7 +52,7 @@ class Crawler(rootCrawler):
         run_input = {
               "customMapFunction": "(object) => { return {...object} }",
               "includeSearchTerms": False,
-              "maxItems": 5000,
+              "maxItems": 10,
               "minimumFavorites": 0,
               "minimumReplies": 0,
               "minimumRetweets": 0,
@@ -111,6 +111,6 @@ class Crawler(rootCrawler):
                 )
                 post.calculate_pre_score()
                 posts.append(post)
-            except KeyError as error:
-                logger.error("Error parsing a post. missing a Key ", str(error))
+            except (KeyError,  TypeError) as error:
+                logger.error("Error parsing a post. missing a Key ")
         return posts

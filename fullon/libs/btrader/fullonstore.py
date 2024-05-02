@@ -63,7 +63,7 @@ class FullonStore(object):
                                           symbol=data.symbol)
         return position.volume, position.price
 
-    def get_value(self) -> float:
+    def get_value(self, datas) -> float:
         '''Retrieves the value for all the positions
 
         Returns:

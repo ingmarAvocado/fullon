@@ -8,13 +8,14 @@ import setproctitle
 from tqdm import tqdm
 import time
 import numpy
-from libs import log, simul
+from libs import log, simul, settings
 from run.bot_manager import BotManager
 from typing import List, Dict
 import decimal
 from setproctitle import setproctitle
 from concurrent.futures import ThreadPoolExecutor
 import csv
+import os
 
 logger = log.fullon_logger(__name__)
 
@@ -191,7 +192,16 @@ class SimulManager():
                         return [simuls[0]]
         return simuls
 
-    def run_simul_and_update_progress(self, bot, event, feeds, params, progress_bar):
+    def run_simul_and_update_progress(self,
+                                      bot,
+                                      leverage: int,
+                                      fee: float,
+                                      event: bool,
+                                      feeds: dict,
+                                      params: list,
+                                      visual: bool,
+                                      noise: bool,
+                                      progress_bar):
         """
         Executes a single simulation run and updates the associated progress bar by 1 unit.
         Args:
@@ -203,12 +213,12 @@ class SimulManager():
         Returns:
             result: The result of the simulation run.
         """
-        result = self.run_simul(bot=bot, event=event, feeds=feeds, params=params)
+        result = self.run_simul(bot=bot, leverage=leverage, event=event, fee=fee, feeds=feeds, params=params, visual=visual, noise=noise)
         progress_bar.update(1)
         return result
 
     @staticmethod
-    def load_from_file(filename: str) -> List[Dict]:
+    def load_from_file(filename: str) -> list:
         """
         Loads simulation parameters from a specified file.
         Args:
@@ -228,7 +238,8 @@ class SimulManager():
                     return float(value)
                 except ValueError:
                     return value  # Return the value unchanged if it's not a number
-
+        if not os.path.exists(filename):
+            return {}
         with open(filepath, newline='', encoding='utf-8-sig') as file:
             delimiter = ',' if ',' in file.read(1024) else '\t'  # Determine the delimiter
             file.seek(0)  # Reset file pointer to the beginning
@@ -245,59 +256,106 @@ class SimulManager():
                 simulations.append(simulation_dict)
         return simulations
 
-    def bot_simul(self, bot, event_based=False, feeds={}, params={}, sharpe_filter=0.0, filename=None, montecarlo=1):
+    def bot_simul(self, bot: dict, xls: bool = False,  visual: bool = False,
+                  verbose: bool = False, event_based: bool = False,
+                  feeds: dict = {}, params: list = [],
+                  sharpe_filter: float = 0.0, filename: str = '',
+                  montecarlo: int = 1, leverage: int = 1, fee: float = 0.0015):
         """
         Executes multiple simulation runs based on given parameters and updates a progress bar.
-        Args:
-            bot: Bot configuration for the simulation.
-            event_based (bool, optional): Specifies if the simulations are event-based.
-            feeds (dict, optional): Additional feeds for the bot.
-            params (dict, optional): Parameters for the simulation.
-            sharpe_filter (float, optional): Sharpe ratio filter.
-        Returns:
-            list: A list of tuples, each containing the bot configuration and the corresponding simulation result.
         """
         setproctitle("Fullon Simulator")
-        if filename:
-            sim_list = self.load_from_file(filename=filename)
-        else:
-            sim_list = self.get_simul_list(params)
-        if not params:
-            sim_list = [{}]
-        progress_bar = tqdm(total=len(sim_list)*montecarlo, desc="Running Simulations")
-        # aqui este results regresa (datos_bot, resultados_simulacion)
-        # tendrai que quedar results[str_id] = [(datos_bot, resultados_simulacion),(etc)]
-
-        results = {}
+        # Early exit if no parameters are provided
+        for folder in ['tmp', 'pickle', 'predictors', 'crawler_media']:
+            try:
+                os.mkdir(folder)
+            except FileExistsError:
+                pass
+        sim_list = []
         start_time = time.perf_counter()
-        with ThreadPoolExecutor() as executor:
-            futures = {}
-            for sim_param in sim_list:
-                for _ in range(0, montecarlo):
-                    future = executor.submit(
-                        self.run_simul_and_update_progress,
-                        bot, event_based, feeds, sim_param, progress_bar
-                    )
-                    futures[future] = sim_param
-            for future in futures:
-                result = future.result()
-                str_id = list(result.keys()).pop()
-                try:
-                    results[str_id].append((bot, result[str_id]))
-                except KeyError:
-                    results[str_id] = []
-                    results[str_id].append((bot, result[str_id]))
-        progress_bar.close()
+        if filename:
+            logger.critical("loading by filename not avaiable right now")
+            return
+            '''
+            sim_list = self.load_from_file(filename=filename)
+            if sim_list == {}:
+                logger.error("Could not load simulation file %s", (filename))
+                return
+            '''
+        else:
+            for num, param in enumerate(params):
+                sim_list.append({num: self.get_simul_list(param)})
+
+        single_str = True
+        if len(params) > 1:
+            single_str = False
+            for num, sim in enumerate(sim_list):
+                if len(sim[num]) > 1:
+                    logger.error("Testing dynamic parameters in simulations with multiple params is not allowed")
+                    print("Can't continue, exiting...\n")
+                    return
+
+        noise = True if montecarlo > 1 else False
+
+        # Setup progress bar and executor for simulations
+        progress_bar = tqdm(total=len(sim_list) * montecarlo / len(params), desc="Running Simulations")
+        results = {}
+        try:
+            with ThreadPoolExecutor() as executor:
+                futures = {}
+                if single_str:
+                    for sim_params in sim_list[0][0]:
+                        for _ in range(montecarlo):
+                            future = executor.submit(
+                                self.run_simul_and_update_progress, bot, leverage, fee, event_based, feeds, [sim_params], visual, noise, progress_bar
+                            )
+                            futures[future] = [sim_params]
+                else:
+                    sim_params = []
+                    for num, sim in enumerate(sim_list):
+                        sim_params.append((sim[num][0]))
+                    for _ in range(montecarlo):
+                        future = executor.submit(
+                            self.run_simul_and_update_progress, bot, leverage, fee, event_based, feeds, sim_params, visual, noise, progress_bar
+                        )
+                        futures[future] = sim_params
+                # Collect results from futures
+                for future in futures:
+                    result = future.result()
+                    if not result:
+                        logger.warning("No results for this simulation")
+                        pass
+                    else:
+                        for str_id, res in result.items():
+                            if str_id not in results:
+                                results[str_id] = []
+                            results[str_id].append((bot, res))
+
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"Error during simulation execution: {e}")
+        finally:
+            progress_bar.close()
         sim = simul.simul()
         sim.echo_results(bot=bot,
                          results=results,
                          sharpe_filter=sharpe_filter,
-                         montecarlo=montecarlo > 1)
+                         montecarlo=montecarlo > 1,
+                         verbose=verbose,
+                         visual=visual,
+                         xls=xls)
         end_time = time.perf_counter()
         execution_time = end_time - start_time
         print(f"\nRun time: {round(execution_time,5)}sec")
 
-    def run_simul(self, bot: Dict, event=False, feeds={}, params=None) -> Dict:
+    def run_simul(self,
+                  bot: Dict,
+                  leverage: int,
+                  fee: float,
+                  event: bool = False,
+                  visual: bool = False,
+                  noise: bool = False,
+                  feeds: dict = {},
+                  params: list = []) -> Dict:
         """
         This function runs a simulation based on the provided bot and simulation parameters. This function is designed
         to be used in a threading context.
@@ -311,30 +369,11 @@ class SimulManager():
         Returns:
             Dict: The results of the simulation, parsed according to the bot's configuration.
         """
-        _params = {}
-        if params:
-            if 'ERROR' in params:
-                logger.error(params)
-                return []
-            for key, value in params.items():
-                if "." in str(value):
-                    try:
-                        _params[key] = float(value)
-                    except ValueError:
-                        _params[key] = value
-                else:
-                    try:
-                        _params[key] = int(value)
-                    except (ValueError, TypeError):
-                        _params[key] = value
         periods = 365
-        visual = None
         warm_up = False
         # Extract simulation parameters from bot dictionary
         if 'periods' in bot.keys():
             periods = int(bot['periods'])
-        if 'visual' in bot.keys():
-            visual = bot['visual']
         if 'warm_up' in bot.keys():
             warm_up = bot['warm_up']
         # Check that a bot_id is included in bot dictionary
@@ -348,5 +387,8 @@ class SimulManager():
                                           warm_up=warm_up,
                                           event=event,
                                           feeds=feeds,
-                                          test_params=_params)
+                                          test_params=params,
+                                          leverage=leverage,
+                                          noise=noise,
+                                          fee=fee)
         return results

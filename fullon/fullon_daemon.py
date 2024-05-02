@@ -217,7 +217,11 @@ def main(cli_args: argparse.Namespace) -> None:
         shutil.rmtree('tmp/')
     except FileNotFoundError:
         pass
-    os.mkdir('tmp')
+    for folder in ['tmp', 'pickle', 'predictors', 'crawler_media']:
+        try:
+            os.mkdir(folder)
+        except FileExistsError:
+            pass
     print_banners()
     if other_instances():
         print(colored.red("A daemon is already running, use -x to stop it"))

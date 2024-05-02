@@ -285,7 +285,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
 
     BOT = {
         'user': uid,
-        'name': 'trading101x2',
+        'name': 'doubles test',
         'dry_run': 'True',
         'active': 'False'
     }
@@ -294,7 +294,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     user.add_bot_exchange(bot_id=bot_id, exchange=exchange)
 
     with Database() as dbase:
-        cat_str_id = dbase.get_cat_str_id(name='trading101')
+        cat_str_id = dbase.get_cat_str_id(name='rsi_reversal')
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
@@ -313,8 +313,8 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     feed = {
         "symbol_id": 1,
         "str_id": str_id,
-        "period": 'Minutes',
-        "compression": 10,
+        "period": 'Days',
+        "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 
@@ -336,8 +336,8 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     feed = {
         "symbol_id": 2,
         "str_id": str_id2,
-        "period": 'Minutes',
-        "compression": 10,
+        "period": 'Days',
+        "compression": 1,
         "order": 2}
     user.add_feed_to_bot(feed=feed)
 

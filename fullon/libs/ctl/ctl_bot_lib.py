@@ -309,23 +309,37 @@ class CTL(CTL):
             print(colored.red("Failed adding exchange to bot"))
             return False
         #then we assign a strategy
-        print(colored.blue("Set the strategy"))
-        str_id, feeds_num = self.set_new_strategy(bot_id=bot_id)
-        if not feeds_num:
-            print(colored.red("Failed adding strategy to bot"))
-            return False
-        #then we do the feeds
-        feeds = self.build_feeds(feeds=feeds_num)
-        _feeds = {}
-        for num, feed in feeds.items():
-            _feeds[str(num)] = feed
-        if self.RPC.bots('add_feeds', {'str_id': str_id, 'feeds': _feeds}):
-            print(colored.green("Feeds added"))
-        else:
-            print(colored.red("Failed adding feeds to bot"))
-            return False
-        print(colored.green("Bot fully added"))
-        return False
+
+        while True:
+            try:
+                completer = WordCompleter([str(i) for i in range(1, 10)], ignore_case=True)
+                num = session.prompt("(Edit Bot Shell) How many strategies > ", completer=completer)
+                num = int(num)
+                break
+            except (EOFError, KeyboardInterrupt):  # Catch Ctrl+D and Ctrl+C and exit
+                print("Canceling operation")
+                return False
+            except (ValueError, TypeError):
+                print(colored.red("\nInvalid input, please enter a number."))
+
+        for i in range(0, num):
+            print(f"Setting strategy #{i}")
+            print(colored.blue("Set the strategy"))
+            str_id, feeds_num = self.set_new_strategy(bot_id=bot_id)
+            if not feeds_num:
+                print(colored.red("Failed adding strategy to bot"))
+                return False
+            #then we do the feeds
+            feeds = self.build_feeds(feeds=feeds_num)
+            _feeds = {}
+            for num, feed in feeds.items():
+                _feeds[str(num)] = feed
+            if self.RPC.bots('add_feeds', {'str_id': str_id, 'feeds': _feeds}):
+                print(colored.green("Feeds added"))
+            else:
+                print(colored.red("Failed adding feeds to bot"))
+            print(colored.green("Bot fully added"))
+        return True
 
     def delete_bot(self, bots: List[Dict[str, str]]) -> None:
         """

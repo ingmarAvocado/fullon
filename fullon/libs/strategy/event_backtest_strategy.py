@@ -32,15 +32,15 @@ class Strategy(strategy.Strategy):
     - _last_close (bool): A flag indicating whether the last trade was closed.
     """
 
-    loop = 0
-    block_next_loop = False
-    _last_close = False
-
     def nextstart(self):
         """prepare the startegy"""
+        self.loop = 0
+        self.block_next_loop = False
+        self._last_close = False
+        self.curtime_prev = arrow.get('2020-01-01')
         super().nextstart()
-        for feed in range(0, len(self.datas)):
-            self.datas[feed].trailing_stop = self.p.stop_loss
+        for feed in range(0, len(self.str_feed)):
+            self.str_feed[feed].trailing_stop = self.p.stop_loss
 
     def next(self):
         """
@@ -60,8 +60,10 @@ class Strategy(strategy.Strategy):
             self.block_next_loop = False
             return
 
-        if not self._next_simul_check():
+        if not self._next_step_check():
             return
+
+        #print(self.p.str_id, self.curtime, self.anypos)
 
         if self.anypos == 0:
             self.order_placed = False
@@ -69,12 +71,12 @@ class Strategy(strategy.Strategy):
             if not self.order_placed:
                 self.next_event_no_pos()
         else:
-            stime = self.datas[-1].bar_size_minutes
+            stime = self.str_feed[-1].bar_size_minutes
             filter_date = pandas.to_datetime(self.curtime[0].shift(minutes=-stime).format('YYYY-MM-DD HH:mm:ss'))
             self.indicators_df = self.indicators_df[self.indicators_df.index > filter_date]
-            self._check_end_simul()
-            self.risk_management()
-            self._end_next()
+            if not self._check_end_simul():
+                self.risk_management()
+        self._end_next()
 
     def update_trade_vars(self, feed: int = 0) -> None:
         """
@@ -86,7 +88,7 @@ class Strategy(strategy.Strategy):
         """
         pass
 
-    def _next_simul_check(self):
+    def _next_step_check(self):
         """
         Check if it's time to move the simulation forward by one step.
 
@@ -94,11 +96,14 @@ class Strategy(strategy.Strategy):
         - True if it's time to move forward
         - False otherwise
         """
-        feeds = len(self.datas) // 2
+        feeds = len(self.str_feed) // 2
         # Check if the current time for each pair of feeds is in sync
         for feed in range(feeds):
             if self.curtime[feed] < self.curtime[feed + feeds]:
                 return False
+        if self.curtime_prev == self.curtime[0]:
+            return False
+        self.curtime_prev = self.curtime[0]
         return True
 
     def close_position(self, feed: int = 0, reason: str = "no reason",  otype=None) -> bool:
@@ -111,8 +116,8 @@ class Strategy(strategy.Strategy):
         - otype: Order type
         """
         super().close_position(feed=feed, reason=reason, otype=otype)
-        self.datas[feed].just_closed_trade = True
-        self.datas[feed].pos = 0
+        self.str_feed[feed].just_closed_trade = True
+        self.str_feed[feed].pos = 0
         return True
 
     def _check_end_simul(self) -> bool:
@@ -120,7 +125,7 @@ class Strategy(strategy.Strategy):
         Checks wether this is last loop and if it is, it closes positions
         """
         if self.curtime[0] >= self.last_trading_date:
-            for pos_num in range(0, len(self.datas)):
+            for pos_num in range(0, len(self.str_feed)):
                 try:
                     if self.pos[pos_num]:
                         self.close_position(feed=pos_num, reason="loop end")
@@ -136,7 +141,7 @@ class Strategy(strategy.Strategy):
         The `pos` attribute will be set for each data feed to the size of its current position.
         """
         anypos = False
-        for num, datas in enumerate(self.datas):
+        for num, datas in enumerate(self.str_feed):
             position = self.getposition(datas)
             self.pos[num] = position.size
             if position.size != 0:
@@ -178,8 +183,8 @@ class Strategy(strategy.Strategy):
         times.sort()
 
         # Set the event timeout for all data feeds to the closest event
-        for num, _ in enumerate(self.datas):
-            self.datas[num].event_timeout = times[0]
+        for num, _ in enumerate(self.str_feed):
+            self.str_feed[num].event_timeout = times[0]
 
     def next_event_pos(self) -> None:
         """
@@ -193,25 +198,25 @@ class Strategy(strategy.Strategy):
         # Define a dictionary to store the events with their dates
         event = {self.last_trading_date: 'end'}
 
-        for num, data in enumerate(self.datas):
+        for num, data in enumerate(self.str_feed):
             if data.timeframe == TimeFrame.Ticks:
                 if self.pos[num]:
                     if self.p.stop_loss:
-                        stop_loss_date, price = self.datas[num].get_event_date(
+                        stop_loss_date, price = self.str_feed[num].get_event_date(
                             event="stop_loss",
                             price=self.stop_loss[num],
                             cur_ts=self.curtime[0])
                         times.append(stop_loss_date)
                         event[stop_loss_date] = "stop_loss"
                     if self.p.take_profit:
-                        take_profit_date, price = self.datas[num].get_event_date(
+                        take_profit_date, price = self.str_feed[num].get_event_date(
                             event="take_profit",
                             price=self.take_profit[num],
                             cur_ts=self.curtime[0])
                         times.append(take_profit_date)
                         event[take_profit_date] = "take_profit"
                     if self.p.trailing_stop:
-                        trailing_date, price = self.datas[num].get_event_date(
+                        trailing_date, price = self.str_feed[num].get_event_date(
                             event="trailing_stop",
                             price=self.stop_loss[num],
                             cur_ts=self.curtime[0])
@@ -226,20 +231,52 @@ class Strategy(strategy.Strategy):
         # Sort the events by date and set the closest event as the next event
         times.sort()
         # Set the event timeout for both feeds to the closest event date
-        for num, _ in enumerate(self.datas):
-            self.datas[num].event_timeout = times[0]
+        for num, _ in enumerate(self.str_feed):
+            self.str_feed[num].event_timeout = times[0]
 
-    def event_in(self) -> Optional[arrow.Arrow]:  # pylint: disable=no-self-use
-        '''
-        Returns the date of the first of an in event occurrence by the child if there is any.
-        '''
-        return ""
+    def event_in(self) -> Optional[arrow.Arrow]:
+        """
+        Find the date of the next buy or sell signal based on the current time.
+        """
+        curtime = pandas.to_datetime(self.next_open.format('YYYY-MM-DD HH:mm:ss'))
+        try:
+            # Filter based on conditions and time, do not change == to is
+            mask = (self.indicators_df['entry'] == True) \
+                    & (self.indicators_df.index >= curtime)
+        except KeyError as error:
+            if 'entry' in str(error):
+                logger.error("No entry or exit in  indicators_df")
+                self.cerebro.runstop()
+            else:
+                raise
+        filtered_df = self.indicators_df[mask]
+        # Check if the filtered dataframe has any rows
+        if not filtered_df.empty:
+            return arrow.get(str(filtered_df.index[0]))
+        # If the function hasn't returned by this point, simply return None
 
-    def event_out(self) -> Optional[arrow.Arrow]:  # pytint: disable=no-self-use
-        '''
-        Returns the date of the first of an out event occurrence by the child if there is any.
-        '''
-        return ""
+    def event_out(self) -> Optional[arrow.Arrow]:
+        """
+        take profit and stop_loss are automatic
+        """
+        curtime = pandas.to_datetime(self.curtime[1].format('YYYY-MM-DD HH:mm:ss'))
+
+        # Check the position before proceeding
+        # Filter based on conditions and time for long exit
+        # do not change == to is
+        try:
+            mask = (self.indicators_df['exit'] == True) \
+            & (self.indicators_df.index >= curtime)
+        except KeyError as error:
+            if 'exit' in str(error):
+                logger.error("No entry or exit in  indicators_df")
+                self.cerebro.runstop()
+
+        filtered_df = self.indicators_df[mask]
+
+        # Check if the filtered dataframe has any rows
+        if not filtered_df.empty:
+            return arrow.get(str(filtered_df.index[0]))
 
     def notify_trade(self, trade):
         """
@@ -248,15 +285,15 @@ class Strategy(strategy.Strategy):
         super().notify_trade(trade=trade)
         feed = int(trade.getdataname())
         if trade.justopened is True:
-            self.datas[feed].pos = trade.size
+            self.str_feed[feed].pos = trade.size
             self.anypos = True
         else:
-            self.datas[feed].pos = 0
+            self.str_feed[feed].pos = 0
             self.reset_any_pos()
         self.block_next_loop = True
         if self.p.take_profit:
-            self.datas[feed].take_profit = self.take_profit[feed]
+            self.str_feed[feed].take_profit = self.take_profit[feed]
         if self.p.stop_loss:
-            self.datas[feed].stop_loss = self.stop_loss[feed]
+            self.str_feed[feed].stop_loss = self.stop_loss[feed]
         if self.p.timeout:
-            self.datas[feed].timeout = self.timeout[feed]
+            self.str_feed[feed].timeout = self.timeout[feed]

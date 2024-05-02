@@ -1,15 +1,12 @@
 from apify_client import ApifyClient
-from pandas_ta import field
-from libs.secret import SecretManager
 from libs import log, settings
-from tqdm import tqdm
 import urllib.request
 import urllib.error
 import os
 import concurrent.futures
 from urllib.parse import urlparse, unquote
 from libs.structs.crawler_post_struct import CrawlerPostStruct
-import pytesseract
+#import pytesseract
 import PIL
 import numpy as np
 from typing import Union, List
@@ -38,6 +35,7 @@ class Crawler():
         Returns:
             str: OCR string
         """
+        return ""
         try:
             ocr_text = pytesseract.image_to_string(PIL.Image.open(image_path))
             return ocr_text.replace("\n", " ").replace("|", "I")

@@ -25,6 +25,7 @@ class Strategy(strategy.Strategy):
         self.exectype = bt.Order.Market
         self.dry_run = False
         self.last_trading_date = None
+        self.open_trade_indicators: dict = {}
 
     def nextstart(self):
         """prepare the startegy"""
@@ -36,7 +37,7 @@ class Strategy(strategy.Strategy):
         self._state_variables()
         self.local_nextstart()
         self.last_trading_date = arrow.get(
-            self.datas[0].last_date).shift(minutes=-1)
+            self.str_feed[0].last_date).shift(minutes=-1)
         return None
 
     def next(self):
@@ -61,7 +62,7 @@ class Strategy(strategy.Strategy):
         Checks wether this is last loop and if it is, it closes positions
         """
         if self.curtime[0] >= self.last_trading_date:
-            for pos_num in range(0, len(self.datas)):
+            for pos_num in range(0, len(self.str_feed)):
                 try:
                     if self.pos[pos_num]:
                         self.close_position(reason="loop end", feed=pos_num)
@@ -70,90 +71,52 @@ class Strategy(strategy.Strategy):
             return True
         return False
 
-    def place_order(self, signal, entry, otype=None, datas=None, reason=None):
-        """ description """
-        self.order_placed = True
-        if otype is None:
-            otype = self.exectype
-        datas = self.datas[0] if not datas else datas
-        if signal == "Buy":
-            return self.buy(datas, exectype=otype, size=entry)
-        if signal == "Sell":
-            return self.sell(datas, exectype=otype, size=entry)
-        return None
-
     def notify_order(self, order):
         """ description """
         if order.status == 7:
-            logger.error(
-                "Trying to buy more than can be afforded, check your entry")
-            self.stop()
-            raise ValueError("Cant continue without funds")
+            if self.totalfunds[0] < 100:
+                logger.error("Something happen and ran out of funds for trade")
+                raise ValueError("Cant continue without funds")
 
     def notify_trade(self, trade):
         """ description """
         datas_num = int(trade.data._name)
-        trade.price = self.tick[datas_num]
-        if trade.status == 1:
-            if trade.size > 0:
-                last_side = 'Buy'
-            else:
-                last_side = 'Sell'
-        else:
-            last_side = self.helper.simulresults[self.p.str_id][datas_num][-1]['side']
-            if last_side == 'Buy':
-                last_side = 'Sell'
-            else:
-                last_side = 'Buy'
+        if trade.isopen:
+            self.open_trade_indicators = vars(self.indicators).copy()
+            self.open_trade_indicators['assets'] = self.broker.getvalue()
+            return
 
-        timestamp = self.datas[0].datetime.datetime(0)
-        last_ref = -1
-        if len(self.helper.simulresults[self.p.str_id][datas_num]) > 0:
-            last_ref = self.helper.simulresults[self.p.str_id][datas_num][-1]['ref']
-        if last_ref == trade.ref:  # This is a closing trade
-            amount = abs(self.helper.simulresults[self.p.str_id][datas_num][-1]['amount'])
-            last_comm = self.helper.simulresults[self.p.str_id][datas_num][-1]['fee']
-            trade.commission = trade.commission - last_comm
-            prev_cost = self.helper.simulresults[self.p.str_id][datas_num][-1]['cost']
-            cost = trade.price * amount
+        last_cost = None  # This will store the cost of the last modifying trade
 
-            if last_side == "Buy":  # closing a short
-                trade.pnlcomm = prev_cost - cost - trade.commission
-            else:  # closing a long
-                trade.pnlcomm = cost - prev_cost - trade.commission
+        for num, t in enumerate(trade.history):
+            side = 'Buy' if t.event.size > 0 else 'Sell'
+            current_cost = t.status.value if t.status.size != 0 else last_cost  # Use last non-zero cost
 
-            cash = self.helper.simulresults[self.p.str_id][datas_num][-1]['cash'] + \
-                prev_cost + trade.pnlcomm
-            assets = cash # we need to use this variable, as we also use cash variable
-            self.broker.cash = cash
-            roi_pct = round(trade.pnlcomm / prev_cost * 100, 2)
-        else:
-            if trade.size < 0:
-                amount = trade.size * -1
-                cost = trade.value * -1
-                cash = self.cash[datas_num] - cost
-            else:
-                amount = trade.size
-                cash = self.cash[datas_num] - trade.value
-                cost = trade.value
-            self.broker.cash = cash
-            assets = self.cash[datas_num] - trade.commission
-            trade.pnlcomm = 0
-            roi_pct = 0
+            _trade = {
+                "num": trade.ref,
+                "seq": num,
+                "timestamp": bt.num2date(t.status.dt),
+                "side": side,
+                "event_price": t.event.price,
+                "avg_price": t.status.price,
+                "event_size": t.event.size,
+                "avg_size": t.status.size,
+                "cost": current_cost,
+                "pnl": t.status.pnl,
+                "pnlfee": t.status.pnlcomm,
+                "roi": 0,
+                "fee": t.event.commission,
+                "assets": self.broker.getvalue() if t.status.size == 0 else None,
+                "reason": self.lastclose[datas_num] if t.status.size == 0 else None
+            }
 
-        closing = False if trade.justopened else True
-        r = {
-            "ref": trade.ref,
-            "timestamp": timestamp,
-            "side": last_side,
-            "price": trade.price,
-            "amount": amount,
-            "cost": cost,
-            "roi": trade.pnlcomm,
-            "roi_pct": roi_pct,
-            "fee": trade.commission,
-            "cash": cash,
-            "assets": assets,
-            "reason": self.lastclose[datas_num]}
-        r.update(vars(self.indicators))
-        self.helper.simulresults[self.p.str_id][datas_num].append(r)
+            # Calculate ROI using the last modifying trade's cost
+            if last_cost and num > 0:  # Ensure there was a modifying cost and it's not the first event
+                _trade['roi'] = (t.status.pnlcomm / last_cost) * 100 if last_cost else 0
+
+            # Update last cost for next calculation if this event modifies the size
+            if t.status.size != 0:
+                last_cost = current_cost
+
+            # Append the trade information to simulation results
+            self.helper.simulresults[self.p.str_id][datas_num].append(_trade)

@@ -4,13 +4,12 @@ Describe strategy
 import arrow
 from typing import Optional
 from libs.strategy import loader
+from libs import log
 import pandas
 import pandas_ta as ta
 
 
-#from libs.strategy import strategy as strat
-
-# logger = log.setup_custom_logger('pairtrading1a', settings.STRTLOG)
+logger = log.fullon_logger(__name__)
 
 strat = loader.strategy
 
@@ -24,57 +23,57 @@ class Strategy(strat.Strategy):
         ('timeout', 37),
         ('stop_loss', 4.6),
         ('rsi', 12),
-        ('entry', 64),
-        ('exit', 62),
+        ('entry', 41),
+        ('exit', 70),
         ('pre_load_bars', 30),
         ('feeds', 2)
     )
 
-    next_open: arrow.Arrow
-
     def local_init(self):
         """description"""
+        self.next_open: arrow.Arrow
         self.verbose = False
         self.order_cmd = "spread"
         if self.p.timeout:
-            self.p.timeout = self.datas[1].bar_size_minutes * self.p.timeout
-        #if self.p.exit >= self.p.entry:
-        #    self.cerebro.runstop()
+            self.p.timeout = self.str_feed[1].bar_size_minutes * self.p.timeout
+        if self.p.entry >= self.p.exit:
+            logger.error("Entry cannot be greater than exit")
+            self.cerebro.runstop()
 
     def local_next(self):
         """ description """
         if self.entry_signal[0]:
             if self.curtime[0] >= self.next_open:
-                self.open_pos(0)
+                self.increase_position(0)
                 self.crossed_lower = False
                 self.crossed_upper = False
 
     def set_indicators_df(self):
         if not self.indicators_df.empty:
-            if self.indicators_df.index[-1] == self.datas[1].dataframe.index[-1]:
+            if self.indicators_df.index[-1] == self.str_feed[1].dataframe.index[-1]:
                 return
-        self.indicators_df = self.datas[1].dataframe[['close']].copy()
-        # Compute RSI
+        self.indicators_df = self.str_feed[1].dataframe[['close']].copy()
         self.indicators_df['rsi'] = ta.rsi(self.indicators_df['close'], length=self.p.rsi)
-
         self._set_signals()
+        next_date = arrow.get(self.indicators_df.index[-1]).shift(minutes=self.str_feed[1].bar_size_minutes)
+        self.indicators_df.loc[next_date.format('YYYY-MM-DD HH:mm:ss')] = None
+        new_index = self.indicators_df.index.to_series().shift(-1).ffill().astype('datetime64[ns]')
+        self.indicators_df.index = new_index
         self.indicators_df = self.indicators_df.dropna()
 
     def _set_signals(self):
+        buffer_zone = 3  # Adding a buffer zone of x RSI points
+
         # Create new columns for entry and exit signals, initialized to False
         self.indicators_df['entry'] = False
         self.indicators_df['exit'] = False
 
-        # Define condition for RSI previously dropping below the entry threshold
+        # Conditions for RSI thresholds including buffer zone
         rsi_previously_below_entry = self.indicators_df['rsi'].shift(1) < self.p.entry
+        rsi_cross_back_entry = self.indicators_df['rsi'] >= self.p.entry + buffer_zone  # Buffer zone added
 
-        # Define condition for RSI crossing back up through the entry threshold
-        rsi_cross_back_entry = self.indicators_df['rsi'] >= self.p.entry
-
-        # Define conditions for long entry signals
+        # Define conditions for long entry and exit signals
         long_entry_cond = rsi_previously_below_entry & rsi_cross_back_entry
-
-        # Define conditions for long exit signals
         long_exit_cond = self.indicators_df['rsi'] > self.p.exit
 
         # Update the DataFrame with the entry and exit signals based on the conditions
@@ -82,17 +81,9 @@ class Strategy(strat.Strategy):
         self.indicators_df.loc[long_exit_cond, 'exit'] = True
 
     def set_indicators(self):
-        try:
-            long_entry = self.indicators_df.loc[self.curtime[1].format('YYYY-MM-DD HH:mm:ss'), 'entry']
-        except KeyError:
-            long_entry = None
-        try:
-            long_exit = self.indicators_df.loc[self.curtime[1].format('YYYY-MM-DD HH:mm:ss'), 'exit']
-        except KeyError:
-            long_exit = None
-        self.set_indicator('rsi', self.indicators_df.loc[self.curtime[1].format('YYYY-MM-DD HH:mm:ss'), 'rsi'])
-        self.set_indicator('entry', long_entry)
-        self.set_indicator('exit', long_exit)
+        current_time = self.curtime[1].format('YYYY-MM-DD HH:mm:ss')
+        fields = ['entry', 'exit', 'rsi']
+        self._this_indicators(current_time=current_time, fields=fields)
 
     def local_nextstart(self):
         """ Only runs once, before local_next"""
@@ -122,43 +113,10 @@ class Strategy(strat.Strategy):
         res = self.check_exit()
         if not res:
             if self.pos[0] > 0 and self.indicators.exit:
-                res = self.close_position(feed=0, reason="strategy")
+                res = self.reduce_position(feed=0, reason="strategy")
         if res:
             self.next_open = self.time_to_next_bar(feed=1)
             self.entry_signal[0] = ""
             time_difference = (self.next_open.timestamp() - self.curtime[0].timestamp())
             if time_difference <= 60:  # less than 60 seconds
-                self.next_open = self.next_open.shift(minutes=self.datas[1].bar_size_minutes)
-
-    def event_in(self) -> Optional[arrow.Arrow]:
-        """
-        Find the date of the next buy or sell signal based on the current time.
-        """
-        curtime = pandas.to_datetime(self.next_open.format('YYYY-MM-DD HH:mm:ss'))
-
-        # Filter based on conditions and time
-        mask = (self.indicators_df['entry'] == True) \
-                & (self.indicators_df.index >= curtime)
-
-        filtered_df = self.indicators_df[mask]
-
-        # Check if the filtered dataframe has any rows
-        if not filtered_df.empty:
-            return arrow.get(str(filtered_df.index[0]))
-        # If the function hasn't returned by this point, simply return None
-
-    def event_out(self) -> Optional[arrow.Arrow]:
-        """
-        take profit and stop_loss are automatic
-        """
-        curtime = pandas.to_datetime(self.curtime[1].format('YYYY-MM-DD HH:mm:ss'))
-
-        # Check the position before proceeding
-        # Filter based on conditions and time for long exit
-        mask = (self.indicators_df['exit'] == True) & (self.indicators_df.index >= curtime)
-
-        filtered_df = self.indicators_df[mask]
-
-        # Check if the filtered dataframe has any rows
-        if not filtered_df.empty:
-            return arrow.get(str(filtered_df.index[0]))
+                self.next_open = self.next_open.shift(minutes=self.str_feed[1].bar_size_minutes)

@@ -4,13 +4,11 @@ import ccxt
 import time
 import json
 from libs import settings, log
-from libs.secret import SecretManager
 from libs.cache import Cache
 from libs.database import Database
-from libs.structs.trade_struct import TradeStruct
 from libs.structs.order_struct import OrderStruct
 from libs.structs.exchange_struct import ExchangeStruct
-from typing import Dict, Union, List, Any, Optional, Tuple
+from typing import Dict, Union, List, Any, Optional
 import arrow
 
 logger = log.fullon_logger(__name__)

@@ -35,8 +35,8 @@ class Strategy(Strategy):
         if self.nextstart_done is False:
             self._state_variables()
             self.set_indicators_df()
-            for n in range(0, len(self.datas)):
-                if self.datas[n].feed.trading:
+            for n in range(0, len(self.str_feed)):
+                if self.str_feed[n].feed.trading:
                     self.update_simulated_cash_account(datas_num=n)
             self._save_status()
             self.local_nextstart()
@@ -52,8 +52,8 @@ class Strategy(Strategy):
         The main method that runs on every iteration of the strategy.
         """
         # Check if data feed is live
-        if not self.datas[0].islive():
-            # print(arrow.get(bt.num2date(self.datas[0].datetime[0])))
+        if not self.str_feed[0].islive():
+            # print(arrow.get(bt.num2date(self.str_feed[0].datetime[0])))
             #self.set_indicators_df()
             return
         self.status = "looping"
@@ -111,7 +111,7 @@ class Strategy(Strategy):
 
     def kill_orders(self):
         """ description """
-        orders = self.broker.get_orders_open(self.datas[0])
+        orders = self.broker.get_orders_open(self.str_feed[0])
         for order in orders:
             self.broker.cancel(order)
 
@@ -123,7 +123,7 @@ class Strategy(Strategy):
 
     def save_log(self, order: bt.Order, num: int) -> None:
         """ description """
-        datas = self.datas[num]
+        datas = self.str_feed[num]
         if datas.feed.trading:
             with Database() as dbase:
                 dbase.save_bot_log(bot_id=self.helper.id,
@@ -134,7 +134,7 @@ class Strategy(Strategy):
                                    feed_num=num)
         return None
 
-    def get_value(self, num=''):
+    def get_value(self, num: str = ''):
         """
         returns how much value there is in an exchange
         """
@@ -153,11 +153,11 @@ class Strategy(Strategy):
         datas_num: int = int(trade.data._name)
         _trade = self._bt_trade_to_struct(trade)
         if trade.justopened:
-            self.datas[datas_num].pos = _trade.volume
+            self.str_feed[datas_num].pos = _trade.volume
             cash = self.cash[datas_num] - _trade.cost
             self.open_trade[datas_num] = _trade
         else:
-            self.datas[datas_num].pos = 0
+            self.str_feed[datas_num].pos = 0
             cash = self.cash[datas_num] + _trade.prev_cost + _trade.roi
             self.open_trade[datas_num] = None
         self.broker.set_cash(cash)
@@ -181,8 +181,8 @@ class Strategy(Strategy):
 
         # Extract relevant data from the Trade object
         datas_num: int = int(trade.data._name)
-        symbol: str = self.datas[datas_num].symbol
-        ex_id: str = self.datas[datas_num].feed.ex_id
+        symbol: str = self.str_feed[datas_num].symbol
+        ex_id: str = self.str_feed[datas_num].feed.ex_id
 
         # Create the initial trade dictionary
         trade_dict: Dict = {
@@ -217,9 +217,9 @@ class Strategy(Strategy):
 
     def udpate_indicators_df(self) -> None:
         """
-        updates self.indicator_df with lastest self.datas[num].dataframe
+        updates self.indicator_df with lastest self.str_feed[num].dataframe
         """
-        for num, data in enumerate(self.datas):
+        for num, data in enumerate(self.str_feed):
             if data.timeframe != bt.TimeFrame.Ticks:
                 if self.new_candle[num]:
                     self.set_indicators_df()
@@ -250,9 +250,9 @@ class Strategy(Strategy):
         datas_status = {}
 
         # Loop over all data feeds in the strategy
-        for n in range(len(self.datas)):
+        for n in range(len(self.str_feed)):
             # If the data feed's timeframe is Ticks and trading is active
-            if self.datas[n].timeframe == bt.TimeFrame.Ticks and self.datas[n].feed.trading:
+            if self.str_feed[n].timeframe == bt.TimeFrame.Ticks and self.str_feed[n].feed.trading:
                 # Retrieve the simulated status for the current feed and store it in the dictionary
                 datas_status[n] = self._get_bot_status(n)
 
@@ -286,8 +286,8 @@ class Strategy(Strategy):
             dict: A dictionary containing the simulated status of the bot.
         """
         # Get the data for the specified data index number
-        datas = self.datas[datas_num]
-        tick = self.datas[datas_num].params.mainfeed.close
+        datas = self.str_feed[datas_num]
+        tick = self.str_feed[datas_num].params.mainfeed.close
         bot_id = self.helper.id
 
         # Initialize variables
@@ -356,8 +356,8 @@ class Strategy(Strategy):
         with Database() as dbase:
             last_trade = dbase.get_last_dry_trade(
                 bot_id=self.helper.id,
-                symbol=self.datas[datas_num].symbol,
-                ex_id=self.datas[datas_num].feed.ex_id
+                symbol=self.str_feed[datas_num].symbol,
+                ex_id=self.str_feed[datas_num].feed.ex_id
             )
 
         # If the last trade is not a closing trade, continue
@@ -370,8 +370,8 @@ class Strategy(Strategy):
 
         with cache.Cache() as mem:
             price = float(mem.get_price(
-                symbol=self.datas[datas_num].symbol,
-                exchange=self.datas[datas_num].feed.exchange_name
+                symbol=self.str_feed[datas_num].symbol,
+                exchange=self.str_feed[datas_num].feed.exchange_name
             ))
 
         value = price * float(last_trade.volume)
@@ -388,8 +388,8 @@ class Strategy(Strategy):
 
         trade = {
             "uid": self.helper.uid,
-            "ex_id": self.datas[datas_num].feed.ex_id,
-            "symbol": self.datas[datas_num].symbol,
+            "ex_id": self.str_feed[datas_num].feed.ex_id,
+            "symbol": self.str_feed[datas_num].symbol,
             "side": side,
             "price": price,
             "volume": last_trade.volume,
