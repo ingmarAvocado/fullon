@@ -103,10 +103,10 @@ class Crawler(rootCrawler):
                     is_reply=is_reply,
                     reply_to=reply_to,
                     self_reply=self_reply,
-                    views=item['viewCount'],
-                    likes=item['likeCount'],
-                    reposts=item['retweetCount'],
-                    replies=item['replyCount'],
+                    views=item.get('viewCount', 0),
+                    likes=item.get('likeCount', 0),
+                    reposts=item.get('retweetCount', 0),
+                    replies=item.get('replyCount', 0),
                     followers=item['author']['followers']
                 )
                 post.calculate_pre_score()
