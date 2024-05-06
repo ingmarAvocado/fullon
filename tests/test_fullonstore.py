@@ -122,7 +122,7 @@ def test_get_value(fullon_store, fullon_datas):
     position['total'] = 100.1
     with patch('libs.btrader.fullonstore.Cache.get_full_account', return_value=position) as get_full_account:
         position, price = fullon_store.get_position(data=fullon_datas)
-        value = fullon_store.get_value()
+        value = fullon_store.get_value(0)
         get_full_account.assert_called_once_with(exchange=fullon_store.feed.ex_id, currency='USD')
     assert isinstance(value, float)
     assert value > 0

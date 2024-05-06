@@ -73,6 +73,7 @@ openai = "^1.14.3"
 scikit-learn = "1.4.0"
 pillow = "^10.3.0"
 colorlog = "^6.8.2"
+tweepy = "^4.14.0"
 
 
 [tool.poetry.dev-dependencies]

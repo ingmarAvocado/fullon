@@ -11,7 +11,6 @@ sys.path.append(str(libs_dir))
 
 from libs import settings
 from libs.settings_config import fullon_settings_loader
-settings.LOG_LEVEL = "logging.INFO"
 from libs import exchange, log
 from libs.cache import  Cache
 from libs.bot_launcher import start, stop
@@ -27,6 +26,7 @@ import xmlrpc.client
 
 logger = log.fullon_logger(__name__)
 
+settings.LOG_LEVEL = "logging.INFO"
 
 @pytest.fixture(scope="session", autouse=True)
 def exchange_session():

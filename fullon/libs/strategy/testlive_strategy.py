@@ -43,6 +43,7 @@ class Strategy(strategy.Strategy):
         if not self.str_feed[0].islive():
             self.set_indicators_df()
             return
+        self.post_message = False
         self.status = "looping"
             # Validate orders
         if not self._validate_orders():

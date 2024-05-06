@@ -21,6 +21,7 @@ class Strategy(strat.Strategy):
         self.verbose = True
         self.order_cmd = "spread"
         self.count = 0
+        
         return None
 
     def local_next(self):

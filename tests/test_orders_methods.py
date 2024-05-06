@@ -78,7 +78,6 @@ def test_can_place_order(test_order_startup, order_struct):
     """
     Test for the case when the order can be placed.
     """
-    pytest.set_trace()
     mock_exchange = MagicMock()
     mock_exchange.quote_symbol.return_value = 'USD'
     mock_exchange.minimum_order_cost.return_value = 0.1

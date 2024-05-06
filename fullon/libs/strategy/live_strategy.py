@@ -95,6 +95,7 @@ class Strategy(strategy.Strategy):
         """
         Checks if a bot is blocked, if it is, it wont proceed
         """
+        # self._sync_exchange_status()
         block_count = 0
         while self._bot_is_blocked(bot_id=self.helper.id):
             """
@@ -154,7 +155,7 @@ class Strategy(strategy.Strategy):
         print("hice un trade: ", trade)
         pass
 
-    def entry(self, datas_num: int, price: Optional[float] = None):
+    def entry(self, datas_num: int = 0, price: Optional[float] = None):
         """
         Compute the position size for trading, considering either a set position size,
         a percentage of available cash, or defaulting to the latest tick price.
@@ -255,3 +256,4 @@ class Strategy(strategy.Strategy):
                                                  symbol=datas.feed.symbol):
                         store.unmark_opening_position(ex_id=datas.feed.ex_id,
                                                       symbol=datas.feed.symbol)
+

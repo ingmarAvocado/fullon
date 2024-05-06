@@ -14,6 +14,7 @@ from libs.structs.trade_struct import TradeStruct
 import pandas
 from typing import Optional, Dict, Any
 
+
 logger = log.fullon_logger(__name__)
 
 
@@ -144,6 +145,7 @@ class Strategy(bt.Strategy):
         self.indicators: object = indicators()
         self.size: dict = {}
         self.str_feed: list = []
+        self.post_message = False
 
     def _set_datafeeds(self):
         """
@@ -461,6 +463,13 @@ class Strategy(bt.Strategy):
         """ description """
         return
 
+    def _post_message(self, datas_num: int = 0, open_pos: bool = False, close_pos: bool = False):
+        """
+        Posts a message on X when a position happens
+        """
+        pass
+
+
     def update_trade_vars(self, feed: int = 0) -> None:
         """
         Update the dynamic trade variables (trailing_stop) for a specific feed.
@@ -575,6 +584,7 @@ class Strategy(bt.Strategy):
                     "\ntake_profit: " + str(self.take_profit[datas_num]) +
                     "\n------------------\n"
                 )
+            self._post_message(datas_num=datas_num, go_long=is_long, open_pos=True)
         else:
             logger.warning("Could not open order")
         return True
@@ -593,7 +603,9 @@ class Strategy(bt.Strategy):
         order = None
         self.lastclose[feed] = reason
         signal = ''
+        is_long = False
         if self.pos[feed] < 0:
+            is_long = True
             signal = "Buy"
         elif self.pos[feed] > 0:
             signal = "Sell"
@@ -609,6 +621,7 @@ class Strategy(bt.Strategy):
                    f"\n{self.curtime[0].format()}\nwith signal: {signal}\n" +
                    f"reason: {reason}\n--------------\n\n")
             print(msg)
+        self._post_message(datas_num=datas_num, go_long=is_long, close_pos=True)
         return True
 
     def change_position(self,

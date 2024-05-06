@@ -205,7 +205,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "size_pct": 10,
+        "size_pct": 20,
         "size_currency": 'USD',
         "leverage": 2}
     str_id = user.add_bot_strategy(strategy=STRAT)
@@ -259,7 +259,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "size_pct": 10,
+        "size_pct": 20,
         "size_currency": 'USD',
         "leverage": 2}
     str_id = user.add_bot_strategy(strategy=STRAT)
@@ -298,7 +298,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "size_pct": 10,
+        "size_pct": 20,
         "size_currency": 'USD',
         "leverage": 2}
     str_id = user.add_bot_strategy(strategy=STRAT)
@@ -321,7 +321,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     STRAT = {
         "cat_str_id": cat_str_id,
         "bot_id": bot_id,
-        "size_pct": 15,
+        "size_pct": 20,
         "size_currency": 'USD',
         "leverage": 5}
     str_id2 = user.add_bot_strategy(strategy=STRAT)
@@ -383,7 +383,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     _strat = {"bot_id": bot_id,
               "str_id": str_id,
               "size": None,
-              "size_pct": 10,
+              "size_pct": 20,
               "size_currency": "USD",
               "take_profit": 14,
               "trailing_stop": 13,
@@ -445,7 +445,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     _bot = {"bot_id": bot_id,
             "str_id": str_id,
             "size": None,
-            "size_pct": 10,
+            "size_pct": 20,
             "size_currency": "USD",
             "take_profit": 14,
             "trailing_stop": 13,
@@ -506,7 +506,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     _bot = {"bot_id": bot_id,
             "str_id": str_id,
             "size": None,
-            "size_pct": 10,
+            "size_pct": 20,
             "size_currency": "USD",
             "take_profit": 14,
             "trailing_stop": 13,
@@ -568,7 +568,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     _strat = {"bot_id": bot_id,
             "str_id": str_id,
             "size": None,
-            "size_pct": 10,
+            "size_pct": 20,
             "size_currency": "USD",
             "take_profit": 16,
             "trailing_stop": 13,
@@ -625,7 +625,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     _strat = {"bot_id": bot_id,
             "str_id": str_id,
             "size": None,
-            "size_pct": 10,
+            "size_pct": 20,
             "size_currency": "USD",
             "take_profit": 16,
             "trailing_stop": 13,
@@ -683,7 +683,7 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
     _strat = {"bot_id": bot_id,
               "str_id": str_id,
               "size": None,
-              "size_pct": 10,
+              "size_pct": 20,
               "size_currency": "USD",
               "take_profit": 16,
               "trailing_stop": 13,

@@ -91,6 +91,7 @@ def test_get_candles(exchange_struct):
 
 @pytest.mark.order(13)
 def test_get_tickers(exchange_struct):
+    settings.LOG_LEVEL = "logging.INFO"
     tickers = exchange_struct.get_tickers()
     assert isinstance(tickers, dict)
     assert len(tickers) > 0

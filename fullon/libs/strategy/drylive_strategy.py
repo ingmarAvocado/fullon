@@ -15,6 +15,7 @@ import backtrader as bt
 import json
 import arrow
 from time import sleep
+from libs.messaging.x import Messenger
 
 logger = log.fullon_logger(__name__)
 
@@ -409,3 +410,34 @@ class Strategy(Strategy):
         with Database() as dbase:
             pnl = float(dbase.get_dry_margin(bot_id=self.helper.id))
         self.broker.set_cash(cash+pnl)
+
+    def _post_message(self, datas_num: int = 0, go_long: bool = True, open_pos: bool = False, close_pos: bool = False):
+        """
+        Posts a message on X when a position happens
+        """
+        if not self.post_message:
+            return
+
+        msg = Messenger()
+        symbol = self.datas[datas_num].symbol
+        strategy = self.helper.str_params[self.p.str_id]['cat_name']
+        direction = "long" if go_long else "short"
+        direction_emoji = "📈" if go_long else "📉"
+
+        # Start forming the post
+        post = "Automated post from algo"
+        post += f"{direction_emoji} {'Going' if open_pos else 'Closing'} {direction.upper()} on {symbol}! "
+        post += f"- Strategy: {strategy}\n"
+        post += f"- Current Price: ${self.tick[0]:,.2f}\n"
+
+        if open_pos:
+            if self.p.take_profit:
+                take_profit_price = self.tick[0] * (1 + self.p.take_profit / 100)
+                post += f"- Target: ${take_profit_price:,.2f}\n"
+            if self.p.trailing_stop:
+                post += f"- Trailing Stop: {self.p.trailing_stop}%\n"
+            elif self.p.stop_loss:
+                stop_loss_price = self.tick[0] / (1 + self.p.stop_loss / 100)
+                post += f"- Stop-Loss: ${stop_loss_price:,.2f}\n"
+        post = post.strip()
+        msg.post(post)

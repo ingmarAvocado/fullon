@@ -63,6 +63,7 @@ def test_on_ticker(websocket_instance, caplog):
 
 @pytest.mark.order(3)
 def test_run(websocket_instance, caplog):
+    settings.LOG_LEVEL = "logging.INFO"
     pairs = ["XBT/USD", "ETH/USD"]
     subscription = {
         "name": "trade"
