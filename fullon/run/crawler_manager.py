@@ -509,10 +509,7 @@ class CrawlerManager:
             self._update_process(key=site)
             check_interval = 0.3  # How often to check for the stop signal, in seconds
             total_checks = int(sleep_time / check_interval)
-
             for _ in range(total_checks):
-                print("Aca")
-                return
                 if stop_signal.is_set():
                     logger.info("Stop signal received. Exiting pause loop.")
                     break
