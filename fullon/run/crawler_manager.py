@@ -533,7 +533,7 @@ class CrawlerManager:
                 thread.start()
                 # Store the thread in the threads dictionary
                 self.threads[site] = thread
-                with cache.Cache() as store:
+                with Cache() as store:
                     store.new_process(tipe="crawler",
                                       key=site,
                                       pid=f"thread:{getpid()}",
