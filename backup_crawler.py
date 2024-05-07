@@ -61,3 +61,4 @@ tables_to_backup = [
 
 backup_file = 'crawler_backup.sql'
 backup_full_database(db_params, tables_to_backup, backup_file)
+print("dont forget to run SELECT setval('sites_posts_post_id_seq', (SELECT MAX(post_id) FROM sites_posts) + 1)")

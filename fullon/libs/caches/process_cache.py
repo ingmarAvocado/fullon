@@ -16,7 +16,7 @@ class Cache(cache.Cache):
     Attributes:
 
     """
-    _process_types = ['tick', 'ohlcv', 'bot', 'account', 'order', 'bot_status_service']
+    _process_types = ['tick', 'ohlcv', 'bot', 'account', 'order', 'bot_status_service', 'crawler']
 
     def delete_from_top(self, component: Optional[str] = None) -> int:
         """

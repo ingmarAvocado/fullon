@@ -24,6 +24,7 @@ import pause
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
 
+print(getpid)
 
 logger = log.fullon_logger(__name__)
 
@@ -264,11 +265,9 @@ class CrawlerManager:
             bool: Returns True if the process is successfully updated in the cache, else False.
         """
         with Cache() as store:
-            res = store.new_process(tipe="crawler",
-                                    key=key,
-                                    pid=f"thread:{getpid()}",
-                                    params={},
-                                    message=message)
+            res = store.update_process(tipe="crawler",
+                                       key=key,
+                                       message=message)
         return bool(res)
 
     def _load_module(self, site: str = '', engine: str = '') -> Optional[object]:
@@ -534,6 +533,12 @@ class CrawlerManager:
                 thread.start()
                 # Store the thread in the threads dictionary
                 self.threads[site] = thread
+                with cache.Cache() as store:
+                    store.new_process(tipe="crawler",
+                                      key=site,
+                                      pid=f"thread:{getpid()}",
+                                      params={},
+                                      message="Started")
         # Set the started attribute to True after starting all threads
         self.started = True
         monitor_thread = threading.Thread(target=self.relaunch_dead_threads)

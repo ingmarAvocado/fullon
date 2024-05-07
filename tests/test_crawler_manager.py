@@ -6,10 +6,11 @@ from run.crawler_manager import CrawlerManager
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
+from os import getpid
+from time import sleep
 
 SITES = ['twitter']
 
-'''
 @pytest.fixture(scope="module")
 def crawler():
     yield CrawlerManager()
@@ -141,4 +142,26 @@ def test_del_profile(crawler, profile):
 def test_del_site(crawler):
     assert crawler.del_site(site='anothernetworkz') is True
     assert crawler.del_site(site='anothernetworkz2') is True
-'''
+
+@pytest.mark.order(20)
+def test__update_process(crawler, store):
+    site = 'anothernetworkz'
+    store.new_process(tipe="crawler",
+                      key=site,
+                      pid=f"thread:{getpid()}",
+                      params={},
+                      message="Started")
+    proc = store.get_process(tipe="crawler", key=site)
+    assert isinstance(proc, dict)
+    assert proc['message'] == 'Started'
+    date = arrow.get(proc['timestamp']).timestamp()
+    sleep(1)
+    assert crawler._update_process(key=site) is True
+    proc2 = store.get_process(tipe="crawler", key=site)
+    assert isinstance(proc2, dict)
+    assert proc2['message'] == 'Synced'
+    date2 = arrow.get(proc2['timestamp']).timestamp()
+    assert date2 > date
+
+
+    
