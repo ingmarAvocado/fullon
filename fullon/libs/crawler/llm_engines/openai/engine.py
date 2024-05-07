@@ -1,4 +1,4 @@
-from openai import OpenAI, AuthenticationError, NotFoundError, BadRequestError, APIConnectionError
+from openai import OpenAI, AuthenticationError, NotFoundError, BadRequestError, APIConnectionError, InternalServerError
 from libs import log, settings
 from libs.structs.crawler_post_struct import CrawlerPostStruct
 from typing import Optional, List
@@ -206,12 +206,16 @@ class Engine():
                 role="user",
                 content=json.dumps(post_dict),
                 )
-            run = self.client.beta.threads.runs.create(
-                            thread_id=thread.id,
-                            assistant_id=self.assistant.id
-                    )
-            run = self.wait_on_run(run, thread)
-            message = self.client.beta.threads.messages.list(thread_id=thread.id)
+            try:
+                run = self.client.beta.threads.runs.create(
+                                thread_id=thread.id,
+                                assistant_id=self.assistant.id
+                        )
+                run = self.wait_on_run(run, thread)
+                message = self.client.beta.threads.messages.list(thread_id=thread.id)
+            except InternalServerError:
+                logger.error("Internal server error trying to score a post with openai")
+                return ''
             try:
                 if message:
                     ret_dict = json.loads(message.data[0].content[0].text.value)
