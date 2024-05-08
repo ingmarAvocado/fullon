@@ -185,7 +185,8 @@ class BotManager:
                                           }
                     detail['feeds'] = feeds
                     extended = dbase.get_str_params(bot_id=bot_id, str_id=detail['str_id'])
-                    detail['extended'] = extended[0]
+                    if extended:
+                        detail['extended'] = extended[0]
                     details[detail['str_id']] = detail
         return details
 

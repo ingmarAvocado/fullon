@@ -765,3 +765,74 @@ class Database(database.Database):
             logger.error(self.error_print(
                 error=error, method="get_unscored_posts", query=sql))
         return posts
+
+    def _fetch_avg_engine_scores_by_period(self, period: str) -> List[Tuple[str, float]]:
+        """
+        Fetches the average engine scores grouped by a specified period.
+        Args:
+            period (str): The time period to group by ('day', 'hour', etc.).
+
+        Returns:
+            List of tuples containing the truncated date (as a string) and the average engine score.
+        """
+        sql = f"""
+        SELECT date_trunc(%s, sp.timestamp) AS period_start, AVG(es.score) AS avg_engine_score
+        FROM public.engine_scores es
+        JOIN public.sites_posts sp ON es.post_id = sp.post_id
+        GROUP BY date_trunc(%s, sp.timestamp)
+        ORDER BY period_start
+        """
+        try:
+            with self.con.cursor() as cur:
+                cur.execute(sql, (period, period))
+                return cur.fetchall()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f"Error fetching average scores by period: {error}")
+            return []
+
+    def _adjust_engine_scores(self, scores: List[Tuple[str, float]]) -> List[Tuple[str, float]]:
+        """
+        Adjusts engine scores from the original scale (0-100) to the new scale (-100 to 100).
+        Args:
+            scores (List[Tuple[str, float]]): List of tuples containing period_start and average engine score.
+        Returns:
+            List of tuples containing period_start and adjusted engine score.
+        """
+        return [
+            (period, (score - 50) * 2 if score <= 50 else (score - 50) * 2)
+            for period, score in scores
+        ]
+
+    def get_crawler_scores(self, period: str) -> List[Tuple[str, float]]:
+        """
+        Calculates the final super scores grouped by a specified period by combining the adjusted engine scores with the heuristic score.
+        Args:
+            period (str): The time period to group by ('day', 'hour', etc.).
+        Returns:
+            List of tuples containing the truncated date (as a string) and the calculated average super score.
+        """
+        scores = self._fetch_avg_engine_scores_by_period(period)
+        adjusted_scores = self._adjust_engine_scores(scores)
+        # Prepare data for unnest
+        # Ensuring that data is passed as a list of tuples, each tuple directly usable in SQL
+        data = [(period, score) for period, score in adjusted_scores]
+
+        # Construct the SQL query
+        sql = """
+        WITH adjusted_scores AS (
+            SELECT * FROM unnest(%s::record[]) AS t(period_start timestamp, adjusted_score numeric)
+        )
+        SELECT date_trunc(%s, period_start) AS truncated_period, AVG(adjusted_score * (1 + (sp.score - 5) / 50.0)) AS avg_super_score
+        FROM adjusted_scores
+        JOIN public.sites_posts sp ON date_trunc(%s, sp.timestamp) = adjusted_scores.period_start
+        GROUP BY truncated_period
+        ORDER BY truncated_period
+        """
+        try:
+            with self.con.cursor() as cur:
+                # Execute the query using the prepared data
+                cur.execute(sql, ([data], period, period))
+                return cur.fetchall()
+        except (Exception, psycopg2.DatabaseError) as error:
+            print(f"Error calculating super scores by period: {error}")
+            return []

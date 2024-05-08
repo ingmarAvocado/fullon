@@ -120,6 +120,7 @@ class Database(database.Database):
             return True
         except (Exception, psycopg2.DatabaseError) as error:
             logger.error(f"Error in edit_base_strat_params: {error}")
+            self.con.rollback()
             return False
 
     def edit_strat_params(self, str_id: int, params: dict) -> bool:

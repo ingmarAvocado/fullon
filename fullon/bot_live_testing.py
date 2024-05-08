@@ -15,8 +15,8 @@ logger = log.fullon_logger(__name__)
 
 startohlcv()
 startdb()
+'''
 exchange.start_all()
-
 ohlcv = OhlcvManager()
 ohlcv.run_loop()
 t = TickManager()
@@ -25,8 +25,8 @@ am = AccountManager()
 am.run_account_loop()
 bmanager = BotStatusManager()
 bmanager.run_loop()
-
-bot1 = Bot(2)
+'''
+bot1 = Bot(10)
 bot1.dry_run = True
 print("starting")
 try:
@@ -35,7 +35,7 @@ try:
 except KeyboardInterrupt:
     print("Keyboard")
 
-
+'''
 try:
     am.stop_all()
     del am
@@ -51,7 +51,8 @@ try:
     del ohlcv
 except:
     pass
-exchange.stop_all()
+'''
+#exchange.stop_all()
 stopdb()
 stopohlcv()
 print("Script over")

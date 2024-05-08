@@ -128,10 +128,16 @@ class Bot:
 
         base_params = dbase.get_base_str_params(bot_id=self.id)
         params = dbase.get_str_params(bot_id=self.id)
-        if not params:
-            logger.warning("Couldn't find params for this bot, are you sure this is ok")
-
         ret_params = {}
+        if not params:
+            logger.warning("Couldn't find params for this bot, are you sure this is ok")            
+            ret_params[base_params[0].str_id] = base_params[0].to_dict()
+            ret_params[base_params[0].str_id]['uid'] = self.uid
+            ret_params[base_params[0].str_id]['bot_id'] = self.id
+            self.pre_load_bars = base_params[0].pre_load_bars
+            ret_params[base_params[0].str_id].pop('mail')
+            ret_params[base_params[0].str_id].pop('name')
+            ret_params[base_params[0].str_id]['helper'] = self
         for param in params:
             # Iterate over a copy of the dictionary's items
             for name, value in list(param.items()):
@@ -146,7 +152,7 @@ class Bot:
             param.pop('mail')
             param.pop('name')
             param['uid'] = self.uid
-            param['bot_id'] = self.uid
+            param['bot_id'] = self.id
             if self.pre_load_bars < param['pre_load_bars']:
                 self.pre_load_bars = param['pre_load_bars']
             ret_params[param['str_id']] = param

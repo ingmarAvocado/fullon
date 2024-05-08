@@ -34,6 +34,8 @@ def test_bot_details(bot_manager):
         for feed, attrs in value['feeds'].items():
             assert int(feed) >= 0
             assert attrs['str_id'] >= 1
+    details = bot_manager.bot_details(bot_id=10)
+
 
 @pytest.mark.order(3)
 def test_edit_bot_strat(bot_manager, bot_id):

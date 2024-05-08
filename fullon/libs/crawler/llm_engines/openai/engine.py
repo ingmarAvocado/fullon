@@ -221,9 +221,6 @@ class Engine():
                     ret_dict = json.loads(message.data[0].content[0].text.value)
                     if 'score' in ret_dict:
                         return ret_dict['score']
-                    print("OOpsie", ret_dict)
-                    import ipdb
-                    ipdb.set_trace()
             except (TypeError, KeyError):
                 err_object = message.data[0].content[0].text.value
                 logger.error("Did not get a json score from engine: ", err_object)

@@ -162,6 +162,3 @@ def test__update_process(crawler, store):
     assert proc2['message'] == 'Synced'
     date2 = arrow.get(proc2['timestamp']).timestamp()
     assert date2 > date
-
-
-    

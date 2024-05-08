@@ -8,10 +8,10 @@ from typing import Optional
 logger = log.fullon_logger(__name__)
 
 
-
 class Messenger():
     """ main class definition"""
     _client: object
+    _clientv1: object
     _reset: bool
 
     def __init__(self):
@@ -21,14 +21,17 @@ class Messenger():
         Args:
             reset:Bool Will download data again and save it as pickle
         """
-        #self._client = tweepy.Client(settings.X_BEARER)
-        
+        auth = tweepy.OAuth1UserHandler(settings.X_API_KEY, settings.X_API_SECRET)
+        auth.set_access_token(
+            settings.X_ACCESS_TOKEN,
+            settings.X_ACCESS_SECRET,
+        )
+        self._clientv1 = tweepy.API(auth)
         self._client = tweepy.Client(
                             consumer_key=settings.X_API_KEY,
                             consumer_secret=settings.X_API_SECRET,
                             access_token=settings.X_ACCESS_TOKEN,
                             access_token_secret=settings.X_ACCESS_SECRET)
-        
 
     def get_user_name(self, uid: int):
         """ Gets a user handle from an id
@@ -108,19 +111,24 @@ class Messenger():
         except AttributeError:
             return ''
 
-    def post(self, post: str) -> Optional[int]:
+    def post(self, post: str, media_path: str = '') -> Optional[int]:
         """
         Publish a post
 
         Args:
             post: Content of the tweet
+            media_path: String with path of media to upload
 
         Returns:
             int: Twitt id else None
         """
         try:
             # Attempt to publish the tweet
-            response = self._client.create_tweet(text=post)
+            if media_path:
+                media_id = self.upload_media(media_path=media_path)
+                response = self._client.create_tweet(text=post, media_ids=[media_id])
+            else:
+                response = self._client.create_tweet(text=post)
             if response:
                 logger.info(f"Tweet posted successfully: {response.data}")
                 return response[0]['id']
@@ -137,6 +145,12 @@ class Messenger():
             # General exception for any other errors
             logger.error(f"An error occurred: {e}")
         return
+
+    def upload_media(self, media_path: str):
+        """
+        """
+        media = self._clientv1.media_upload(filename=media_path)
+        return media.media_id
 
     def delete_post(self, post_id: str) -> bool:
         """

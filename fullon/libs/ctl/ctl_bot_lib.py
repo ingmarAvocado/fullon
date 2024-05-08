@@ -499,7 +499,7 @@ class CTL(CTL):
                     if 'extended' in details[str_id] and field in details[str_id]['extended']:
                         details[str_id]['extended'][field] = new_value
                     else:
-                        details[str_id]['field'] = new_value
+                        details[str_id][field] = new_value
                 except (EOFError, KeyboardInterrupt):  # Catch Ctrl+D and Ctrl+C and exit
                     raise
                     return {}
