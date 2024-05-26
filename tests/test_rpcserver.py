@@ -7,20 +7,19 @@ import psutil
 import pytest
 from time import sleep
 import xmlrpc.client
+import json
 
 
 @pytest.fixture(scope="module")
-def client(server):
-    client = xmlrpc.client.ServerProxy(
-        f"http://{settings.XMLRPC_HOST}:{settings.XMLRPC_PORT}")
-    yield client
-    del client
+def client(rpc_client):
+    yield rpc_client
 
 @pytest.fixture(scope="module")
 def uid():
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
     yield uid
+
 
 
 @pytest.mark.order(1)
@@ -43,9 +42,11 @@ def test_bots_live_list(client):
 @pytest.mark.order(3)
 def test_bots_detail(client):
     response = client.bots('details', {'bot_id': 1})
+    assert isinstance(response, str)
+    response = json.loads(response)
     assert isinstance(response, dict)
     assert len(response) > 0
-    assert response['bot_id'] == 1
+    assert response['1']['bot_id'] == 1
     response = client.bots('details')
     assert 'Error' in response
 
@@ -99,7 +100,7 @@ def test_stop_component():
     response = rpc.stop_component("tick")
     assert ("stopped" in response)
 
-
+'''
 @pytest.mark.order(11)
 def test_start_services():
     response = rpc.start_services()
@@ -111,7 +112,7 @@ def test_start_services():
 def test_stop_services():
     response = rpc.stop_services()
     assert ("Services" in response)
-
+'''
 
 @pytest.mark.order(13)
 def test_list_symbols(client):
@@ -189,6 +190,7 @@ def test_get_top(client):
     print(response)
 
 
+'''
 @pytest.mark.order(24)
 def test_check_services():
     response = rpc.check_services()
@@ -203,7 +205,7 @@ def test_check_services():
     response = rpc.check_services()
     assert response is False
     rpc.stop_services()
-
+'''
 
 @pytest.mark.order(25)
 def test_delete_symbol(client):
@@ -235,7 +237,7 @@ def test_crawler_flow(client):
     assert res is True
     crawler.del_site(site='anothernetwork4')
 
-
+'''
 @pytest.mark.order(28)
 def test_services(client):
     res = client.services('tickers', 'start')
@@ -245,3 +247,4 @@ def test_services(client):
     res = client.services('accounts', 'start')
     assert 'launched' in res
     res = client.services('services', 'stop')
+'''

@@ -10,6 +10,7 @@ import pandas
 import pandas_ta as ta
 import backtrader as bt
 from astral import moon
+import time
 
 
 logger = log.fullon_logger(__name__)
@@ -28,11 +29,10 @@ class Strategy(strat.Strategy):
         ('cmf', 18),
         ('cmf_entry', 11),
         ('vwap_entry', 0.4),
-        ('obv', 18),
-        ('obv_entry', 0.8),
         ('macd_entry', 2.5),
-        ('pre_load_bars', 50),
-        ('ema', 40),
+        ('mfi_entry', 60),
+        ('pre_load_bars', 200),
+        ('sma', 200),
         ('prediction_steps', 1),
         ('feeds', 2),
         ('threshold', 0.48)
@@ -103,24 +103,18 @@ class Strategy(strat.Strategy):
         preds['entry'] = preds['score'] > self.p.threshold*len(self.regressors)
         # Get the probability predictions for the class of interest (assumed to be the second class)
         self.indicators_df['exit'] = False
-        indicators = ['ema_long', 'rsi_entry', 'cmf_entry',
+        indicators = ['sma_long', 'rsi_entry', 'cmf_entry',
                       'vwap_entry', 'macd_entry']
-
         self.indicators_df['entry'] = preds['entry']
         self.indicators_df['score'] = preds['score']
         # Create a mask where 'entry' is True AND all of the indicators are False
         mask = self.indicators_df['entry'] & (self.indicators_df[indicators] == False).all(axis=1)
         # Apply the mask to set 'entry' to False where the condition is met
         self.indicators_df.loc[mask, 'entry'] = False
-        self.indicators_df['ema'] = data['close'].ewm(span=self.p.ema, adjust=False).mean()
-        self.indicators_df['entry'] = (self.indicators_df['entry'] & self.indicators_df['close'] > self.indicators_df['ema'])
-        #self.indicators_df['entry'] = (self.indicators_df['entry'] & self.indicators_df['ema_long'])
+        self.indicators_df['sma'] = self.indicators_df['close'].rolling(window=int(self.p.sma)).mean()
+        self.indicators_df['entry'] = self.indicators_df['entry'] & (self.indicators_df['close'] > self.indicators_df['sma'])
         self.indicators_df['exit'] = self.indicators_df['score'] < (self.p.threshold/2)*len(self.regressors)
-        next_date = arrow.get(self.indicators_df.index[-1]).shift(minutes=self.datas[1].bar_size_minutes)
-        self.indicators_df.loc[next_date.format('YYYY-MM-DD HH:mm:ss')] = None
-        new_index = self.indicators_df.index.to_series().shift(-1).ffill().astype('datetime64[ns]')
-        self.indicators_df.index = new_index
-        self.indicators_df = self.indicators_df.dropna()
+        self.adjust_index(feed_num=1)
 
     def set_indicators(self):
         """
@@ -130,12 +124,14 @@ class Strategy(strat.Strategy):
         printed when verbose is true in simuls
         """
         current_time = self.curtime[1].format('YYYY-MM-DD HH:mm:ss')
-        for indicator in ['entry', 'exit', 'score', 'obv', 'obv_pct_change',
+        '''
+        for indicator in ['entry', 'exit', 'score', 'adsoc',
                           'ema_long', 'rsi_entry', 'cmf_entry',
                           'vwap_entry', 'macd_entry']:
+        '''
+        for indicator in ['entry', 'exit']:
             try:
                 value = self.indicators_df.loc[current_time, indicator]
-                #print(value)
                 self.set_indicator(indicator, value)
             except KeyError:
                 self.set_indicator(indicator, None)
@@ -220,12 +216,9 @@ class Strategy(strat.Strategy):
         """
         data: OHLCV data
         """
-        data['ema1'] = data['close'].ewm(span=8, adjust=False).mean()
-        data['ema2'] = data['close'].ewm(span=21, adjust=False).mean()
-        data['ema3'] = data['close'].ewm(span=34, adjust=False).mean()
-        data['ema4'] = data['close'].ewm(span=50, adjust=False).mean()
-        data['ema5'] = data['close'].ewm(span=100, adjust=False).mean()
-        data['ema6'] = data['close'].ewm(span=200, adjust=False).mean()
+        data['sma1'] = data['close'].rolling(window=5).mean()
+        data['sma2'] = data['close'].rolling(window=21).mean()
+        data['sma3'] = data['close'].rolling(window=50).mean()
         # Compute RSI
         data['rsi'] = ta.rsi(data['close'], length=self.p.rsi)
         data['rsi_sma'] = data['rsi'].rolling(window=10).mean()
@@ -242,10 +235,23 @@ class Strategy(strat.Strategy):
                                close=data['close'],
                                volume=data['volume'])
         data['vwap_diff'] = (data['close'] - data['vwap']) / data['vwap'] * 100
-        # Compute On-Balance Volume (OBV)
-        data['obv'] = ta.obv(data['close'], data['volume'])
-        data['obv_pct_change'] = data['obv'].pct_change() * 100
-        data['obv_pct_sma'] = data['obv_pct_change'].rolling(window=int(self.p.obv)).mean()
+
+        data['efi'] = ta.efi(
+            close=data['close'],
+            volume=data['volume'],
+            length=14  # period for the EFI
+        )
+
+        # Calculate MFI using pandas-ta
+        data['mfi'] = ta.mfi(
+            high=data['high'],
+            low=data['low'],
+            close=data['close'],
+            volume=data['volume'],
+            length=14  # period for the MFI
+        )
+
+
         # Compute CMF
         data['cmf'] = ta.cmf(data['high'],
                              data['low'],
@@ -267,10 +273,8 @@ class Strategy(strat.Strategy):
         mmm
         """
         # Define conditions for long entry and exit signals for RSI
-        data['ema_long'] = (data['ema1'] > data['ema2']) & (data['ema2'] > data['ema3']) & \
-                           (data['ema3'] > data['ema4']) & (data['ema4'] > data['ema5']) & \
-                           (data['ema5'] > data['ema6'])
-        columns_to_drop = ['ema1', 'ema2', 'ema3', 'ema4', 'ema5', 'ema6']
+        data['sma_long'] = (data['sma1'] > data['sma2']) & (data['sma2'] > data['sma3'])
+        columns_to_drop = ['sma1', 'sma2', 'sma3']
         data = data.drop(columns=columns_to_drop)
         data = data.dropna()
         # Define conditions for long entry and exit signals for RSI
@@ -284,11 +288,9 @@ class Strategy(strat.Strategy):
         data['vwap_entry'] = data['vwap_diff'] > self.p.vwap_entry
         columns_to_drop = ['vwap', 'vwap_diff']
         data = data.drop(columns=columns_to_drop)
-        # Define conditions for entry and exit signals for OBV
-        data['obv_entry'] = data['obv_pct_sma'] > self.p.obv_entry
-        # Define conditions for entry and exit signals by MACD
-        columns_to_drop = ['obv_pct_sma']
-        data = data.drop(columns=columns_to_drop)
+        # Define conditions for entry and exit signals for ADSOC
+        data['efi_entry'] = data['efi'] > 0
+        data['mfi_entry'] = data['mfi'] > self.p.mfi_entry
         data['macd_entry'] = data['macd_histo'] > self.p.macd_entry
         # Define conditions for entry and exit for Stoch
         columns_to_drop = ['macdsignal', 'macd_histo']

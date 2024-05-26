@@ -220,6 +220,17 @@ class Strategy(bt.Strategy):
         """
         return self.str_feed[0].params.fromdate
 
+    def adjust_index(self, feed_num: int):
+        """
+        Adjusts the index, so that we get current_date working with latest data, else we are working with previous time period
+        since we use the close time, which is the open time of the latest period.
+        """
+        next_date = arrow.get(self.indicators_df.index[-1]).shift(minutes=self.str_feed[feed_num].bar_size_minutes)
+        self.indicators_df.loc[next_date.format('YYYY-MM-DD HH:mm:ss')] = None
+        new_index = self.indicators_df.index.to_series().shift(-1).ffill().astype('datetime64[ns]')
+        self.indicators_df.index = new_index
+        self.indicators_df = self.indicators_df.dropna()
+
     def _state_variables(self) -> None:
         """
         Sets various state variables based on the current position and data feed.
@@ -463,12 +474,11 @@ class Strategy(bt.Strategy):
         """ description """
         return
 
-    def _post_message(self, datas_num: int = 0, open_pos: bool = False, close_pos: bool = False):
+    def _post_message(self, datas_num: int = 0, go_long: bool = False, open_pos: bool = False, close_pos: bool = False):
         """
         Posts a message on X when a position happens
         """
         pass
-
 
     def update_trade_vars(self, feed: int = 0) -> None:
         """
@@ -621,7 +631,7 @@ class Strategy(bt.Strategy):
                    f"\n{self.curtime[0].format()}\nwith signal: {signal}\n" +
                    f"reason: {reason}\n--------------\n\n")
             print(msg)
-        self._post_message(datas_num=datas_num, go_long=is_long, close_pos=True)
+        self._post_message(datas_num=feed, go_long=is_long, close_pos=True)
         return True
 
     def change_position(self,

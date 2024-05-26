@@ -501,7 +501,7 @@ class Bot:
         self.noise = noise
         self._load_strategies(cerebro=cerebro, event=event)
         main_str_id = list(self.str_params.keys())[0]
-        cerebro.addobserver(CashInterestObserver, interest_rate=0.04, main_str_id=main_str_id)
+        cerebro.addobserver(CashInterestObserver, interest_rate=0.00, main_str_id=main_str_id)
         if not self._load_feeds(cerebro=cerebro, warm_up=warm_up, event=event, ofeeds=feeds):
             return {}
         if not self._pair_feeds(cerebro=cerebro):

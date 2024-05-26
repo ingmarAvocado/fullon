@@ -30,15 +30,22 @@ params2 = {
 #params = [{'sma_period': '1', 'size_pct': '20'}, {'sma_period': '2', 'size_pct': '20'}, {'sma_period': '4', 'size_pct': '20'}, {'sma_period': '10', 'size_pct': '20'},{'sma_period': '20', 'size_pct': '20'}]
 #params = [{'sma_period': '20', 'size_pct': '50'}, {'sma_period': '14', 'size_pct': '50'}]
 #params = [{'sma_period': '20', 'size_pct': '80'}]
-params = [{"size_pct": "20"}]
-BOT = {"bot_id": 4,
+params = [
+            {"size_pct": "20",
+             "trailing_stop": "15",
+             "take_profit": "20",
+             'threshold': "0.55",
+             "sma": "200"}
+        ]
+BOT = {"bot_id": 7,
        "periods": 365*2,
-       "warm_up": 50}
+       "warm_up": 250}
 filename = ''
 feeds = {}
 #filename = "rsi2long2.csv"
 #feeds = {2: {'compression': 30}, 3: {'compression': 30}}
 #feeds = {1: {'compression': 480}}
+event = False
 
 
 def path1():
@@ -54,17 +61,17 @@ def path1():
                 else:
                     raise ValueError(f"Could not convert value for {key}: '{value}'")
 
-    abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params=params, event=True)
+    abot.run_simul_loop(feeds=feeds, warm_up=BOT['warm_up'], visual=False, test_params=params, event=event)
 
 
 def path2():
     simul = SimulManager()
     simul.bot_simul(bot=BOT,
-                    event_based=True,
+                    event_based=event,
                     feeds=feeds,
                     params=params,
                     filename=filename,
-                    montecarlo=18,
+                    montecarlo=1000,
                     sharpe_filter=-10.00,
                     xls=False,
                     verbose=False,

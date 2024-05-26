@@ -9,7 +9,7 @@ import os
 import signal
 import subprocess
 import time
-from threading import Thread, Event, Lock
+from threading import Thread, Event
 import argparse
 import psutil
 from termcolor import cprint
@@ -24,6 +24,7 @@ from run.process_manager import ProcessManager
 from run import rpcdaemon_manager as rpc
 from setproctitle import setproctitle
 import sys
+
 
 logger = log.fullon_logger(__name__)
 thread: Thread

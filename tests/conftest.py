@@ -147,6 +147,7 @@ def exchange1(dbase):
     _exchange = dbase.get_exchange(ex_id=1)
     yield _exchange[0]
 
+
 @pytest.fixture(scope="module")
 def rpc_client(server):
     if server:

@@ -22,6 +22,7 @@ from libs.database import start as start_database, stop as stop_database
 from libs.database_ohlcv import start as start_ohlcv, stop as stop_ohlcv
 from libs.models.install_model import Database as Database_Install
 from libs.models.ohlcv_model import Database as Database_ohlcv
+from libs.models.crawler_model import Database as Database_crawler
 from libs.cache import Cache
 from run.install_manager import InstallManager
 from prompt_toolkit import PromptSession
@@ -116,6 +117,7 @@ def install_fullon(cli_args: argparse.Namespace) -> None:
         with Database_ohlcv(exchange='exchange', symbol='symbol') as dbase:
             dbase.install_timescale()  # Install timescale
             dbase.install_timescale_tools()  # Install timescale tools
+
     # Initialize Install Manager
     install = InstallManager()
 
@@ -128,9 +130,6 @@ def install_fullon(cli_args: argparse.Namespace) -> None:
         logger.info("Strategies Installed")
         install.install_exchanges()
         logger.info("Exchanges Installed")
-        install.install_crawlers()
-        logger.info("Crawlers Installed")
-
         # Prepare the cache
         logger.info("Preparing cache")
         install.install_cache()  # Install cache
@@ -144,6 +143,21 @@ def install_fullon(cli_args: argparse.Namespace) -> None:
         install.install_demo()
 
 
+def install_fullon_crawler() -> None:
+    dbase = Database_Install()
+    dbase.install_crawler_sql()
+    install = InstallManager()
+    install.install_crawlers()
+    logger.info("Crawlers Installed")
+    pass
+
+
+def del_fullon_crawler() -> None:
+    dbase = Database_Install()
+    dbase.clean_base_crawler()
+    print("Crawler database deleted")
+
+
 def switch(cli_args: argparse.Namespace):
     if cli_args.full or cli_args.demo or cli_args.reinstalls:
         install_fullon(cli_args=cli_args)
@@ -153,6 +167,10 @@ def switch(cli_args: argparse.Namespace):
         list_backups()
     if cli_args.restore:
         restore()
+    if cli_args.crawler:
+        install_fullon_crawler()
+    if cli_args.del_crawler:
+        del_fullon_crawler()
 
 
 if __name__ == '__main__':
@@ -163,6 +181,8 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--backup", action='store_true', help="backs database up")
     parser.add_argument("-R", "--restore", action='store_true', help="restores database")
     parser.add_argument("-l", "--list", action='store_true', help="lists databases available for restore")
+    parser.add_argument("-c", "--crawler", action='store_true', help="Installs crawler database")
+    parser.add_argument("-D", "--del_crawler", action='store_true', help="Installs crawler database")
     args = parser.parse_args()
     start_database()
     start_ohlcv()

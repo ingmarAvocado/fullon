@@ -1,6 +1,7 @@
 """
 Sets up database queues
 """
+from inspect import Attribute
 from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager
 from multiprocessing.queues import Queue
@@ -9,6 +10,7 @@ from setproctitle import setproctitle
 import psycopg2
 from libs import log, settings
 from libs.models.bot_model import Database as MainDatabase
+from libs.models.crawler_model import Database as CrawlerDatabase
 from libs.queue_pool import QueuePool
 from enum import Enum
 
@@ -27,6 +29,16 @@ class ControlSignals(Enum):
 
 class WorkerError(Exception):
     """Custom error to be raised when an error occurs in the worker thread."""
+
+
+def crawler_methods(method_name: str, method_params: dict):
+    """
+    Executes crawler method
+    """
+    with CrawlerDatabase() as dbase:
+        method = getattr(dbase, method_name)
+        result = method(**method_params)
+        return result
 
 
 def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
@@ -57,10 +69,17 @@ def process_requests(num: int, request_queue: Queue, mngr: object) -> None:
                 try:
                     if not dbase_instance:
                         dbase_instance = MainDatabase()
-                    method = getattr(dbase_instance, method_name)
-                    result = method(**method_params)
+                    if hasattr(dbase_instance, method_name):
+                        method = getattr(dbase_instance, method_name)
+                        result = method(**method_params)
+                    else:
+                        result = crawler_methods(method_name=method_name, method_params=method_params)
                     response_queue.put(result)
                     break  # Break the loop if successful
+                except AttributeError as error:
+                    print(str(error))
+                    response_queue.put(None)
+                    break
                 except psycopg2.OperationalError as db_error:
                     if attempt < max_retries - 1:  # Check if more retries are left
                         logger.warning(f"Database operation failed, retry {attempt + 1}/{max_retries}. Error: {db_error}")

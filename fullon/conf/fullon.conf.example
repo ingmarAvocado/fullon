@@ -12,6 +12,7 @@ STRTLOG = 20
 [postgresql]
 DBNAME=fullon
 DBNAME_OHLCV=fullon_ohlcv
+DBNAME_CRAWLER=fullon_crawler
 DBUSER=fullon
 DBPASSWD=fullon
 #DBHOST=/var/run/postgresql
@@ -38,6 +39,7 @@ GUNZIP=/bin/gunzip
 PSQL=/usr/bin/psql
 PG_DUMP=/usr/bin/pg_dump
 SQL_INSTALL_FILE=install/base.sql
+SQL_CRAWLER_FILE=install/crawler.sql
 SQL_EXTRA_FILE=install/extra.sql
 SQL_TEST_FILE=install/test.sql
 LAUNCH_BOTS_INTERVAL = 60

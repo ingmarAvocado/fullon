@@ -112,7 +112,11 @@ class Strategy(strategy.Strategy):
 
             # Calculate ROI using the last modifying trade's cost
             if last_cost and num > 0:  # Ensure there was a modifying cost and it's not the first event
-                _trade['roi'] = (t.status.pnlcomm / last_cost) * 100 if last_cost else 0
+                # Adjust ROI calculation for short positions
+                if last_cost > 0:  # Long position
+                    _trade['roi'] = (t.status.pnlcomm / last_cost) * 100 if last_cost else 0
+                else:  # Short position
+                    _trade['roi'] = (t.status.pnlcomm / abs(last_cost)) * 100 if last_cost else 0
 
             # Update last cost for next calculation if this event modifies the size
             if t.status.size != 0:

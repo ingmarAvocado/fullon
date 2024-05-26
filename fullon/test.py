@@ -15,28 +15,13 @@ import xmlrpc
 settings.LOG_LEVEL = "logging.INFO"
 
 
-startohlcv()
+#startohlcv()
 startdb()
 
-crawler = CrawlerManager()
-
-#crawler._load_module_for_site(site='twitter')
-crawler._fetch_posts(site='twitter', llm_scores=False)
-'''
-from libs.simulator_prompts import Prompts
-prompts = Prompts()
-numbots = prompts._get_bot_dict()
-prompts.BOT = numbots[1]
-strats = prompts._get_str_params()
-'''
+with Database() as dbase:
+    list = dbase.get_crawling_list2(site='twitter')
+print(list)
 stopdb()
-stopohlcv()
+#stopohlcv()
 
-
-#engine = Engine()
-#print(engine._analyze_image(file='1767873893115576609.jpg'))
-
-#post = 'I think BTC is ok, but watch out looks oversold'
-
-#engine.score_post(post)
 

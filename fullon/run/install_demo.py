@@ -25,9 +25,9 @@ def install():
         print("Could not install admin exchanges")
     # install_secrets(uid=uid, cat_ex_id=cat_ex_id)
     install_bots(uid=uid, ex_id=ex_id, cat_ex_id=cat_ex_id)
-    install_crawler_follows(uid=uid)
-    install_crawler_analyzers()
-    add_analyzer_follows()
+    #install_crawler_follows(uid=uid)
+    #install_crawler_analyzers()
+    #add_analyzer_follows()
 
 
 def install_symbols():
@@ -395,10 +395,8 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           'cmf': "18",
           'cmf_entry': '9',
           'vwap_entry': "0.4",
-          'obv': "18",
-          'obv_entry': "0.8",
           'macd_entry': "2.5",
-          "ema": "20",
+          "sma": "200",
           "prediction_steps": "1",
           "threshold": "0.48"}
     _strat['extended'] = extended
@@ -457,10 +455,8 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           'cmf': "18",
           'cmf_entry': '13',
           'vwap_entry': "0.4",
-          'obv': "18",
-          'obv_entry': "0.8",
           'macd_entry': "2.5",
-          "ema": "20",
+          "sma": "200",
           "prediction_steps": "1",
           "threshold": "0.35"}
     _strat['extended'] = extended
@@ -518,10 +514,8 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           'cmf': "18",
           'cmf_entry': '9',
           'vwap_entry': "0.4",
-          'obv': "18",
-          'obv_entry': "0.8",
           'macd_entry': "2.5",
-          "ema": "20",
+          "sma": "200",
           "prediction_steps": "1",
           "threshold": "0.48"}
     _bot['extended'] = extended
@@ -579,7 +573,6 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           'rsi_entry': "40",
           'macd_entry': "1.5",
           'stoch_entry': "50",
-          "ema": "21",
           "prediction_steps": "1",
           "threshold": "0.35"
           }
@@ -636,7 +629,6 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           'rsi_entry': "40",
           'macd_entry': "1.5",
           'stoch_entry': "50",
-          "ema": "21",
           "prediction_steps": "1",
           "threshold": "0.35"
           }
@@ -694,7 +686,6 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
           'rsi_entry': "40",
           'macd_entry': "1.5",
           'stoch_entry': "50",
-          "ema": "21",
           "prediction_steps": "1",
           "threshold": "0.35"
           }

@@ -27,6 +27,7 @@ class FullonSimulator:
                                              feeds=feeds, warm_up=warm_up,
                                              test_params=test_params,
                                              noise=noise, leverage=leverage, fee=fee)
+                del bot
                 response_queue.put(results)
             except KeyboardInterrupt:
                 #response_queue.put(None)

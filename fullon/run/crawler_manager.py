@@ -9,7 +9,6 @@ from libs import log
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
-#from libs.models.crawler_model import Database
 from libs.database import Database
 from libs.cache import Cache
 from typing import List, Optional
@@ -21,10 +20,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import numpy as np
 from os import getpid
 import pause
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from collections import defaultdict
 
-print(getpid)
 
 logger = log.fullon_logger(__name__)
 

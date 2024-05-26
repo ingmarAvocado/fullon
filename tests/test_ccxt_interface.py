@@ -1,6 +1,7 @@
 from fullon.exchanges.kraken.interface import Interface
 from fullon.libs.database import Database
 from fullon.run.user_manager import UserManager
+from fullon.libs import settings
 import arrow
 import pytest
 import time

@@ -2,8 +2,8 @@ import sys
 import psycopg2
 #import urllib, json
 from libs import log
-from libs.models import crawler_model as database
-from typing import Dict, Any, Optional, List, Tuple
+from libs.models import symbol_model as database
+from typing import Dict, Any, Optional, List
 
 
 logger = log.fullon_logger(__name__)

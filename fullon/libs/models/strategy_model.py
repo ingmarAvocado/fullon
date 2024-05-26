@@ -1,4 +1,3 @@
-from pandas.core import base
 import psycopg2
 from libs import log
 from libs import database_helpers as dbhelpers

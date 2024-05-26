@@ -3,6 +3,7 @@ import logging
 from run.user_manager import UserManager
 from fullon.exchanges.kraken.websockets import WebSocket
 import pytest
+from libs import settings
 
 
 @pytest.fixture(scope="module")

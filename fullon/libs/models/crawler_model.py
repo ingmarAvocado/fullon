@@ -1,6 +1,4 @@
-import sys
-from libs import log
-from libs.models import symbol_model as database
+from libs import log, settings
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
@@ -13,7 +11,66 @@ from decimal import Decimal
 logger = log.fullon_logger(__name__)
 
 
-class Database(database.Database):
+class Database():
+
+    def __init__(self):
+        self.con = None
+        self.get_connection()
+
+    def __del__(self):
+        self.endthis()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.endthis()
+
+    def endthis(self):
+        try:
+            if self.con:
+                self.con.close()
+                del self.con
+        except AttributeError:
+            pass
+
+    def error_print(self, error, method, query):
+        error = "Error: " + str(error)
+        error = error + "\nMethod " + method
+        error = error + "\nQuery " + query
+        return error
+
+    @staticmethod
+    def is_connection_valid(conn):
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                return True
+        except (psycopg2.DatabaseError, psycopg2.OperationalError):
+            return False
+
+    def get_connection(self, count=20) -> None:
+        try:
+            self.con = psycopg2.connect(
+                dbname=settings.DBNAME_CRAWLER,
+                user=settings.DBUSER,
+                password=settings.DBPASSWD,
+                host=settings.DBHOST,  # Assuming pgBouncer is running on this host
+                port=settings.DBPORT  # The port pgBouncer is listening on
+            )
+            if self.is_connection_valid(self.con):
+                pass
+                # logger.info("Database connection established.")
+            else:
+                logger.error("Failed to establish a valid database connection.")
+        except psycopg2.DatabaseError as e:
+            if 'too many clients' in str(e):
+                if count == 0:
+                    logger.error(f"Database connection failed: {e}")
+                    raise
+                return self.get_connection(count=count-1)
+            logger.error(f"Database connection failed: {e}")
+            raise
 
     def upsert_profile(self, profile: CrawlerStruct) -> Optional[int]:
         """

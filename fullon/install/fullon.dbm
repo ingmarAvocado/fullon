@@ -3,8 +3,8 @@
 CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="1.1.2" use-changelog="false" max-obj-count="32"
-	 last-position="61,0" last-zoom="0.7" scene-rect="0,0,4569.01,2223.72"
+<dbmodel pgmodeler-ver="1.1.3" use-changelog="false" max-obj-count="21"
+	 last-position="847,147" last-zoom="1" scene-rect="0,0,4569.01,2223.72"
 	 default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
@@ -310,10 +310,10 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
-		<type name="varchar" length="25"/>
+		<type name="text" length="25"/>
 	</column>
 	<column name="value" not-null="true">
-		<type name="varchar" length="25"/>
+		<type name="text" length="25"/>
 	</column>
 	<constraint name="unique_param_symbol1" type="uq-constr" table="public.cat_strategies_params">
 		<columns names="cat_str_id,name" ref-type="src-columns"/>
@@ -328,10 +328,10 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		<type name="integer" length="0"/>
 	</column>
 	<column name="name" not-null="true">
-		<type name="varchar" length="25"/>
+		<type name="text" length="25"/>
 	</column>
 	<column name="value" not-null="true">
-		<type name="varchar" length="75"/>
+		<type name="text" length="75"/>
 	</column>
 	<constraint name="unique_param_symbol2" type="uq-constr" table="public.strategies_params">
 		<columns names="str_id,name" ref-type="src-columns"/>
@@ -751,192 +751,6 @@ CREATE AGGREGATE public.LAST (
 	</constraint>
 </table>
 
-<table name="sites_follows" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="1160" y="1420"/>
-	<column name="fid" not-null="true">
-		<type name="serial" length="0"/>
-	</column>
-	<column name="uid" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="site" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="account" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="ranking" not-null="true" default-value="1">
-		<type name="smallint" length="0"/>
-	</column>
-	<column name="contra" not-null="true" default-value="False">
-		<type name="bool" length="0"/>
-	</column>
-	<column name="expertise" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<constraint name="unique_fid" type="pk-constr" table="public.sites_follows">
-		<columns names="fid" ref-type="src-columns"/>
-	</constraint>
-	<constraint name="onefuid-oneuid" type="uq-constr" table="public.sites_follows">
-		<columns names="uid,site,account" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<table name="cat_sites" layers="0" collapse-mode="2" max-obj-count="1" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="540" y="1140"/>
-	<column name="sites" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<constraint name="one_site_only" type="pk-constr" table="public.cat_sites">
-		<columns names="sites" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<table name="sites_posts" layers="0" collapse-mode="2" max-obj-count="24" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="140" y="1380"/>
-	<column name="post_id" not-null="true">
-		<type name="serial" length="0"/>
-	</column>
-	<column name="timestamp" not-null="true" default-value="(now() AT TIME ZONE 'UTC')">
-		<type name="timestamp" length="0"/>
-	</column>
-	<column name="remote_id" not-null="true">
-		<type name="bigint" length="0"/>
-	</column>
-	<column name="account" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="account_id" not-null="true">
-		<type name="bigint" length="0"/>
-	</column>
-	<column name="site" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="content" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="media">
-		<type name="text" length="0"/>
-	</column>
-	<column name="media_ocr">
-		<type name="text" length="0"/>
-	</column>
-	<column name="urls">
-		<type name="text" length="0"/>
-	</column>
-	<column name="is_reply" not-null="true" default-value="False">
-		<type name="bool" length="0"/>
-	</column>
-	<column name="reply_to">
-		<type name="bigint" length="0"/>
-	</column>
-	<column name="self_reply" not-null="true" default-value="False">
-		<type name="bool" length="0"/>
-	</column>
-	<column name="views" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="likes" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="reposts" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="replies" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="followers" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="pre_score">
-		<type name="numeric" length="0"/>
-	</column>
-	<column name="score">
-		<type name="numeric" length="0"/>
-	</column>
-	<constraint name="primary_key" type="pk-constr" table="public.sites_posts">
-		<columns names="post_id" ref-type="src-columns"/>
-	</constraint>
-	<constraint name="remote_id_site_unique" type="uq-constr" table="public.sites_posts">
-		<columns names="remote_id,site" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<table name="post_analyzers" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="640" y="1720"/>
-	<column name="aid" not-null="true">
-		<type name="serial" length="0"/>
-	</column>
-	<column name="title" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="prompt" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<constraint name="analyzer_pk" type="pk-constr" table="public.post_analyzers">
-		<columns names="aid" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<table name="engine_scores" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="120" y="2000"/>
-	<column name="aid" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="post_id" not-null="true">
-		<type name="smallint" length="0"/>
-	</column>
-	<column name="engine" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="score" not-null="true">
-		<type name="numeric" length="0"/>
-	</column>
-	<constraint name="one_post_one_engine" type="uq-constr" table="public.engine_scores">
-		<columns names="post_id,engine,aid" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<table name="llm_engines" layers="0" collapse-mode="2" max-obj-count="1" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="740" y="2100"/>
-	<column name="engine" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<constraint name="llm_engines_pk" type="pk-constr" table="public.llm_engines">
-		<columns names="engine" ref-type="src-columns"/>
-	</constraint>
-</table>
-
-<table name="follows_analyzers" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
-	<schema name="public"/>
-	<role name="postgres"/>
-	<position x="1100" y="1900"/>
-	<column name="uid" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="aid" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="fid" not-null="true">
-		<type name="integer" length="0"/>
-	</column>
-	<column name="account" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-</table>
-
 <constraint name="user_id" type="fk-constr" comparison-type="MATCH FULL"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.exchanges">
 	<columns names="uid" ref-type="src-columns"/>
@@ -1045,60 +859,6 @@ CREATE AGGREGATE public.LAST (
 	<columns names="bot_id" ref-type="dst-columns"/>
 </constraint>
 
-<constraint name="uid_to_uid" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.sites_follows">
-	<columns names="uid" ref-type="src-columns"/>
-	<columns names="uid" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="site_one_site" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.cat_sites" table="public.sites_follows">
-	<columns names="site" ref-type="src-columns"/>
-	<columns names="sites" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="site_name_site_name2" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.cat_sites" table="public.sites_posts">
-	<columns names="site" ref-type="src-columns"/>
-	<columns names="sites" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="engine_pid_pid" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.sites_posts" table="public.engine_scores">
-	<columns names="post_id" ref-type="src-columns"/>
-	<columns names="post_id" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="llm_engines_post" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.llm_engines" table="public.engine_scores">
-	<columns names="engine" ref-type="src-columns"/>
-	<columns names="engine" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="aid_to_aid" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.post_analyzers" table="public.engine_scores">
-	<columns names="aid" ref-type="src-columns"/>
-	<columns names="aid" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="uids_follows_engines" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.follows_analyzers">
-	<columns names="uid" ref-type="src-columns"/>
-	<columns names="uid" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="aid_follows_engine" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.post_analyzers" table="public.follows_analyzers">
-	<columns names="aid" ref-type="src-columns"/>
-	<columns names="aid" ref-type="dst-columns"/>
-</constraint>
-
-<constraint name="fid_follows_engine" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.sites_follows" table="public.follows_analyzers">
-	<columns names="fid" ref-type="src-columns"/>
-	<columns names="fid" ref-type="dst-columns"/>
-</constraint>
-
 <relationship name="rel_exchanges_users" type="relfk" layers="0"
 	 src-table="public.exchanges"
 	 dst-table="public.users" reference-fk="user_id"
@@ -1187,55 +947,6 @@ CREATE AGGREGATE public.LAST (
 <relationship name="rel_strategies_cat_strategies" type="relfk" layers="0"
 	 src-table="public.strategies"
 	 dst-table="public.cat_strategies" reference-fk="cat_str_id"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_follow_accounts_users" type="relfk" layers="0"
-	 src-table="public.sites_follows"
-	 dst-table="public.users" reference-fk="uid_to_uid"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_follow_accounts_cat_sites" type="relfk" layers="0"
-	 src-table="public.sites_follows"
-	 dst-table="public.cat_sites" reference-fk="site_one_site"
-	 src-required="false" dst-required="true">
-	<label ref-type="name-label">
-		<position x="0" y="0"/>
-	</label>
-</relationship>
-
-<relationship name="rel_sites_posts_cat_sites" type="relfk" layers="0"
-	 src-table="public.sites_posts"
-	 dst-table="public.cat_sites" reference-fk="site_name_site_name2"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_engine_score_sites_posts" type="relfk" layers="0"
-	 src-table="public.engine_scores"
-	 dst-table="public.sites_posts" reference-fk="engine_pid_pid"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_engine_score_llm_engines" type="relfk" layers="0"
-	 src-table="public.engine_scores"
-	 dst-table="public.llm_engines" reference-fk="llm_engines_post"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_follows_engines_users" type="relfk" layers="0"
-	 src-table="public.follows_analyzers"
-	 dst-table="public.users" reference-fk="uids_follows_engines"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_follows_engines_post_analyzers" type="relfk" layers="0"
-	 src-table="public.follows_analyzers"
-	 dst-table="public.post_analyzers" reference-fk="aid_follows_engine"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_follows_engines_sites_follows" type="relfk" layers="0"
-	 src-table="public.follows_analyzers"
-	 dst-table="public.sites_follows" reference-fk="fid_follows_engine"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_engine_scores_post_analyzers" type="relfk" layers="0"
-	 src-table="public.engine_scores"
-	 dst-table="public.post_analyzers" reference-fk="aid_to_aid"
 	 src-required="false" dst-required="true"/>
 
 <relationship name="rel_feeds_strategies" type="relfk" layers="0"

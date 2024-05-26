@@ -51,11 +51,11 @@ db_params = {
 }
 
 tables_to_backup = [
-    'public.cat_sites', 
-    'public.sites_posts', 
-    'public.sites_follows', 
-    'public.engine_scores', 
-    'public.llm_engines', 
+    'public.cat_sites',
+    'public.sites_posts',
+    'public.sites_follows',
+    'public.engine_scores',
+    'public.llm_engines',
     'public.follows_analyzers'
 ]
 

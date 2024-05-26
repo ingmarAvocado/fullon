@@ -25,13 +25,13 @@ class Strategy(strat.Strategy):
         ('take_profit', 20),
         ('rsi', 14),
         ('rsi_entry', 45),
-        ('macd_entry', -3),
+        ('macd_entry', -1),
         ('stoch_entry', 50),
         ('pre_load_bars', 200),
-        ('ema', 40),
+        ('sma', 200),
         ('prediction_steps', 1),
         ('feeds', 2),
-        ('threshold', 0.25)
+        ('threshold', 0.55)
     )
 
     next_open: arrow.Arrow
@@ -101,21 +101,21 @@ class Strategy(strat.Strategy):
 
         # Get the probability predictions for the class of interest (assumed to be the second class)
         self.indicators_df['exit'] = False
-        self.indicators_df['ema'] = self.indicators_df['close'].ewm(span=self.p.ema,
-                                                                    adjust=False).mean()
-        #self.indicators_df['entry'] = preds['entry']
+        self.indicators_df['sma'] = self.indicators_df['close'].rolling(window=int(self.p.sma)).mean()
 
         self.indicators_df['entry'] = (
             (preds['entry']) &  # If preds['entry'] is a boolean Series, this is enough to check for True
-            (self.indicators_df['close'] < self.indicators_df['ema'])
+            (self.indicators_df['close'] < self.indicators_df['sma'])
         )
 
+        '''
         indicators = ['ema_short', 'rsi_entry', 'macd_entry', 'stoch_entry']
         # Create a mask where 'entry' is True AND all of the indicators are False
         mask = self.indicators_df['entry'] & (self.indicators_df[indicators] == False).all(axis=1)
-
         # Apply the mask to set 'entry' to False where the condition is met
         self.indicators_df.loc[mask, 'entry'] = False
+        '''
+        self.adjust_index(feed_num=1)
 
     def set_indicators(self):
         """
@@ -220,12 +220,9 @@ class Strategy(strat.Strategy):
         pd.DataFrame: The data with calculated features, tailored for identifying short opportunities.
         """
         # EMA calculations
-        data['ema1'] = data['close'].ewm(span=8, adjust=False).mean()
-        data['ema2'] = data['close'].ewm(span=21, adjust=False).mean()
-        data['ema3'] = data['close'].ewm(span=34, adjust=False).mean()
-        data['ema4'] = data['close'].ewm(span=50, adjust=False).mean()
-        data['ema5'] = data['close'].ewm(span=100, adjust=False).mean()
-        data['ema6'] = data['close'].ewm(span=200, adjust=False).mean()
+        data['sma1'] = data['close'].rolling(window=5).mean()
+        data['sma2'] = data['close'].rolling(window=21).mean()
+        data['sma3'] = data['close'].rolling(window=50).mean()
 
         # Compute RSI
         data['rsi'] = ta.rsi(data['close'], length=self.p.rsi)
@@ -243,7 +240,7 @@ class Strategy(strat.Strategy):
         data['stoch_d'] = stochastic['STOCHd_14_3_3']
         data['moon'] = data.index.to_series().apply(moon.phase)
         data['change_pct'] = ((data['close'] - data['open']) / data['open']) * 100
-        data['roc'] = data['close'].pct_change(periods=19) * 100
+        data['roc'] = data['close'].pct_change(periods=21) * 100
 
         # Modify this to suit the condition for shorting
         data['go_short'] = data['change_pct'] < 1
@@ -273,10 +270,7 @@ class Strategy(strat.Strategy):
         pd.DataFrame: The data with additional technical analysis features set, tailored for shorting.
         """
         # Inverted conditions for short strategy
-        data['ema_short'] = (data['ema1'] < data['ema2']) & (data['ema2'] < data['ema3']) & \
-                            (data['ema3'] < data['ema4']) & (data['ema4'] < data['ema5']) & \
-                            (data['ema5'] < data['ema6'])
-
+        data['ema_short'] = (data['sma1'] < data['sma2']) & (data['sma2'] < data['sma3'])
         # Lower RSI might indicate an overbought market suitable for shorts
         data['rsi_entry'] = (data['rsi'] < self.p.rsi_entry) & (data['rsi'] > 25)
         data['rsi_sma_entry'] = (data['rsi'] < data['rsi_sma'])
@@ -296,7 +290,7 @@ class Strategy(strat.Strategy):
 
         # Drop columns that are no longer needed after calculating features
 
-        columns_to_drop = ['ema1', 'ema2', 'ema3', 'ema4', 'ema5', 'ema6', 'rsi',
+        columns_to_drop = ['sma1', 'sma2', 'sma3', 'rsi',
                            'macdsignal', 'macd_histo', 'macd',
                            'stoch_k', 'stoch_d']
         data = data.drop(columns=columns_to_drop)
@@ -304,35 +298,3 @@ class Strategy(strat.Strategy):
         # Remove any remaining NaN values
         data = data.dropna()
         return data
-
-    def event_in(self) -> Optional[arrow.Arrow]:
-        """
-        Find the date of the next buy or sell signal based on the current time.
-        """
-        curtime = pandas.to_datetime(self.next_open.format('YYYY-MM-DD HH:mm:ss'))
-
-        # Filter based on conditions and time
-        mask = (self.indicators_df['entry'] == True) \
-                & (self.indicators_df.index >= curtime)
-
-        filtered_df = self.indicators_df[mask]
-        # Check if the filtered dataframe has any rows
-        if not filtered_df.empty:
-            return arrow.get(str(filtered_df.index[0]))
-        # If the function hasn't returned by this point, simply return None
-
-    def event_out(self) -> Optional[arrow.Arrow]:
-        """
-        take profit and stop_loss are automatic
-        """
-        curtime = pandas.to_datetime(self.curtime[1].format('YYYY-MM-DD HH:mm:ss'))
-
-        # Check the position before proceeding
-        # Filter based on conditions and time for long exit
-        mask = (self.indicators_df['exit'] == True) & (self.indicators_df.index >= curtime)
-
-        filtered_df = self.indicators_df[mask]
-
-        # Check if the filtered dataframe has any rows
-        if not filtered_df.empty:
-            return arrow.get(str(filtered_df.index[0]))
