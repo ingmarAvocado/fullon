@@ -159,6 +159,7 @@ class Strategy(strat.Strategy):
         # Define the end date of the data and start date based on the oldest available data
         regressors = ['GradientBoostingClassifier', 'CatBoostClassifier']
         todate = arrow.get(bt.num2date(self.datas[0].fromdate)).floor('week')  # floor month?
+        #todate = arrow.utcnow().floor('week')
         fromdate = PredictorTools.get_oldest_timestamp(feed=self.datas[1])
         filenames: dict = {}
         for regressor in regressors:

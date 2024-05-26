@@ -26,7 +26,7 @@ am.run_account_loop()
 bmanager = BotStatusManager()
 bmanager.run_loop()
 '''
-bot1 = Bot(5)
+bot1 = Bot(9)
 bot1.dry_run = True
 print("starting")
 try:
