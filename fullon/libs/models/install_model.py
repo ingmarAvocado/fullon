@@ -160,6 +160,10 @@ class Database:
             sql = "".join(lines)
             with con.cursor() as cur:
                 cur.execute(sql)
+                sql = 'CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;'
+                cur.execute(sql)
+                sql = "SELECT create_hypertable('sites_posts', 'timestamp');"
+                cur.execute(sql)
             con.commit()
             logger.info("Base sql schema installed")
         except (Exception, psycopg2.DatabaseError) as error:

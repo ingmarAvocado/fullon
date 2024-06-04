@@ -10,6 +10,7 @@ import matplotlib.dates as mdates
 import seaborn as sns
 from libs.messaging.x import Messenger
 import arrow
+from decimal import Decimal
 
 strat = loader.strategy
 MEDIAPATH = '/tmp/fullon_sentiment.png'
@@ -45,11 +46,26 @@ class Strategy(strat.Strategy):
         self.indicators_df = self.datas[1].dataframe[['close', 'volume']].copy()
         # now lets get super scores
         with Database() as dbase:
-            scores = dbase.get_crawler_scores(period='day')
+            rows = dbase.get_average_scores(period='day')
 
-        scores_df = pandas.DataFrame(scores, columns=['date', 'score'])
-        scores_df['date'] = pandas.to_datetime(scores_df['date'])
-        scores_df.set_index('date', inplace=True)
+        scores_df = pandas.DataFrame(rows, columns=['period', 'vader', 'perplexity', 'openai'])
+        scores_df = scores_df.set_index('period', drop=True)
+        vader_avg = Decimal(scores_df['vader'].mean())
+        perplexity_avg = Decimal(scores_df['perplexity'].mean())
+        openai_avg = Decimal(scores_df['openai'].mean())
+        scores_df['vader'] = scores_df['vader'] - vader_avg
+        scores_df['perplexity'] = scores_df['perplexity'] - perplexity_avg
+        scores_df['openai'] = scores_df['openai'] - openai_avg
+        #scores_df['vader_sma1'] = scores_df['vader'].rolling(window=7).mean()
+        #scores_df['vader_sma2'] = scores_df['vader'].rolling(window=14).mean()
+        #scores_df['openai_sma1'] = scores_df['openai'].rolling(window=7).mean()
+        #scores_df['openai_sma2'] = scores_df['openai'].rolling(window=14).mean()
+        #scores_df['perplexity_sma1'] = scores_df['perplexity'].rolling(window=7).mean()
+        #scores_df['perplexity_sma2'] = scores_df['perplexity'].rolling(window=14).mean()
+        engines = ['vader', 'perplexity', 'openai']  # List of engine columns
+        scores_df['score'] = scores_df[engines].mean(axis=1)
+        scores_df['sma1'] = scores_df['score'].rolling(window=7).mean()
+        scores_df['sma2'] = scores_df['score'].rolling(window=14).mean()
         self.indicators_df = self.indicators_df.merge(scores_df, how='left', left_index=True, right_index=True)
 
     def plot_indicators(self):
@@ -74,7 +90,7 @@ class Strategy(strat.Strategy):
         ax1.set_title(f"{self.str_feed[0].symbol} Price and Sentiment Analysis until opening of {to_date}")
 
         # Plot 'score' on the second subplot
-        ax2.plot(self.indicators_df.index, self.indicators_df['score'], color='tab:red', label='Sentiment')
+        ax2.plot(self.indicators_df.index, self.indicators_df['score'], color='tab:cyan', label='Sentiment')
         ax2.axhline(0, color='red', linestyle='--', linewidth=1, label='Neutral Sentiment')
         ax2.set_ylabel('Sentiment', color='tab:red')
         ax2.tick_params(axis='y', labelcolor='tab:red')

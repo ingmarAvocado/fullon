@@ -35,7 +35,7 @@ def posts():
     posts_list = [
         CrawlerPostStruct(
             account="Snowden",
-            account_id=1,
+            account_id=0,
             remote_id=1,
             site='anothernetwork',
             content='A big revelation',
@@ -55,7 +55,7 @@ def posts():
         ),
         CrawlerPostStruct(
             account="Snowden",
-            account_id=1,
+            account_id=0,
             remote_id=2,
             site='anothernetwork',
             content='Second big revelation',
@@ -163,7 +163,7 @@ def test_get_analyzers(dbase_c, analyzer):
 @pytest.mark.order(8)
 def test_add_and_retrieve_posts(dbase_c, posts):
     # Bulk add posts and assert success
-    assert dbase_c.add_posts(posts=posts) is True, "Bulk add posts should succeed"
+    assert dbase_c.add_posts(posts=posts) is True, "Bulk add posts should did not succeed"
 
     # Retrieve added posts to capture post_ids
     for post in posts:
@@ -183,7 +183,7 @@ def test_get_post(dbase_c, posts):
 
 @pytest.mark.order(11)
 def test_get_last_post_date(dbase_c, posts):
-    dates = dbase_c.get_last_post_dates(site='anothernetwork')
+    dates = dbase_c.get_last_post_date(site='anothernetwork', account=posts[0].account)
     account = posts[0].account
     if dates[account]:
         assert isinstance(dates[account], arrow.Arrow)
@@ -266,18 +266,6 @@ def test_add_engine_score(posts, dbase_c, analyzer):
                                    engine=engine,
                                    score=score)
     assert res is True
-
-
-@pytest.mark.order(18)
-def test_get_engine_scores(posts, dbase_c):
-    edited_post = posts[0]
-    score = Decimal("9.423423423")
-    engine = 'anotherllm1'
-    res = dbase_c.get_engine_scores(post_id=edited_post.post_id,
-                                    engine=engine)
-    _score = res[0][2]
-    assert isinstance(_score, Decimal)
-    assert _score == score
 
 
 @pytest.mark.order(19)

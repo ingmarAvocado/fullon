@@ -6,8 +6,9 @@ import os
 import concurrent.futures
 from urllib.parse import urlparse, unquote
 from libs.structs.crawler_post_struct import CrawlerPostStruct
-#import pytesseract
-import PIL
+import pytesseract
+from PIL import Image, ImageEnhance, ImageFilter
+import pytesseract
 import numpy as np
 from typing import Union, List
 
@@ -19,12 +20,24 @@ class Crawler():
     Uses apify to connect to twitter and download posts
     """
 
-    def __init__(self, site: str):
+    def __init__(self):
         """
         init apify keys
         """
         self.token = settings.APIFY_TOKEN
         self.actor = settings.APIFY_ACTOR_TWITTER
+
+    def preprocess_image(self, image_path) -> Image:
+        """
+        Lets preprocess teh image and improve it for OCR
+        """
+        img = Image.open(image_path)
+        img = img.convert('L')  # Convert to grayscale
+        img = img.resize((img.width * 2, img.height * 2))  # Resize to double the original size
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(2)  # Increase contrast
+        img = img.filter(ImageFilter.SHARPEN)  # Sharpen the image
+        return img
 
     def image_ocr(self, image_path: str) -> str:
         """Returns OCR string extracted from image path
@@ -35,9 +48,9 @@ class Crawler():
         Returns:
             str: OCR string
         """
-        return ""
         try:
-            ocr_text = pytesseract.image_to_string(PIL.Image.open(image_path))
+            img = self.preprocess_image(image_path=image_path)
+            ocr_text = pytesseract.image_to_string(img)
             return ocr_text.replace("\n", " ").replace("|", "I")
         except Exception as e:
             logger.error(f"OCR processing error: {e}")
@@ -69,17 +82,16 @@ class Crawler():
             if ocr:
                 ocr_text = self.image_ocr(file_path)
                 logger.debug(f"Performed OCR on {file_path}.")
-            return ""
+                return  ocr_text
         except urllib.error.HTTPError as err:
             logger.debug(f"Problem downloading/saving media from {url}: {err}")
-            return ""
         except Exception as e:
             logger.debug(f"Error during OCR processing for {file_path}: {e}")
-            return ""
+        return ""
 
     def download_medias(self,
-                        posts: list[CrawlerPostStruct], 
-                        ocr: bool = False,
+                        posts: list[CrawlerPostStruct],
+                        ocr: bool = True,
                         max_simultaneous_downloads: int = 4) -> list[CrawlerPostStruct]:
         """
         Downloads media in parallel using ThreadPoolExecutor, for posts that have media, and updates the posts list

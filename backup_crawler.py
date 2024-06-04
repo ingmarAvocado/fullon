@@ -29,7 +29,12 @@ def build_insert_query(table_name, columns, rows):
     query = f"INSERT INTO {table_name} ({column_names}) VALUES {values_str}"
     return query
 
-def backup_full_database(db_params, tables_to_backup, backup_file, batch_size=1000):
+def adjust_sequence(cursor, table_name, primary_key):
+    sequence_query = f"SELECT setval(pg_get_serial_sequence('{table_name}', '{primary_key}'), MAX({primary_key})) FROM {table_name};"
+    cursor.execute(sequence_query)
+    return cursor.fetchone()[0]
+
+def backup_full_database(db_params, tables_to_backup, primary_keys, backup_file, batch_size=1000):
     conn = psycopg2.connect(**db_params)
     cursor = conn.cursor()
     with open(backup_file, 'w') as f:
@@ -39,26 +44,34 @@ def backup_full_database(db_params, tables_to_backup, backup_file, batch_size=10
                 batch = all_rows[i:i+batch_size]
                 query = build_insert_query(table_name, columns, batch)
                 f.write(query + ";\n")
+            if table_name in primary_keys:
+                sequence_query = adjust_sequence(cursor, table_name, primary_keys[table_name])
+                f.write(f"{sequence_query}" + ";\n")
     cursor.close()
     conn.close()
 
 # Parameters
 db_params = {
     'host': '10.206.35.109',
-    'dbname': 'fullon',
+    'dbname': 'fullon_crawler',
     'user': 'fullon',
     'password': 'fullon'
 }
 
 tables_to_backup = [
     'public.cat_sites',
-    'public.sites_posts',
-    'public.sites_follows',
-    'public.engine_scores',
     'public.llm_engines',
-    'public.follows_analyzers'
+    'public.sites_follows',
+    'public.follows_analyzers',
+    'public.sites_posts',
+    'public.engine_scores',
 ]
 
+primary_keys = {
+    'public.sites_posts': 'post_id',
+    'public.sites_follows': 'fid',
+    # Add primary keys for other tables if necessary
+}
+
 backup_file = 'crawler_backup.sql'
-backup_full_database(db_params, tables_to_backup, backup_file)
-print("dont forget to run SELECT setval('sites_posts_post_id_seq', (SELECT MAX(post_id) FROM sites_posts) + 1)")
+backup_full_database(db_params, tables_to_backup, primary_keys, backup_file)

@@ -85,6 +85,9 @@ class Cache(cache.Cache):
             data = json.loads(self.conn.hget(tipe, key))
         except TypeError:
             logger.warning("No record for %s:%s attempting to create", tipe, key)
+            proc = self.new_process(tipe=tipe, key=key, params={}, message=message)
+            if proc:
+                return True
             return False
         data['message'] = message
         data['timestamp'] = arrow.utcnow().format()

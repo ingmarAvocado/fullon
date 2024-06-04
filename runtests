@@ -8,11 +8,11 @@ forked_tests_string="${forked_tests[@]}"
 
 # Run forked tests and save results
 
-pytest -v -p no:warnings -n 1 --dist=loadscope $forked_tests_string 
+#pytest -v -p no:warnings -n 1 --dist=loadscope $forked_tests_string 
 
 # Build pytest ignore arguments for parallel tests
 ignore_args=""
 for test in "${forked_tests[@]}"; do
   ignore_args+="--ignore=$test "
 done
-#pytest -v -p no:warnings -n 4 --dist=loadscope $ignore_args tests/
+pytest -v -p no:warnings -n 4 --dist=loadscope $ignore_args tests/

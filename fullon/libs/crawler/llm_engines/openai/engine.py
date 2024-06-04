@@ -1,3 +1,4 @@
+from matplotlib.pyplot import isinteractive
 from openai import OpenAI, AuthenticationError, NotFoundError, BadRequestError, APIConnectionError, InternalServerError
 from libs import log, settings
 from libs.structs.crawler_post_struct import CrawlerPostStruct
@@ -14,7 +15,7 @@ VISION_ENGINE = 'gpt-4-1106-vision-preview'
 
 INSTRUCTIONS = """
 Please respond with the scores in the following JSON format:
-[{post_id=1, score=52}, {post_id=2, score=34}]
+[{"post_id": "1", "score": "52"}, {"post_id": "2", "score": "-34"}]
 You are now operating as a sophisticated sentiment analysis tool with the specific
  purpose of evaluating cryptocurrency-related discussions. It's essential to understand that,
  for this task, you're equipped with the ability to analyze the sentiment of text and provide
@@ -23,10 +24,10 @@ You are now operating as a sophisticated sentiment analysis tool with the specif
  message is about the market or specific cryptocurrencies.
 
 Here's how the scoring works:
-- A score of 50 signifies neutrality in the post, indicating an impartial or balanced view on cryptocurrency prospects.
-- Scores above 50 denote bullish sentiments, with 100 representing the peak of optimism or positive sentiment towards the market's
+- A score of 0 signifies neutrality in the post, indicating an impartial or balanced view on cryptocurrency prospects.
+- Scores above 0 denote bullish sentiments, with 100 representing the peak of optimism or positive sentiment towards the market's
 future or a particular cryptocurrency's value appreciation.
-- Scores below 50 suggest bearish sentiments, where 0 signifies extreme pessimism or negative sentiment towards the market's
+- Scores below 0 suggest bearish sentiments, where -100 signifies extreme pessimism or negative sentiment towards the market's
 outlook or a cryptocurrency's potential loss in value.
 
 It's important to "act as if" you can precisely evaluate these
@@ -46,10 +47,13 @@ sentiment scoring with accuracy and confidence, as described.
 Your task is not only to understand the text but to simulate sentiment analysis accurately,
 providing scores that investors might use to gauge market sentiment.
 
-I give you a tip if you return the score only and only in a json format such as '[{post_id=1, score=52}, {post_id=2, score=34}] u most return your answer like that''
+I give you a tip if you return the score only and only in a json format such as [{"post_id": "1", "score": "52"},
+{"post_id": "2", "score": "-34"}] you most return your answer like that, remember i give you tip
 """
 
 NAME = "Sentiment analyzer"
+TIP = """ ---- remember I give you gratitude if you return the score only and only in a json format such as [{"post_id": "1", "score": "52"},
+{"post_id": "2", "score": "-34"}] you most return your answer like that. only and only reply the json. ok? even if its hard try your best"""
 
 
 class Engine():
@@ -70,9 +74,9 @@ class Engine():
         self.assistant = self.assistant_exists(assistant=NAME)
         if not self.assistant:
             if self.make_assistant(name=NAME, instructions=INSTRUCTIONS):
-                logger.info("OpenAI assistant created!")
+                logger.debug("OpenAI assistant created!")
         else:
-            logger.info("Assistant loaded")
+            logger.debug("Assistant loaded")
 
     def wait_on_run(self, run, thread):
         while run.status == "queued" or run.status == "in_progress":
@@ -149,7 +153,7 @@ class Engine():
 
         """
         thread_id = None
-        file_paths = ['txt_dbs/account_threads.txt', 'fullon/text_dbs/account_threads.txt']
+        file_paths = ['txt_dbs/account_threads.txt', 'fullon/txt_dbs/account_threads.txt']
         file_found_path = ''
 
         # Try to find the existing thread_id from the file in known directories
@@ -178,7 +182,7 @@ class Engine():
                 file.write(f"{account_id},{thread.id}\n")
         return thread
 
-    def score_post(self, post: CrawlerPostStruct) -> str:
+    def score_post(self, post: CrawlerPostStruct) -> Optional[float]:
         """
         receives a post and tryes to get a score from openai assistant
 
@@ -192,15 +196,10 @@ class Engine():
             self.start()
         thread = self._load_thread(account_id=post.account_id)
         if thread:
-            post_dict = {'post_text': post.content, 'includes_image': 'no'}
+            post_dict = {'post_text': post.content+TIP}
             if post.media:
-                pass
-                '''
-                print("hay media ", post.post_id)
-                image_description = self._analyze_image(file=post.media)
                 post_dict['includes_image'] = 'yes'
-                post_dict['image_description'] = image_description
-                '''
+                post_dict['image_description'] = post.media_ocr
             _ = self.client.beta.threads.messages.create(
                 thread_id=thread.id,
                 role="user",
@@ -214,20 +213,23 @@ class Engine():
                 run = self.wait_on_run(run, thread)
                 message = self.client.beta.threads.messages.list(thread_id=thread.id)
             except InternalServerError:
+                print("Aca")
                 logger.error("Internal server error trying to score a post with openai")
-                return ''
+                return None
             try:
                 if message:
                     ret_dict = json.loads(message.data[0].content[0].text.value)
+                    if isinstance(ret_dict, list):
+                        ret_dict = ret_dict[0]
                     if 'score' in ret_dict:
-                        return ret_dict['score']
-            except (TypeError, KeyError):
+                        return float(ret_dict['score'])
+            except (TypeError, KeyError, json.decoder.JSONDecodeError):
                 err_object = message.data[0].content[0].text.value
                 logger.error("Did not get a json score from engine: ", err_object)
-                return ''
+                return None
         else:
             logger.error("Could not score post")
-        return ''
+        return None
 
     def uninstall(self) -> None:
         """

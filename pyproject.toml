@@ -74,6 +74,8 @@ scikit-learn = "^1.5.0"
 pillow = "^10.3.0"
 colorlog = "^6.8.2"
 tweepy = "^4.14.0"
+vadersentiment = "^3.3.2"
+transformers = "^4.41.1"
 
 
 [tool.poetry.dev-dependencies]

@@ -89,8 +89,8 @@ CREATE TABLE public.sites_posts (
 	followers integer NOT NULL,
 	pre_score numeric,
 	score numeric,
-	CONSTRAINT primary_key PRIMARY KEY (post_id),
-	CONSTRAINT remote_id_site_unique UNIQUE (remote_id,site)
+	CONSTRAINT primary_key PRIMARY KEY (post_id,"timestamp"),
+	CONSTRAINT remote_id_site_unique UNIQUE (remote_id,site,"timestamp")
 );
 -- ddl-end --
 ALTER TABLE public.sites_posts OWNER TO postgres;
@@ -112,7 +112,7 @@ ALTER TABLE public.post_analyzers OWNER TO postgres;
 -- DROP TABLE IF EXISTS public.engine_scores CASCADE;
 CREATE TABLE public.engine_scores (
 	aid integer NOT NULL,
-	post_id smallint NOT NULL,
+	post_id bigint NOT NULL,
 	engine text NOT NULL,
 	score numeric NOT NULL,
 	CONSTRAINT one_post_one_engine UNIQUE (post_id,engine,aid)
@@ -155,13 +155,6 @@ ON DELETE CASCADE ON UPDATE CASCADE;
 -- ALTER TABLE public.sites_posts DROP CONSTRAINT IF EXISTS site_name_site_name2 CASCADE;
 ALTER TABLE public.sites_posts ADD CONSTRAINT site_name_site_name2 FOREIGN KEY (site)
 REFERENCES public.cat_sites (sites) MATCH SIMPLE
-ON DELETE CASCADE ON UPDATE CASCADE;
--- ddl-end --
-
--- object: engine_pid_pid | type: CONSTRAINT --
--- ALTER TABLE public.engine_scores DROP CONSTRAINT IF EXISTS engine_pid_pid CASCADE;
-ALTER TABLE public.engine_scores ADD CONSTRAINT engine_pid_pid FOREIGN KEY (post_id)
-REFERENCES public.sites_posts (post_id) MATCH SIMPLE
 ON DELETE CASCADE ON UPDATE CASCADE;
 -- ddl-end --
 

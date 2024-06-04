@@ -4,7 +4,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
 <dbmodel pgmodeler-ver="1.1.3" use-changelog="false" max-obj-count="8"
-	 last-position="117,0" last-zoom="0.85" scene-rect="0,0,4569.01,2223.72"
+	 last-position="0,0" last-zoom="0.85" scene-rect="0,0,2855.28,2106.12"
 	 default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
@@ -159,10 +159,10 @@ CREATE AGGREGATE public.LAST (
 		<type name="numeric" length="0"/>
 	</column>
 	<constraint name="primary_key" type="pk-constr" table="public.sites_posts">
-		<columns names="post_id" ref-type="src-columns"/>
+		<columns names="post_id,timestamp" ref-type="src-columns"/>
 	</constraint>
 	<constraint name="remote_id_site_unique" type="uq-constr" table="public.sites_posts">
-		<columns names="remote_id,site" ref-type="src-columns"/>
+		<columns names="remote_id,site,timestamp" ref-type="src-columns"/>
 	</constraint>
 </table>
 
@@ -184,15 +184,18 @@ CREATE AGGREGATE public.LAST (
 	</constraint>
 </table>
 
-<table name="engine_scores" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
+<table name="engine_scores" layers="0" collapse-mode="2" max-obj-count="6" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="900" y="1620"/>
+	<position x="900" y="1400"/>
 	<column name="aid" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
+	<column name="timestamp" not-null="true">
+		<type name="timestamp" length="0"/>
+	</column>
 	<column name="post_id" not-null="true">
-		<type name="smallint" length="0"/>
+		<type name="bigint" length="0"/>
 	</column>
 	<column name="engine" not-null="true">
 		<type name="text" length="0"/>
@@ -247,12 +250,6 @@ CREATE AGGREGATE public.LAST (
 	<columns names="sites" ref-type="dst-columns"/>
 </constraint>
 
-<constraint name="engine_pid_pid" type="fk-constr" comparison-type="MATCH SIMPLE"
-	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.sites_posts" table="public.engine_scores">
-	<columns names="post_id" ref-type="src-columns"/>
-	<columns names="post_id" ref-type="dst-columns"/>
-</constraint>
-
 <constraint name="llm_engines_post" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.llm_engines" table="public.engine_scores">
 	<columns names="engine" ref-type="src-columns"/>
@@ -289,11 +286,6 @@ CREATE AGGREGATE public.LAST (
 <relationship name="rel_sites_posts_cat_sites" type="relfk" layers="0"
 	 src-table="public.sites_posts"
 	 dst-table="public.cat_sites" reference-fk="site_name_site_name2"
-	 src-required="false" dst-required="true"/>
-
-<relationship name="rel_engine_score_sites_posts" type="relfk" layers="0"
-	 src-table="public.engine_scores"
-	 dst-table="public.sites_posts" reference-fk="engine_pid_pid"
 	 src-required="false" dst-required="true"/>
 
 <relationship name="rel_engine_score_llm_engines" type="relfk" layers="0"

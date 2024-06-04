@@ -23,11 +23,11 @@ def install():
     ex_id, cat_ex_id = install_exchanges(uid=uid)
     if not ex_id or not cat_ex_id:
         print("Could not install admin exchanges")
-    # install_secrets(uid=uid, cat_ex_id=cat_ex_id)
+    #install_secrets(uid=uid, cat_ex_id=cat_ex_id)
     install_bots(uid=uid, ex_id=ex_id, cat_ex_id=cat_ex_id)
-    #install_crawler_follows(uid=uid)
-    #install_crawler_analyzers()
-    #add_analyzer_follows()
+    install_crawler_follows(uid=uid)
+    install_crawler_analyzers()
+    add_analyzer_follows()
 
 
 def install_symbols():
@@ -570,11 +570,6 @@ def install_bots(uid: int, ex_id: str, cat_ex_id: str):
             }
     extended = {
           'rsi': "14",
-          'rsi_entry': "40",
-          'macd_entry': "1.5",
-          'stoch_entry': "50",
-          "prediction_steps": "1",
-          "threshold": "0.35"
           }
     _strat['extended'] = extended
     bot.edit_bot_strat(bot_id=bot_id, strat=_strat)
@@ -699,46 +694,44 @@ def install_crawler_follows(uid: int):
     """
     crawler = CrawlerManager()
     profiles = [
-        {"uid": uid, "site": "twitter", "account": "Anbessa100", "ranking": 9, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "Anbessa100", "ranking": 3.48, "contra": False, "expertise":
          "TA expert in bitcoin and prety good with little known alts, creative"},
-        {"uid": uid, "site": "twitter", "account": "CryptoDonAlt", "ranking": 7, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "CryptoDonAlt", "ranking": 6.07, "contra": False, "expertise":
          "Solid bitcion trader and mayor alts"},
-        {"uid": uid, "site": "twitter", "account": "Melt_Dem", "ranking": 7, "contra": False, "expertise":
-         "crypto manager at coinshares"},
-        {"uid": uid, "site": "twitter", "account": "PeterLBrandt", "ranking": 7, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "PeterLBrandt", "ranking": 6.24, "contra": False, "expertise":
          "well known TA trader, good with markets in general, pretty good with Bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "Pentosh1", "ranking": 6, "contra": False, "expertise":
-         "Well known trader, good with Bitcoin and mayor alts"},
-        {"uid": uid, "site": "twitter", "account": "HoneybadgerC", "ranking": 6, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "HoneybadgerC", "ranking": 5.55, "contra": False, "expertise":
          "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "trader1sz", "ranking": 6, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "trader1sz", "ranking": 4.83, "contra": False, "expertise":
          "Solid TA trader of bitcoin and crypto"},
-        {"uid": uid, "site": "twitter", "account": "EmperorBTC", "ranking": 8, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "EmperorBTC", "ranking": 4.43, "contra": False, "expertise":
          "Great TA trader and analyst of Bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "NicTrades", "ranking": 6, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "NicTrades", "ranking": 5.24, "contra": False, "expertise":
          "well known TA trader, good with markets in general, pretty good with Bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "LSDinmycoffee", "ranking": 2, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "LSDinmycoffee", "ranking": 6.08, "contra": False, "expertise":
          "well known TA trader, good with markets in general, pretty good with Bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "MacnBTC", "ranking": 5, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "MacnBTC", "ranking": 5.7, "contra": False, "expertise":
          "Alt crypto trader"},
-        {"uid": uid, "site": "twitter", "account": "CryptoCred", "ranking": 5, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "CryptoCred", "ranking": 6.8, "contra": False, "expertise":
          "Solid bitcion trader and mayor alts"},
-        {"uid": uid, "site": "twitter", "account": "Crypto_Core", "ranking": 6, "contra": False, "expertise":
-         "Solid bitcion trader and mayor alts"},
-        {"uid": uid, "site": "twitter", "account": "laughncow1", "ranking": 5, "contra": False, "expertise":
+        {"uid": uid, "site": "twitter", "account": "mBTCPiz", "ranking": 3.80, "contra": False, "expertise":
          "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "CryptoYoda1338", "ranking": 5, "contra": False, "expertise":
-         "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "FatihSK87", "ranking": 5, "contra": False, "expertise":
-         "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "InsiderBuySS", "ranking": 2, "contra": False, "expertise":
-         "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "CryptoBadr", "ranking": 5, "contra": False, "expertise":
-         "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "mBTCPiz", "ranking": 5, "contra": False, "expertise":
-         "Solid TA trader of crypto and bitcoin"},
-        {"uid": uid, "site": "twitter", "account": "AngeloBTC", "ranking": 5, "contra": False, "expertise":
-         "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "Negentropic_", "ranking": 4.49, "contra": False, "expertise": 
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "davthewave", "ranking": 4.62, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "CredibleCrypto", "ranking": 4.93, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "TheCryptoLark", "ranking": 4.40, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "CryptoHayes", "ranking": 6.19, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "ToneVays", "ranking": 3.5, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "rektcapital", "ranking": 3.82, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"},
+        {"uid": uid, "site": "twitter", "account": "BigCheds", "ranking": 4.82, "contra": False, "expertise":
+        "Solid TA trader of crypto and bitcoin"}
     ]
 
     for profile in profiles:

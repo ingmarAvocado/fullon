@@ -10,6 +10,7 @@ from os import getpid
 from time import sleep
 
 SITES = ['twitter']
+ENGINES = ['openai', 'perplexity']
 
 @pytest.fixture(scope="module")
 def crawler():
@@ -37,6 +38,32 @@ def analyzer(crawler):
     yield test_analyzer
     # Clean up by deleting the analyzer after the test module finishes
     crawler.del_analyzer(aid=aid)
+
+@pytest.fixture(scope="module")
+def post():
+    crawler_post = CrawlerPostStruct(
+        account='Anbessa100',
+        site='twitter',
+        content='GN frens',
+        timestamp=arrow.utcnow(),
+        urls='',
+        media=True,
+        media_ocr='taxed',
+        is_reply=False,
+        self_reply=False,
+        account_id=226749344,
+        reply_to=None,
+        remote_id=1778937197871185951,
+        pre_score=827.20,
+        score=None,
+        replies=28,
+        views=19012,
+        likes=98,
+        reposts=0,
+        followers=286683,
+        post_id=2289
+    )
+    yield crawler_post
 
 
 @pytest.mark.order(1)
@@ -106,13 +133,13 @@ def test__load_module(crawler, site):
 
 
 @pytest.mark.parametrize("site", SITES)
-@pytest.mark.order(11)
+@pytest.mark.order(12)
 def test__fetch_posts(crawler, site):
     #crawler._fetch_posts(site=site)
     pass
 
 
-@pytest.mark.order(12)
+@pytest.mark.order(13)
 def test_add_follows_analyzer(crawler, profile, analyzer):
     assert crawler.add_follows_analyzer(uid=profile['uid'],
                                         aid=analyzer.aid,
@@ -120,12 +147,27 @@ def test_add_follows_analyzer(crawler, profile, analyzer):
                                         account=profile['account'])
 
 
-@pytest.mark.order(13)
+@pytest.mark.order(14)
 def test_del_follows_analyzer(crawler, profile, analyzer):
     assert crawler.delete_follows_analyzer(uid=profile['uid'],
                                            aid=analyzer.aid,
                                            fid=profile['fid'])
 
+
+@pytest.mark.parametrize("engine", ENGINES)
+@pytest.mark.order(15)
+def test__load_module2(crawler, engine):
+    module = crawler._load_module(engine=engine)
+    assert module is not None, f"Failed to load module for engine: {engine}"
+
+'''
+@pytest.mark.parametrize("engine", ENGINES)
+def test__llm_score(crawler, engine, post):
+    ret = crawler._llm_score(engine=engine, post=post)
+    assert ret is not ''
+    assert isinstance(ret, str)
+    assert float(ret) > 0
+'''
 
 @pytest.mark.order(17)
 def test_del_llm_engine(crawler):

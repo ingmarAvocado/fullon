@@ -1,9 +1,13 @@
+from astral.moon import sun_mean_anomoly
+from backtrader import And
+from pandas_ta import thermo
 from libs import log, settings
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
 from typing import Optional, List, Dict, Tuple
 import psycopg2
+import psycopg2.extras
 import arrow
 from decimal import Decimal
 
@@ -312,7 +316,7 @@ class Database():
             logger.warning("Error adding or updating posts: {}".format(error))
             return False
 
-    def get_posts(self, account: str, site: str, replies: bool = False, self_reply: bool = False) -> List[CrawlerPostStruct]:
+    def get_posts(self, site: str, account: str = "", replies: bool = False, self_reply: bool = False) -> List[CrawlerPostStruct]:
         """
         Retrieve posts from the database by account and site.
 
@@ -326,23 +330,25 @@ class Database():
             List[CrawlerPostStruct]: A list of retrieved posts as CrawlerPostStruct objects, empty if none found.
         """
         # Initialize the base SQL query
-        sql = "SELECT * FROM sites_posts WHERE account = %s AND site = %s"     
+        sql = "SELECT * FROM sites_posts WHERE site = %s"
+        params = [site]
+
+        # Add account condition if provided
+        if account:
+            sql += " AND account = %s"
+            params.append(account)
         # Add conditions based on `replies` and `self_reply` parameters
-        conditions = []
         if not replies:
             # Exclude replies
-            conditions.append("is_reply = False")
+            sql += " AND is_reply = False"
         if self_reply:
             # Include only self-replies
-            conditions.append("self_reply = True")      
-        # Combine the conditions with AND operator if any
-        if conditions:
-            sql += " AND " + " AND ".join(conditions)
+            sql += " AND self_reply = True"
 
         posts = []
         try:
             with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute(sql, (account, site))
+                cur.execute(sql, tuple(params))
                 rows = cur.fetchall()
                 for row in rows:
                     # Convert each psycopg2 DictRow to a standard dict
@@ -413,36 +419,32 @@ class Database():
             logger.error(f"Error updating posts: {error}")
             return False
 
-    def get_last_post_dates(self, site: str) -> Optional[Dict[str, arrow.Arrow]]:
+    def get_last_post_date(self, site: str, account: str) -> Optional[Dict[str, arrow.Arrow]]:
         """
-        Get the last date of the latest post by site for each account.
+        Get the last date of the latest post by site for the given account.
 
         Args:
             site (str): The name of the site to filter posts by.
+            account (str): The name of the account to filter posts by.
 
         Returns:
-            Dict[str, arrow.Arrow]: A dictionary mapping accounts to their last post date.
+            Optional[Dict[str, arrow.Arrow]]: A dictionary mapping the account to its last post date.
         """
         sql = """
-              SELECT account, MAX(timestamp) AS last_timestamp
+              SELECT account, timestamp
               FROM public.sites_posts
-              WHERE site = %s
-              GROUP BY account
-              ORDER BY last_timestamp DESC;
+              WHERE site = %s AND account = %s
+              ORDER BY timestamp DESC LIMIT 1;
         """
-        results_dict = {}
-        with self.con.cursor() as cur:
-            try:
-                cur.execute(sql, (site,))
-                rows = cur.fetchall()
-                if rows:
-                    for row in rows:
-                        account, last_timestamp = row
-                        results_dict[account] = arrow.get(last_timestamp)
-                return results_dict
-            except (Exception, psycopg2.DatabaseError) as error:
-                logger.error(self.error_print(
-                    error=error, method="get_last_post_dates", query=sql))
+        try:
+            with self.con.cursor() as cur:
+                cur.execute(sql, (site, account,))
+                row = cur.fetchone()
+                if row:
+                    account, last_timestamp = row
+                    return {account: arrow.get(last_timestamp)}
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error(self.error_print(error=error, method="get_last_post_date", query=sql))
         return None
 
     def get_pre_scores(self, num: int = 25000) -> list[tuple[float]]:
@@ -562,41 +564,38 @@ class Database():
                 self.con.commit()
                 return True
             except (Exception, psycopg2.DatabaseError) as error:
-                print("shit")
+                print(sql)
                 self.con.rollback()
                 logger.error("Error adding engine score: {}".format(error))
         return False
 
-    def get_engine_scores(self, post_id: int, engine: str) -> List[Tuple[int, str, Decimal]]:
+    def add_engine_scores(self, scores: List[Tuple[int, Decimal]], aid: int, engine: str) -> bool:
         """
-        Retrieves scores for a given post and engine from the database.
+        Adds a list of new llm_scores to the database in batches.
 
         Args:
-            post_id (int): The ID of the analyzed post.
-            engine (str): The name of the engine used (e.g., "openai").
+            scores (List[Tuple[int, Decimal]]): List of tuples containing post_id and score
+            aid (int): The analyzer id
+            engine (str): The engine used (openai)
 
         Returns:
-            List[Tuple[int, str, Decimal]]: A list of tuples, each containing the post_id, 
-                                            analyzer ID (aid), and the score as a Decimal. 
-                                            Returns an empty list if no scores are found.
+            bool: True if all scores were added successfully, False otherwise
         """
         sql = """
-        SELECT post_id, aid, score
-        FROM engine_scores
-        WHERE post_id = %s AND engine = %s
+        INSERT INTO engine_scores (post_id, aid, engine, score)
+        VALUES %s
         """
-        scores = []
-        try:
-            with self.con.cursor() as cur:
-                cur.execute(sql, (post_id, engine))
-                rows = cur.fetchall()
-                for row in rows:
-                    # Assuming 'aid' can be directly used and recognized as the analyzer ID.
-                    scores.append((row[0], row[1], Decimal(row[2])))
-        except (Exception, psycopg2.DatabaseError) as error:
-            self.con.rollback()
-            logger.error(f"Error retrieving engine scores for post_id {post_id} and engine '{engine}': {error}")
-        return scores
+        values = [(post_id, aid, engine, score) for post_id, score in scores]    
+        with self.con.cursor() as cur:
+            try:
+                psycopg2.extras.execute_values(cur, sql, values, template=None, page_size=1000)
+                logger.debug("Scores added for posts: %s", [post_id for post_id, _ in scores])
+                self.con.commit()
+                return True
+            except (Exception, psycopg2.DatabaseError) as error:
+                logger.error("Error adding engine scores: {}".format(error))
+                self.con.rollback()
+                return False
 
     def add_analyzer(self, analyzer: CrawlerAnalyzerStruct) -> Optional[int]:
         """
@@ -823,73 +822,50 @@ class Database():
                 error=error, method="get_unscored_posts", query=sql))
         return posts
 
-    def _fetch_avg_engine_scores_by_period(self, period: str) -> List[Tuple[str, float]]:
+    def get_average_scores(self, period: str = 'day', compression: int = 1, account: str = '') -> List[Tuple]:
         """
-        Fetches the average engine scores grouped by a specified period.
+        Retrieves aggregated scores based on the specified period, compression, and account.
+        The result contains separate columns for each engine.
+
         Args:
-            period (str): The time period to group by ('day', 'hour', etc.).
+            period (str): The period for aggregation (day, week, hour).
+            compression (int): The frequency for aggregation.
+            account (str): The account to filter by (optional).
 
         Returns:
-            List of tuples containing the truncated date (as a string) and the average engine score.
+            List[Tuple]: A list of tuples, each containing the timestamp and the aggregated scores per engine.
         """
+        where = ''
+        if account:
+            where = f"WHERE sp.account='{account}'"
+
+        interval = f"{compression} {period}"
+        
+        # SQL to aggregate scores with separate columns for each engine
         sql = f"""
-        SELECT date_trunc(%s, sp.timestamp) AS period_start, AVG(es.score) AS avg_engine_score
-        FROM public.engine_scores es
-        JOIN public.sites_posts sp ON es.post_id = sp.post_id
-        GROUP BY date_trunc(%s, sp.timestamp)
-        ORDER BY period_start
+        SELECT
+            time_bucket('{interval}', sp.timestamp) as period,
+            ROUND(avg(CASE WHEN es.engine = 'vader' THEN es.score * sp.score / 10 ELSE NULL END), 2) as vader_score,
+            ROUND(avg(CASE WHEN es.engine = 'perplexity' THEN es.score * sp.score / 10 ELSE NULL END), 2) as llm_engine_score,
+            ROUND(avg(CASE WHEN es.engine = 'openai' THEN es.score * sp.score / 10 ELSE NULL END), 2) as openai_score
+        FROM
+            engine_scores es
+        JOIN
+            sites_posts sp ON es.post_id = sp.post_id
+        {where}
+        GROUP BY
+            period
+        ORDER BY
+            period;
         """
         try:
             with self.con.cursor() as cur:
-                cur.execute(sql, (period, period))
-                return cur.fetchall()
+                cur.execute(sql)
+                results = cur.fetchall()
+                return results
         except (Exception, psycopg2.DatabaseError) as error:
-            print(f"Error fetching average scores by period: {error}")
+            self.con.rollback()
+            logger.error(f"Error retrieving aggregated scores: {error}")
             return []
 
-    def _adjust_engine_scores(self, scores: List[Tuple[str, float]]) -> List[Tuple[str, float]]:
-        """
-        Adjusts engine scores from the original scale (0-100) to the new scale (-100 to 100).
-        Args:
-            scores (List[Tuple[str, float]]): List of tuples containing period_start and average engine score.
-        Returns:
-            List of tuples containing period_start and adjusted engine score.
-        """
-        return [
-            (period, (score - 50) * 2 if score <= 50 else (score - 50) * 2)
-            for period, score in scores
-        ]
 
-    def get_crawler_scores(self, period: str) -> List[Tuple[str, float]]:
-        """
-        Calculates the final super scores grouped by a specified period by combining the adjusted engine scores with the heuristic score.
-        Args:
-            period (str): The time period to group by ('day', 'hour', etc.).
-        Returns:
-            List of tuples containing the truncated date (as a string) and the calculated average super score.
-        """
-        scores = self._fetch_avg_engine_scores_by_period(period)
-        adjusted_scores = self._adjust_engine_scores(scores)
-        # Prepare data for unnest
-        # Ensuring that data is passed as a list of tuples, each tuple directly usable in SQL
-        data = [(period, score) for period, score in adjusted_scores]
-
-        # Construct the SQL query
-        sql = """
-        WITH adjusted_scores AS (
-            SELECT * FROM unnest(%s::record[]) AS t(period_start timestamp, adjusted_score numeric)
-        )
-        SELECT date_trunc(%s, period_start) AS truncated_period, AVG(adjusted_score * (1 + (sp.score - 5) / 50.0)) AS avg_super_score
-        FROM adjusted_scores
-        JOIN public.sites_posts sp ON date_trunc(%s, sp.timestamp) = adjusted_scores.period_start
-        GROUP BY truncated_period
-        ORDER BY truncated_period
-        """
-        try:
-            with self.con.cursor() as cur:
-                # Execute the query using the prepared data
-                cur.execute(sql, ([data], period, period))
-                return cur.fetchall()
-        except (Exception, psycopg2.DatabaseError) as error:
-            print(f"Error calculating super scores by period: {error}")
-            return []
