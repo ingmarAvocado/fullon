@@ -9,8 +9,8 @@ from libs import log
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_post_struct import CrawlerPostStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
-#from libs.database import Database
-from libs.models.crawler_model import Database
+from libs.database import Database
+#from libs.models.crawler_model import Database
 from libs.cache import Cache
 from typing import List, Optional
 import sys
@@ -280,6 +280,7 @@ class CrawlerManager:
         Returns:
             An instance of the Crawler class from the loaded module if successful, None otherwise.
         """
+        print(f"I must load site {site} or engine {engine}")
         if site:
             primary_module_name = f'libs.crawler.{site}.crawler'
             fallback_module_name = f'fullon.libs.crawler.{site}.crawler'
@@ -308,7 +309,7 @@ class CrawlerManager:
                     return module.Crawler()  # Instantiate the Crawler class
                 if engine:
                     return module.Engine()  # instantiate an Engine
-            except AttributeError:
+            except AttributeError as error:
                 msg = ''
                 if site:
                     msg = f"The module '{module.__name__}' does not contain a 'Crawler' class."
@@ -465,7 +466,7 @@ class CrawlerManager:
         while not stop_signal.is_set():
             with Database() as dbase:
                 accounts = dbase.get_crawling_list(site=site)
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=2) as executor:
                 futures = [executor.submit(self._process_posts, site, account) for account in accounts]
                 for future in as_completed(futures):
                     try:
@@ -500,7 +501,6 @@ class CrawlerManager:
                     self._update_process(key=site)
                     update_counter = 0
             pause.until(next_time.timestamp())
-        del module
 
     def run_loop(self) -> None:
         """

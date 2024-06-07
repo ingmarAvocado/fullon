@@ -62,7 +62,8 @@ class Database:
                 user=settings.DBUSER,
                 password=settings.DBPASSWD,
                 host=settings.DBHOST,  # Assuming pgBouncer is running on this host
-                port=settings.DBPORT  # The port pgBouncer is listening on
+                port=settings.DBPORT,  # The port pgBouncer is listening on
+                options='-c client_encoding=UTF8'  # The port pgBouncer is listening on
             )
             if self.is_connection_valid(self.con):
                 pass
@@ -110,6 +111,12 @@ class Database:
             - The total trading volume for the time bucket.
         """
         # Determine column names based on table type
+        oldest = self.get_oldest_timestamp()
+        if oldest:
+            oldest = arrow.get(oldest)
+            if oldest > arrow.get(fromdate):
+                print("aca")
+                fromdate = oldest.datetime
         if "trades" in table:
             open_col, high_col, low_col, close_col, vol_col = [
                 "price", "price", "price", "price", "volume"]
@@ -468,7 +475,6 @@ class Database:
         ALTER TABLE {self.exchange}_{left}_{right}_USD.candles1m  RENAME COLUMN ts to timestamp;
         """
         return OHLCV
-
 
     def get_latest_timestamp(self, table: str = "", table2: str = "") -> Optional[str]:
         """

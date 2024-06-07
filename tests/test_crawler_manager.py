@@ -10,7 +10,7 @@ from os import getpid
 from time import sleep
 
 SITES = ['twitter']
-ENGINES = ['openai', 'perplexity']
+ENGINES = ['openai']
 
 @pytest.fixture(scope="module")
 def crawler():

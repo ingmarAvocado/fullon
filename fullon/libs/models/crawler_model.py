@@ -60,7 +60,8 @@ class Database():
                 user=settings.DBUSER,
                 password=settings.DBPASSWD,
                 host=settings.DBHOST,  # Assuming pgBouncer is running on this host
-                port=settings.DBPORT  # The port pgBouncer is listening on
+                port=settings.DBPORT,  # The port pgBouncer is listening on
+                options='-c client_encoding=UTF8'  # The port pgBouncer is listening on
             )
             if self.is_connection_valid(self.con):
                 pass
@@ -811,7 +812,7 @@ class Database():
                 for row in cur.fetchall():
                     post = CrawlerPostStruct(
                         post_id=row[0], timestamp=row[1], remote_id=row[2], account=row[3],
-                        account_id=row[4], site=row[5], content=row[6], media=row[7],
+                        account_id=row[4], site=row[5], content=row[6].decode('UTF-8'), media=row[7],
                         media_ocr=row[8], urls=row[9], is_reply=row[10], reply_to=row[11],
                         self_reply=row[12], views=row[13], likes=row[14], reposts=row[15],
                         replies=row[16], followers=row[17], pre_score=row[18]
@@ -839,15 +840,18 @@ class Database():
         if account:
             where = f"WHERE sp.account='{account}'"
 
+        engines = self.get_llm_engines()
+        query = ""
+        for engine in engines:
+            query += f"ROUND(avg(CASE WHEN es.engine = '{engine}' THEN es.score * sp.score / 10 ELSE NULL END), 2) as openai_score, "
+        query = query[:-2]
+
         interval = f"{compression} {period}"
-        
         # SQL to aggregate scores with separate columns for each engine
         sql = f"""
         SELECT
             time_bucket('{interval}', sp.timestamp) as period,
-            ROUND(avg(CASE WHEN es.engine = 'vader' THEN es.score * sp.score / 10 ELSE NULL END), 2) as vader_score,
-            ROUND(avg(CASE WHEN es.engine = 'perplexity' THEN es.score * sp.score / 10 ELSE NULL END), 2) as llm_engine_score,
-            ROUND(avg(CASE WHEN es.engine = 'openai' THEN es.score * sp.score / 10 ELSE NULL END), 2) as openai_score
+            {query}
         FROM
             engine_scores es
         JOIN

@@ -82,7 +82,7 @@ class Crawler():
             if ocr:
                 ocr_text = self.image_ocr(file_path)
                 logger.debug(f"Performed OCR on {file_path}.")
-                return  ocr_text
+                return ocr_text
         except urllib.error.HTTPError as err:
             logger.debug(f"Problem downloading/saving media from {url}: {err}")
         except Exception as e:

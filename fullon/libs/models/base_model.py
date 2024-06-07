@@ -38,7 +38,8 @@ class Database():
                     user=settings.DBUSER,
                     password=settings.DBPASSWD,
                     host=settings.DBHOST,  # Assuming pgBouncer is running on this host
-                    port=settings.DBPORT  # The port pgBouncer is listening on
+                    port=settings.DBPORT,  # The port pgBouncer is listening on
+                    options='-c client_encoding=UTF8'  # The port pgBouncer is listening on
                 )
                 if self.is_connection_valid(self.con):
                     break  # Break the loop if connection is valid

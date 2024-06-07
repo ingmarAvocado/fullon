@@ -549,14 +549,17 @@ class Bot:
         - None
         """
         # Initialize the first feed as None
-        #fromdate = arrow.get('2023-09-04 00:00:00')
         feed_map = {}
         index = 0
         for str_id, feeds in self.str_feeds.items():
             fromdate, fromdate2 = self.backload_from(
                                     str_id=str_id,
                                     bars=self.pre_load_bars)
+
             for num, feed in enumerate(feeds):
+                if not self._sim_feeds_can_start(feed=feed, fromdate=fromdate):
+                    logger.error("Feeds can't start, exiting bot startup")
+                    return False
                 compression = int(feed.compression)
                 period = feed.period
                 timeframe = self._set_timeframe(period=period)
