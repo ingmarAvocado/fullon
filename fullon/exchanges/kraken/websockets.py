@@ -21,18 +21,6 @@ class WebSocket:
     KrakenWebSocket class to interact with the Kraken WebSocket API.
     """
 
-    _markets: Dict = {}
-    cache_trade_reply: int = 0
-    cache_ticker_reply: int = 0
-    cache_my_trade_reply: int = 0
-    cache_order_reply: int = 0
-    ex_id: str
-    subscriptions: List = []
-    started: bool = False
-    client: Optional[kraken_wsclient_py.WssClient] = None
-    ticker_factory_key: str = ''
-    subscribed_tickers: list = []
-
     def __init__(self, markets: Dict, ex_id: str) -> None:
         """
         Initialize the KrakenWebSocket class.
@@ -41,19 +29,35 @@ class WebSocket:
             markets (Dict): A dictionary of market details.
             ex_id (str): The exchange ID.
         """
-        self._markets = markets
+        self._markets: Dict = markets
+        self.ex_id: str = ex_id
+        self.client: Optional[kraken_wsclient_py.WssClient] = None
+        self.subscriptions: List = []
+        self.started: bool = False
+        self.ticker_factory_key: str = ''
+        self.subscribed_tickers: list = []
+
+    def __del__(self):
+        self.clean_up()
+
+    def start(self, retries=5) -> None:
+        """
+        starts  connections
+        """
+        if self.started or retries == 0:
+            logger.info("Cant start a started socket.")
+            return
         self.client = kraken_wsclient_py.WssClient()
         self.client.start()
-        self.ex_id = ex_id
         count = 0
         while not self.is_connected() and count < 5:
             time.sleep(1)
             count += 1
-        else:
+        if self.is_connected():
             self.started = True
-
-    def __del__(self):
-        self.stop()
+            return
+        self.started = False
+        return self.start(retries=retries-1)
 
     def stop(self) -> None:
         """
@@ -67,11 +71,18 @@ class WebSocket:
                 self.client.close()  # Close the WebSocket connection
             except AttributeError as error:
                 pass
-            try:
-                reactor.stop()
-            except twisted_error.ReactorNotRunning:
-                pass
+            self.started = False
             self.client = None
+
+    def clean_up(self):
+        """
+        shots down twisted, necessary for proper shutdown.
+        """
+        try:
+            logger.warning("WebSocket for kraken has been closed, you will need to start a new one on different process")
+            reactor.stop()
+        except twisted_error.ReactorNotRunning:
+            pass
 
     def is_connected(self) -> bool:
         """
@@ -166,7 +177,7 @@ class WebSocket:
             return False
         return True
 
-    def unsubscribe_tickers(self):
+    def unsubscribe_tickers(self) -> bool:
         """
         unSubscribe to public data channels.
 
@@ -193,6 +204,7 @@ class WebSocket:
         except Disconnected:
             logger.warning("attempting to stop a ticker socket, when apparently there is none connected")
         logger.info("Unsubscribed from ticker socket")
+        return True
 
     def subscribe_private(self, subscription: Dict[str, str], callback: Callable) -> bool:
         """
@@ -244,7 +256,6 @@ class WebSocket:
                 res = store.update_ticker(symbol=symbol,
                                           exchange="kraken",
                                           data=ticker_data)
-            self.cache_ticker_reply = res
 
     def on_trade(self, message: Dict[str, Any]) -> None:
         """
@@ -284,7 +295,6 @@ class WebSocket:
                                         symbol=symbol,
                                         exchange="kraken",
                                         trade=trade_data)
-                self.cache_trade_reply = res
 
     def on_my_trade(self, message: Dict[str, Any]):
         """
@@ -329,7 +339,6 @@ class WebSocket:
                                         uid=user_ex.uid,
                                         exchange=user_ex.ex_id,
                                         trade=trade_struct.to_dict())
-                    self.cache_my_trade_reply = 1
 
     def on_my_order(self, message: Dict[str, Any], local_oid: str):
         """
@@ -403,7 +412,6 @@ class WebSocket:
                         store.save_order_data(ex_id=self.ex_id,
                                               oid=order_id,
                                               data=odetail)
-                        self.cache_order_reply += 1
 
     def subscribe_message(self, data: Dict) -> None:
         """
@@ -421,7 +429,7 @@ class WebSocket:
                     pair = data['pair']
                 except KeyError:
                     pair = ''
-                logger.info(f"Subscribed to Kraken {data['subscription']['name']} {pair}")
+                logger.info(f"Kraken subscribed to {data['subscription']['name']} {pair}")
                 self.subscriptions.append(data['subscription']['name'])
                 if data['subscription']['name'] == 'ticker':
                     if pair not in self.subscribed_tickers:

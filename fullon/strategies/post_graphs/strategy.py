@@ -53,7 +53,8 @@ class Strategy(strat.Strategy):
         openai_avg = Decimal(scores_df['openai'].mean())
         scores_df['openai'] = scores_df['openai'] - openai_avg
         scores_df['score'] = scores_df['openai']
-        scores_df['sma'] = scores_df['score'].rolling(window=18).mean()
+        scores_df['sma1'] = scores_df['score'].rolling(window=21).mean()
+        scores_df['sma2'] = scores_df['score'].rolling(window=50).mean()
         self.indicators_df = self.indicators_df.merge(scores_df, how='left', left_index=True, right_index=True)
 
     def plot_indicators(self):
@@ -65,28 +66,39 @@ class Strategy(strat.Strategy):
             print("Error: indicators_df is not set.")
             return
 
-        # Create the figure and axes
         sns.set_theme(style="whitegrid")
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)  # Two subplots, sharing the x-axis
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 8), sharex=True)  # Two subplots, sharing the x-axis
 
         # Plot 'close' on the first subplot
         ax1.plot(self.indicators_df.index, self.indicators_df['close'], color='tab:blue', label='Close')
         ax1.set_ylabel('Price', color='tab:blue')
         ax1.tick_params(axis='y', labelcolor='tab:blue')
         ax1.legend(loc='upper left')
-        to_date = self.curtime[1].format('YYYY-MM-DD')
-        ax1.set_title(f"{self.str_feed[0].symbol} Price and Sentiment Analysis until opening of {to_date}")
+        to_date = arrow.utcnow().format('YYYY-MM-DD')
 
+        ax1.set_title(f"Price and Sentiment Analysis BTC/USD until opening of {to_date}")
         # Plot 'score' on the second subplot
-        ax2.plot(self.indicators_df.index, self.indicators_df['sma'], color='tab:cyan', label='Sentiment')
+        ax3.plot(self.indicators_df.index, self.indicators_df['score'], color='tab:green', label='Avg Scores')
+        ax3.set_ylabel('Sentiment', color='tab:gray')
+        ax3.axhline(0, color='red', linestyle='--', linewidth=1, label='Neutral Sentiment')
+        ax3.legend(loc='upper left')
+        ax2.plot(self.indicators_df.index, self.indicators_df['sma1'], color='tab:cyan', label='SMA21 Avg Scores')
+        ax2.plot(self.indicators_df.index, self.indicators_df['sma2'], color='tab:orange', label='SMA50 Avg Scores')
         ax2.axhline(0, color='red', linestyle='--', linewidth=1, label='Neutral Sentiment')
         ax2.set_ylabel('Sentiment', color='tab:red')
         ax2.tick_params(axis='y', labelcolor='tab:red')
-        ax2.legend(loc='upper right')
+        ax2.legend(loc='upper left')
 
         # Format the x-axis dates
         ax2.xaxis.set_major_formatter(mdates.DateFormatter('%y-%m-%d'))
         ax2.tick_params(axis='x', labelsize=8)  # Adjust the font size for the x-axis
+
+        # Format the x-axis dates
+        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%y-%m-%d'))
+        ax3.tick_params(axis='x', labelsize=8)  # Adjust the font size for the x-axis
+
         plt.xticks(rotation=45, ha='right')
+        # how do i plot rigt here instead of saving the i media
+
         fig.savefig(MEDIAPATH)
         plt.close(fig)

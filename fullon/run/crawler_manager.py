@@ -280,7 +280,6 @@ class CrawlerManager:
         Returns:
             An instance of the Crawler class from the loaded module if successful, None otherwise.
         """
-        print(f"I must load site {site} or engine {engine}")
         if site:
             primary_module_name = f'libs.crawler.{site}.crawler'
             fallback_module_name = f'fullon.libs.crawler.{site}.crawler'

@@ -148,7 +148,7 @@ class TradeManager:
                                               since=then,
                                               limit=1000)
         except (EOFError, RuntimeError):
-            return None
+            return
         if not data or test:
             return
         with Database_ohlcv(exchange=exchange, symbol=symbol) as dbase:

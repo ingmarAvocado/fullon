@@ -1,6 +1,3 @@
-from astral.moon import sun_mean_anomoly
-from backtrader import And
-from pandas_ta import thermo
 from libs import log, settings
 from libs.structs.crawler_struct import CrawlerStruct
 from libs.structs.crawler_post_struct import CrawlerPostStruct
@@ -812,7 +809,7 @@ class Database():
                 for row in cur.fetchall():
                     post = CrawlerPostStruct(
                         post_id=row[0], timestamp=row[1], remote_id=row[2], account=row[3],
-                        account_id=row[4], site=row[5], content=row[6].decode('UTF-8'), media=row[7],
+                        account_id=row[4], site=row[5], content=row[6], media=row[7],
                         media_ocr=row[8], urls=row[9], is_reply=row[10], reply_to=row[11],
                         self_reply=row[12], views=row[13], likes=row[14], reposts=row[15],
                         replies=row[16], followers=row[17], pre_score=row[18]

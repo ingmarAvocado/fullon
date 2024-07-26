@@ -1,4 +1,7 @@
+"""
+"""
 import arrow
+
 
 class reg(object):
     def __init__(self, cursor, row):
@@ -9,9 +12,10 @@ class reg(object):
             #print("except reg... something going on")
             return None
 
+
 class ohlcv(object):
 
-	def __init__(self, t1 = False, t2 = False):
+	def __init__(self, t1=False, t2=False):
 
 		if t1:
 			now = arrow.get().int_timestamp
@@ -26,10 +30,9 @@ class ohlcv(object):
 
 		elif t2 and t2[3] != None:
 			now = arrow.get().int_timestamp
-			ts = arrow.get(t2[0]/1000).int_timestamp
-			self.ts = arrow.get(ts).to('utc').naive
+			self.ts = t2[0]
 			self.epoch = arrow.get(self.ts).int_timestamp
-			self.open = t2[1] 
+			self.open = t2[1]
 			self.high = t2[2]
 			self.low = t2[3]
 			self.close = t2[4]

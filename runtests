@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define tests to run with --forked
-forked_tests=("tests/test_tickers_manager.py" "tests/test_rpcserver.py" "tests/test_kraken_zinterface.py" "tests/test_kraken_websockets.py")
+forked_tests=("tests/test_tickers_manager.py" "tests/test_rpcserver.py" "tests/test_kraken_zinterface.py" "tests/test_kraken_websockets.py" "tests/test_ccxt_interface")
 
 # Convert forked_tests array to space-separated string for pytest
 forked_tests_string="${forked_tests[@]}"

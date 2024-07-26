@@ -30,6 +30,8 @@ class Cache(cache.Cache):
         if force:
             with Database() as dbase:
                 symbols = dbase.get_symbols(exchange=exchange, all=True)
+                if not symbols:
+                    return []
                 for sym in symbols:
                     sym_dict = sym.to_dict()
                     self.conn.hset(redis_key, sym.symbol, json.dumps(sym_dict))

@@ -245,6 +245,10 @@ class InstallManager:
             symbol (str): The symbol to be installed in the database.
         """
         res = 0
+        if ":" in symbol.symbol:
+            _symbol, base = symbol.symbol.split(":")
+            symbol.symbol = _symbol
+            symbol.base = base
         with Database() as dbase:
             res = dbase.install_symbol(symbol=symbol)
         return res

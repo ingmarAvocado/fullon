@@ -52,7 +52,9 @@ def user_ex(store):
     ex_id = details['exchanges']['kraken']['ex_id']
     ex_name = details['exchanges']['kraken']['ex_named']
     with database.Database() as dbase:
-        params = dbase.get_exchange(user_id=uid)[0]
+        params = dbase.get_exchange(exchange_name='kraken')[0]
+
+    print(params)
 
     class userStruct():
         uid: str

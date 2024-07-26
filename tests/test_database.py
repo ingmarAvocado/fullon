@@ -13,7 +13,7 @@ def params():
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
     with database.Database() as dbase:
-        params = dbase.get_exchange(user_id=uid)[0]
+        params = dbase.get_exchange(user_id=uid)
     return params
 
 
@@ -23,8 +23,8 @@ def mock_trade():
         trade_id='',
         ex_trade_id="test_ex_trade_id",
         ex_order_id="test_ex_order_id",
-        uid=10,  # convert UUID to string
-        ex_id=5,  # convert UUID to string
+        uid=10,
+        ex_id=1,
         symbol="test_symbol",
         order_type="test_order_type",
         side="buy",
@@ -45,18 +45,18 @@ def mock_trade():
         limit="test_limit",
     )
 
-
+@pytest.mark.order(1)
 def test_get_user_list(dbase):
     # Test new_process for tick type
     users = dbase.get_user_list()
     assert len(users) > 0
 
-
+@pytest.mark.order(2)
 def test_get_exchanges(dbase, uid):
     exchange = dbase.get_exchange(user_id=uid)[0]
     assert exchange.name != ''
 
-
+@pytest.mark.order(3)
 def test_save_get_delete_trades(dbase, mock_trade):
     # Saving the trade
     save_result = dbase.save_trades(trades=[mock_trade])

@@ -40,14 +40,28 @@ class ExchangeMethods():
         self.load_exchange_interface(exchange=exchange, params=params)
 
     def __del__(self):
+        """
+        """
+        self.stop()
+
+    def stop(self):
+        """
+        stops the web socket and rest connector
+        """
         try:
             self.wbsrv.stop()
+            #del self.websrv
         except AttributeError:
             logger.error(f"Error closing exchange for uid {self.uid}")
 
     def refresh(self):
-        self.wbsrv.refresh()
-        pass
+        """
+        refreshes connections as it expires sometimes
+        """
+        return self.wbsrv.refresh()
+
+    def _reconnect_websocket(self):
+        return self.wbsrv._reconnect_websocket()
 
     def load_exchange_interface(self,
                                 exchange: str,
@@ -73,7 +87,7 @@ class ExchangeMethods():
                                                     params=params,
                                                     prefix="fullon/")
             logger.error(f"can't load exchange @{file_path}")
-            raise ValueError("Cant find ways to load exchange")
+            # raise ValueError("Cant find ways to load exchange")
 
     def get_markets(self) -> Any:
         """Retrieves the markets information.
@@ -83,8 +97,8 @@ class ExchangeMethods():
         """
         return self.wbsrv.get_markets()
 
-    def no_sleep(self) -> Any:
-        """Retrieves the markets information.
+    def no_sleep(self) -> list:
+        """Retrieves name of methods that require no sleep
 
         Returns:
             Any: The markets information.
@@ -100,14 +114,6 @@ class ExchangeMethods():
         """
         return self.wbsrv.has_ticker
 
-    def get_full_account(self) -> Any:
-        """Retrieves the full account information.
-
-        Returns:
-            Any: The full account information.
-        """
-        return self.wbsrv.get_full_account()
-
     def connect_websocket(self) -> Any:
         """Connects the websocket.
 
@@ -116,18 +122,6 @@ class ExchangeMethods():
         """
         return self.wbsrv.connect_websocket()
 
-    def stop_websockets(self) -> Any:
-        """Stops the websocket connections.
-
-        Returns:
-            Any: The result of stopping the websocket connections.
-        """
-        try:
-            return self.wbsrv.stop_websockets()
-        except AttributeError as error:
-            if "_socket" in str(error):
-                logger.info(f"No websocket _socket for {self.exchange}")
-
     def socket_connected(self) -> bool:
         """Checks if the websocket is connected.
 
@@ -135,6 +129,38 @@ class ExchangeMethods():
             bool: True if the websocket is connected, False otherwise.
         """
         return self.wbsrv.socket_connected()
+
+    def stop_websockets(self) -> bool:
+        """Stops the websocket connections.
+
+        Returns:
+            Any: The result of stopping the websocket connections.
+        """
+        try:
+            res = self.wbsrv.stop_websockets()
+            return res
+        except AttributeError as error:
+            if "_socket" in str(error):
+                logger.info(f"No websocket _socket for {self.exchange}")
+            return False
+
+    def start_candle_socket(self, tickers: List[str]) -> Any:
+        """Starts the ticker socket for the given tickers.
+
+        Args:
+            tickers (List[str]): A list of ticker symbols.
+
+        Returns:
+            Any: The result of starting the ticker socket.
+        """
+        return self.wbsrv.start_candle_socket(tickers=tickers)
+
+    def stop_candle_socket(self) -> bool:
+        """Stops the ticker socket.
+        Returns:
+            Any: The result of starting the ticker socket.
+        """
+        return self.wbsrv.stop_candle_socket()
 
     def start_ticker_socket(self, tickers: List[str]) -> Any:
         """Starts the ticker socket for the given tickers.
@@ -166,6 +192,15 @@ class ExchangeMethods():
         """
         return self.wbsrv.start_trade_socket(tickers=tickers)
 
+    def stop_trade_socket(self) -> bool:
+        """
+        Subscribes to user trades
+
+        Returns:
+        bool: True if the subscription was successfully created, False otherwise.
+        """
+        return self.wbsrv.stop_trade_socket()
+
     def start_my_trades_socket(self) -> bool:
         """
         Subscribes to user trades
@@ -180,7 +215,7 @@ class ExchangeMethods():
 
     def fetch_trades(self,
                      symbol: Optional[str],
-                     since: Optional[int],
+                     since: Optional[str],
                      limit: Optional[int] = None,
                      params: Optional[Dict[str, Any]] = None) -> Any:
         """Fetches all trades.
@@ -197,18 +232,18 @@ class ExchangeMethods():
         return self.wbsrv.fetch_trades(symbol=symbol, since=since, limit=limit, params=params)
 
     def get_candles(self,
-                    symbol: int,
+                    symbol: str,
                     frame: str,
-                    since: str,
-                    limit: str = "",
+                    since: float,
+                    limit: int = 1000,
                     params: Optional[Dict[str, Any]] = None) -> Any:
         """Gets the candle data for a symbol.
 
         Args:
             symbol (str): The trading symbol.
             frame (str, optional): The time frame for the candle data. Defaults to "1m".
-            since (str, optional): The start timestamp for the candle data. Defaults to "".
-            limit (str, optional): The maximum number of candles to retrieve. Defaults to "".
+            since (int, optional): The start timestamp for the candle data. Defaults to "".
+            limit (int, optional): The maximum number of candles to retrieve. Defaults to "".
             params (Optional[Dict[str, Any]], optional): Additional parameters. Defaults to None.
 
         Returns:
@@ -242,7 +277,7 @@ class ExchangeMethods():
         Returns:
             Any: All ticker symbols.
         """
-        return self.wbsrv.ohlcv
+        return not self.wbsrv.ohlcv_needs_trades
 
     def fetch_my_trades(self, **kwargs) -> Any:
         """Fetches the user's trades.

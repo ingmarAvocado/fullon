@@ -1,6 +1,4 @@
-from fullon.libs import log, settings, cache
-from fullon.libs.settings_config import fullon_settings_loader
-from fullon.libs.structs.symbol_struct import SymbolStruct
+from libs.structs.symbol_struct import SymbolStruct
 from libs.database import Database
 from run.install_manager import InstallManager
 from unittest.mock import MagicMock

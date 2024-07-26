@@ -230,7 +230,6 @@ class Database(database.Database):
                    symbol: Optional[str] = None) -> List[TradeStruct]:
         """
         Retrieve trades from the database based on the given parameters.
-
         :param ex_id: Exchange ID.
         :param last: Whether to retrieve only the last trade, default is False.
         :param uncalculated: Whether to retrieve trades with uncalculated current quantities, default is False.
@@ -238,7 +237,6 @@ class Database(database.Database):
         :raises: Exception, psycopg2.DatabaseError
         :return: A list of TradeStruct objects containing trade data.
         """
-
         base_sql = "SELECT * FROM trades WHERE ex_id=%(ex_id)s"
         params = {'ex_id': ex_id}
         if symbol:
@@ -251,9 +249,9 @@ class Database(database.Database):
                 base_sql += " AND cur_volume IS NULL"
             base_sql += " ORDER BY symbol ASC, time ASC, volume DESC"
         try:
-            with self.con.cursor() as cur:
+            with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 cur.execute(base_sql, params)
-                trades = [TradeStruct(*row) for row in cur.fetchall()]
+                trades = [TradeStruct(**dict(row)) for row in cur.fetchall()]
         except (Exception, psycopg2.DatabaseError) as error:
             logger.info(self.error_print(error=error, method="get_trades", query=base_sql))
             raise

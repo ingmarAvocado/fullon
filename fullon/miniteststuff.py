@@ -51,6 +51,7 @@ user = user_manager.UserManager()
 UID = user.get_user_id(mail='admin@fullon')
 exch = dbase.get_exchange(user_id=UID)[0]
 
+
 orderBuy = {"ex_id": exch.ex_id,
             "cat_ex_id": exch.cat_ex_id,
             "exchange": exch.cat_name,
@@ -124,17 +125,18 @@ orderStopLoss = OrderStruct.from_dict(orderStopLoss)
 #time.sleep(1)
 #del exch
 ohlcv = OhlcvManager()
-#ohlcv.run_ohlcv_loop(symbol='BTC/USD', exchange='kraken')
-ohlcv.run_loop()
+ohlcv.run_ohlcv_loop(symbol='BTC/USD', exchange='bitmex')
+#ohlcv.run_loop()
 #ohlcv.stop_all()
 #exch.get_positions()
 #exch.connect_websocket()
 #exch.socket_con0nected()
 #del exch
-t = TickManager()
-t.run_loop()
-am = AccountManager()
-am.run_account_loop()
+#t = TickManager()
+#t.run_loop()
+time.sleep(60000)
+#am = AccountManager()
+#am.run_account_loop()
 #time.sleep(150000000)
 #print("\nplacing buy: \n")
 #_order = om._can_place_order(order=orderBuy)
@@ -152,6 +154,7 @@ am.run_account_loop()
 #time.sleep(100000)
 #print("turning off")
 
+'''
 bmanager = BotStatusManager()
 bmanager.run_loop()
 
@@ -163,7 +166,7 @@ try:
     bot1.run_loop(test=True, stop_signal=signal)
 except KeyboardInterrupt:
     print("Keyboard")
-
+'''
 
 try:
     am.stop_all()

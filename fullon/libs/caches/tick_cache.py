@@ -78,6 +78,8 @@ class Cache(cache.Cache):
 
             return 1
         except RedisError as error:
+            msg = f"{symbol}:{data} - {str(error)}"
+            logger.error("Can't save ticker")
             return 0
 
     def del_exchange_ticker(self, exchange: str) -> int:

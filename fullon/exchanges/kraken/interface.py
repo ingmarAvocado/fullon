@@ -1,5 +1,4 @@
 from inspect import Attribute
-import sys
 import time
 from libs import log, settings
 from libs.caches import orders_cache as cache
@@ -12,8 +11,8 @@ from exchanges.kraken import websockets
 from collections import defaultdict
 import uuid
 from collections import Counter
-import threading
 from  ccxt.base.errors import RequestTimeout
+import binascii
 
 logger = log.fullon_logger(__name__)
 
@@ -22,11 +21,8 @@ logger = log.fullon_logger(__name__)
 
 class Interface(Ccxt_Interface):
 
-    _socket: Optional[websockets.WebSocket]
     _ws_token = None
-    _ws_subscriptions: Dict = {}
     _markets: Dict = {}
-    _token_refresh_thread: Optional[threading.Thread] = None
     currencies: dict = {}
     pairs: dict = {}
 
@@ -40,14 +36,11 @@ class Interface(Ccxt_Interface):
         self.delete_trades = False
         self._sleep = float(settings.KRAKEN_TIMEOUT)
         self._load_markets()
-
         if not self.currencies:
             self.set_currencies()
         if not self.pairs:
             self.set_pairs()
         self._markets = self._markets_dict()
-        self._ws_pre_check()
-        self.start_token_refresh_thread()
         self.no_sleep.extend(['start_ticker_socket',
                               'start_trade_socket',
                               'start_my_trades_socket',
@@ -74,7 +67,7 @@ class Interface(Ccxt_Interface):
                 break  # If load_markets succeeds, break out of the loop
             except RequestTimeout:
                 # Sleep for some time before retrying (e.g., 1 second)
-                logger.error("Cann't connect to kraken, seems connection has been timedout")
+                logger.error("Cann't connect to kraken, seems connection has been timed out")
                 time.sleep(5)
             except Exception as e:
                 # Handle any other exceptions that may arise
@@ -87,27 +80,26 @@ class Interface(Ccxt_Interface):
 
     def stop(self):
         """
+        stops websocket
         """
         try:
             if self._socket:
                 logger.info(f"Closing Kraken Websocket: {self.params.ex_id}")
                 self._socket.stop()
+                self._socket.clean_up()
                 self._socket = None
         except AttributeError:
             pass
-        if self._token_refresh_thread is not None:
-            try:
-                self._token_refresh_thread.join(timeout=1)
-            except AttributeError:
-                pass
         super().stop()
 
     def refresh(self):
+        """
+        refreshes connections tokens, etc
+        """
         super().__init__(self.exchange, self.params)
         if not self.ws.markets:
             self.ws.load_markets()
         self._ws_pre_check()
-        self.start_token_refresh_thread()
 
     def _ws_pre_check(self):
         """
@@ -115,30 +107,49 @@ class Interface(Ccxt_Interface):
         is established and if an authentication token has been generated.
         If the WebSocket connection is not established, it will be initiated.
         If an authentication token is not available, it will be generated.
-        Returns:
-        None.
         """
         try:
-            if not self._socket.client:
-                logger.warning(f"Kraken WebSocket is not connected {self.params.ex_id}")
-                # first make sure we turn off the old one
-                self._socket.stop()
-                del self._socket
-                self._socket: Optional[websockets.WebSocket] = None
-                # now connect again
-                self.connect_websocket()
-                self._reconnect_ws_subscriptions()
-                return self._ws_pre_check()
+            if not self._socket or not self._socket.is_connected():
+                logger.warning(f"Kraken WebSocket ws_pre_check is not connected for ex_id {self.params.ex_id}")
+                self._reconnect_websocket()
         except (TypeError, AttributeError) as error:
             self._socket = None
             time.sleep(1)
             logger.info("No previous Kraken websocket found")
             self.connect_websocket()
-            return self._ws_pre_check()
         if not self._ws_token:
             self._generate_auth_token()
 
-    def connect_websocket(self) -> None:
+    def _reconnect_websocket(self):
+        """
+        Reconnects to websockets
+        """
+        retry_count = 0
+        max_retries = 5
+        while retry_count < max_retries:
+            try:
+                if self._socket:
+                    self._socket.client.close()
+                logger.warning("Disconnected WebSocket")
+                self._socket.start()
+                self._reconnect_ws_subscriptions()
+                logger.warning("Websocket reconnected")
+                return True
+            except AttributeError as error:
+                if 'start' in str(error):
+                    self.connect_websocket()
+                else:
+                    logger.error(f"Failed to reconnect kraken WebSocket: {str(e)}")
+                    retry_count += 1
+                    time.sleep(2 ** retry_count)  # Exponential backoff
+            except Exception as e:
+                logger.error(f"Failed to reconnect kraken WebSocket: {str(e)}")
+                retry_count += 1
+                time.sleep(2 ** retry_count)  # Exponential backoff
+        logger.critical("Failed to reconnect WebSocket after multiple attempts")
+        return False
+
+    def connect_websocket(self) -> bool:
         """
         Establishes a connection to the WebSocket and sets the `websocket_connected` attribute to True.
 
@@ -148,16 +159,29 @@ class Interface(Ccxt_Interface):
         if not self._socket:
             self._socket = websockets.WebSocket(
                 markets=self._markets, ex_id=self.params.ex_id)
-            if self._socket.started is False:
+            self._socket.start()
+            if not self._socket.started:
                 self._socket = None
-                return self.connect_websocket()
+                return False
             logger.info(f"Kraken WebSocket initiated ex_id {self.params.ex_id}")
+            self._generate_auth_token()
             self._ws_subscriptions['ticker'] = []
             self._ws_subscriptions['trades'] = []
             self._ws_subscriptions['ownTrades'] = False
             self._ws_subscriptions['openOrders'] = False
+            return True
+        return self.socket_connected()
 
-    def refresh_token(self):
+    def socket_connected(self) -> bool:
+        """
+        Checks if the WebSocket connection is still active.
+
+        Returns:
+        bool: True if the WebSocket connection is active, False otherwise.
+        """
+        return self._socket.is_connected()
+
+    def refresh_token(self) -> bool:
         """
         Refreshes the WebSocket token by re-authenticating with the Kraken API.
         """
@@ -165,43 +189,30 @@ class Interface(Ccxt_Interface):
             with cache.Cache() as store:
                 error = store.pop_ws_error(ex_id=self.params.ex_id)
             if error:
-                logger.warning(f"Kraken WebSocket is not connected {self.params.ex_id}")
+                logger.warning(f"Kraken WebSocket is not connected for ex_id {self.params.ex_id}")
                 self._ws_token = False
                 self._generate_auth_token()
-                self._socket.stop()
-                del self._socket
-                self._socket: Optional[websockets.WebSocket] = None
-                # now connect again
-                self.connect_websocket()
-                self._reconnect_ws_subscriptions()
-                return self._ws_pre_check()
+                return False
         except (TypeError, AttributeError) as error:
-            self._socket = None
-            time.sleep(1)
-            logger.info("No previous Kraken websocket found")
-            self.connect_websocket()
-            return self._ws_pre_check()
+            pass
+        return False
 
-    def start_token_refresh_thread(self, interval=60):
+    def _generate_auth_token(self) -> None:
         """
-        Starts a background thread that periodically refreshes the WebSocket token.
+        Generates an authentication token for Kraken WebSocket API private channels.
+        assigns to self._ws_token
 
-        Args:
-            interval: Time in seconds between each token refresh (default: 3600 seconds).
+        Returns:
+            None
         """
-
-        def run():
-            while True:
-                try:
-                    self.refresh_token()
-                except:
-                    pass
-                time.sleep(interval)
-
-        self._token_refresh_thread = threading.Thread(target=run)
-        self._token_refresh_thread.daemon = True  # Daemonize thread
-        self._token_refresh_thread.start()
-        logger.info("Token refresh thread started.")
+        try:
+            token: Dict[str, Any] = self.execute_ws("private_post_getwebsocketstoken")
+            self._ws_token = token['result']['token']
+        except TypeError:
+            logger.error("Kraken: Exchange rejected keys")
+        except binascii.Error:
+            logger.error("Seems I cant gen auth token, normally wrong API keys")
+            print(self.get_user_key(ex_id=self.params.ex_id))
 
     def start_ticker_socket(self, tickers: list) -> bool:
         """
@@ -229,7 +240,7 @@ class Interface(Ccxt_Interface):
             return True
         return False
 
-    def stop_ticker_socket(self) -> None:
+    def stop_ticker_socket(self) -> bool:
         """
         Subscribes to ticker updates
 
@@ -240,7 +251,7 @@ class Interface(Ccxt_Interface):
         bool: True if the subscription was successfully closed, False otherwise.
         """
         self._ws_pre_check()
-        self._socket.unsubscribe_tickers()
+        return self._socket.unsubscribe_tickers()
 
     def start_trade_socket(self, tickers: list) -> bool:
         """
@@ -405,29 +416,6 @@ class Interface(Ccxt_Interface):
                     return False
         return False
 
-    def socket_connected(self) -> bool:
-        """
-        Checks if the WebSocket connection is still active.
-
-        Returns:
-        bool: True if the WebSocket connection is active, False otherwise.
-        """
-        return self._socket.is_connected()
-
-    def _generate_auth_token(self) -> None:
-        """
-        Generates an authentication token for Kraken WebSocket API private channels.
-        assigns to self._ws_token
-
-        Returns:
-            None
-        """
-        try:
-            token: Dict[str, Any] = self.execute_ws("private_post_getwebsocketstoken")
-            self._ws_token = token['result']['token']
-        except TypeError:
-            logger.error("Kraken: Exchange rejected keys")
-
     def _reconnect_ws_subscriptions(self):
         """
         Reconnects all WebSocket subscriptions by iterating through the
@@ -446,15 +434,20 @@ class Interface(Ccxt_Interface):
         self._ws_subscriptions['trades'] = []
         self._ws_subscriptions['ownTrades'] = False
         self._ws_subscriptions['openOrders'] = False
-        for sub in subs:
-            if sub['tickers']:
-                self.start_ticker_socket(tickers=sub['tickers'])
-            if sub['trades']:
-                self.start_trade_socket(tickers=sub['trades'])
-            if sub['ownTrades']:
-                self.start_my_trades_socket()
-            if sub['openOrders']:
-                self.my_open_orders_socket()
+        for key, value in subs.items():
+            match key:
+                case 'ticker':
+                    if value:
+                        self.start_ticker_socket(tickers=value)
+                case 'trades':
+                    if value:
+                        self.start_trade_socket(tickers=value)
+                case 'ownTrades':
+                    self.start_my_trades_socket()
+                case 'openOrders':
+                    self.my_open_orders_socket()
+                case _:
+                    pass
 
     def fetch_trades(self,
                      symbol: str,

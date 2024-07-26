@@ -143,20 +143,57 @@ class OhlcvManager:
             last_ts = dbase.get_latest_timestamp(
                 table2=symbol.exchange_name+"_" + symbol.symbol.replace("/", "_") + ".trades")
         if last_ts:
-            since = arrow.get(last_ts).float_timestamp
+            since = arrow.get(last_ts).timestamp()
         else:
-            since = time.time() - (symbol.backtest * 24 * 60 * 60) # timestamp 'symbol.backtest' days ago
+            since = arrow.utcnow().shift(days=-symbol.backtest).timestamp()
         trade_manager = TradeManager()
         while not stop_signal.is_set():
             last = trade_manager.update_trades_since(exchange=symbol.exchange_name,
                                                      symbol=symbol.symbol,
                                                      since=since,
                                                      test=test)
+
             if since == last:
                 return None
             since = last
             now = time.time()
             self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Started")
+            if since:
+                time_difference = now - since
+                if time_difference < 55:
+                    return
+            else:
+                return
+
+    def fetch_candles(self,
+                      symbol: SymbolStruct,
+                      stop_signal: threading.Event,
+                      exch: Exchange,
+                      test: bool = False) -> None:
+        """
+        Retrieve trade ohlcv data for the specified symbol and timeframe.
+        Returns:
+            None
+        """
+        with self.database_handler(symbol=symbol) as dbase:
+            last_ts = dbase.get_latest_timestamp(
+                table2=symbol.exchange_name+"_" + symbol.symbol.replace("/", "_") + ".candles1m")
+        if last_ts:
+            since = arrow.get(last_ts).timestamp()
+        else:
+            since = arrow.utcnow().shift(days=-symbol.backtest).timestamp()
+        while not stop_signal.is_set():
+            candles = exch.get_candles(symbol=symbol.symbol, frame='1m', since=since)
+            last = arrow.get(candles[-1][0]).timestamp()
+            with Database_Ohlcv(exchange=symbol.exchange_name, symbol=symbol.symbol) as dbase:
+                dbase.fill_candle_table(table='candles1m', data=candles)
+            if since == last:
+                return None
+            since = last
+            now = time.time()
+            self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Updating")
+            if test:
+                break
             if since:
                 time_difference = now - since
                 if time_difference < 55:
@@ -201,6 +238,16 @@ class OhlcvManager:
                                     message=message)
         return bool(res)
 
+    def delete_before_midnight(self, symbol_struct: SymbolStruct, exchange_key: str):
+        """
+        """
+        with self.database_handler(symbol=symbol_struct) as dbase:
+            dbase.delete_before_midnight()
+        try:
+            del self.stop_signals[exchange_key]
+        except KeyError:
+            pass
+
     def run_ohlcv_loop(self, symbol: str, exchange: str, test: bool = False) -> None:
         """
         Runs the main OHLCV loop for a specific exchange and update frame, using the list of symbols
@@ -232,26 +279,24 @@ class OhlcvManager:
             dbase.install_schema(ohlcv=symbol_struct.ohlcv_view)
 
         if exch.has_ohlcv():
-            while not stop_signal.is_set():
-                self.fetch_individual_trades(
-                    symbol=symbol_struct, stop_signal=stop_signal)
-                pause_time = arrow.now().shift(minutes=1).floor('minute')
-                self._update_process(exchange_name=exchange, symbol=symbol)
-                if test:
-                    print("setting stop signal")
-                    stop_signal.set()
-                    break
-                while arrow.now() < pause_time:
-                    if stop_signal.is_set():
-                        break
-                    time.sleep(0.2)
+            try:
+                self.fetch_candles(symbol=symbol_struct, stop_signal=stop_signal, exch=exch, test=test)
+                self.delete_before_midnight(symbol_struct=symbol_struct, exchange_key=exchange_key)
+            except KeyboardInterrupt:
+                return
+            if not stop_signal.is_set():
+                exch.start_candle_socket(tickers=[symbol_struct.symbol])
+                while not stop_signal.is_set():
+                    self._update_process(exchange_name=exchange, symbol=symbol)
+                time.sleep(9)
+                # maybe i need to check here if database is updating
         else:
             try:
                 self.fetch_individual_trades(
                     symbol=symbol_struct, stop_signal=stop_signal)
                 self._update_process(exchange_name=exchange, symbol=symbol)
             except KeyboardInterrupt:
-                pass
+                return
             if not stop_signal.is_set():
                 exch.start_trade_socket(tickers=[symbol_struct.symbol])
             while not stop_signal.is_set():
@@ -262,7 +307,7 @@ class OhlcvManager:
                 logger.debug(msg)
                 self.fetch_individual_trades_ws(symbol=symbol_struct)
                 if test:
-                    print("setting stop signal")
+                    logger.debug("setting stop signal")
                     stop_signal.set()
                     break
                 now = arrow.now()
@@ -285,13 +330,6 @@ class OhlcvManager:
                 # makes sure it doesnt happen
                 pause.until(pause_until.timestamp())
         del exch
-        # Remove the stop signal from the dictionary when the loop is stopped
-        with self.database_handler(symbol=symbol_struct) as dbase:
-            dbase.delete_before_midnight()
-        try:
-            del self.stop_signals[exchange_key]
-        except KeyError:
-            pass
 
     def run_loop(self, test=False) -> None:
         """

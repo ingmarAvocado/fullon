@@ -15,13 +15,19 @@ logger = log.fullon_logger(__name__)
 class Database:
 
     def __init__(self, exchange: str, symbol: str):
-        self.exchange = exchange
-        self.symbol = symbol
-        symbol = exchange + "_" + symbol.replace("/", "_")
-        symbol = symbol.replace(":", "_")
-        self.schema = symbol.replace("-", "_")
         self.con = None
         self.get_connection()
+        self.exchange = exchange
+        self.symbol = symbol
+        if "_" not in symbol and "/" not in symbol:
+            _symbol = symbol[:-3] + '_' + symbol[-3:]
+            _schema = exchange+'_'+_symbol
+            if self.table_exists(table="candles1m", schema=_schema):
+                self.schema = _schema
+        else:
+            symbol = exchange + "_" + symbol.replace("/", "_")
+            self.schema = symbol.replace(":", "_")
+        self.schema = self.schema.replace("-", "_")
 
     def __del__(self):
         self.endthis()
@@ -115,7 +121,6 @@ class Database:
         if oldest:
             oldest = arrow.get(oldest)
             if oldest > arrow.get(fromdate):
-                print("aca")
                 fromdate = oldest.datetime
         if "trades" in table:
             open_col, high_col, low_col, close_col, vol_col = [
@@ -253,22 +258,30 @@ class Database:
             self.make_trade_table()
             self.make_candle_table(ohlcv=ohlcv)
 
-    def table_used(self, table='trades'):
+    def is_view(self, table='trades'):
+        """
+        checks if a table in the schema is a view or not
+        """
         try:
-            cur = self.con.cursor()
-            # sql = f"select exists(select * from information_schema.tables where table_schema = '{self.schema.lower()}' and table_name='{table}')"
-            sql = f"SELECT COUNT(*) FROM {self.schema.lower()}.trades"
-            cur.execute(sql)
-            r = cur.fetchone()[0]
-            cur.close()
-            del (cur)
-            return True if r > 0 else False
+            with self.con.cursor() as cur:
+                sql = """
+                SELECT table_type
+                FROM information_schema.tables
+                WHERE table_schema = %s AND table_name = %s
+                """
+                cur.execute(sql, (self.schema.lower(), table.lower()))
+                result = cur.fetchone()
+
+            if result:
+                table_type = result[0]
+                return table_type in ('VIEW', 'MATERIALIZED VIEW')
+            else:
+                logger.error(f"Table {table} doesn't exist")
+                return False  # Table doesn't exist
+
         except (Exception, psycopg2.DatabaseError) as error:
-            cur.close()
-            del (cur)
-            (f"Cant execute query {sql}")
+            logger.error(f"Error checking if {table} is a view: {error}")
             raise
-        return False
 
     def table_exists(self, table: str = 'trades', schema: str = "") -> bool:
         """Checks if the given table exists.
@@ -515,7 +528,7 @@ class Database:
             Optional[str]: The oldest timestamp if found, None otherwise.
         """
         values = None
-        table = "trades" if self.table_exists(table='trades') else "candles1m"
+        table = "trades" if self.is_view(table='candles1m') else "candles1m"
         sql = f'SELECT MIN(timestamp) FROM {self.schema}.{table}'
         try:
             with self.con.cursor() as cur:
@@ -540,30 +553,21 @@ class Database:
             psycopg2.DatabaseError: If an error occurs during the deletion process.
         """
         # If trades table exists, exit function
-        if self.table_exists(table='trades'):
+        if self.is_view(table='candles1m'):
             return
-
         # Fetch the oldest timestamp
         ts = self.get_oldest_timestamp()
         if not ts:
             return
-
         # Use arrow to get the datetime representation and to modify it
-        d1 = arrow.get(ts)
-        hour, minute = d1.hour, d1.minute
-
-        # If timestamp is already midnight, no operation needed
-        if hour == 0 and minute == 0:
+        timestamp = arrow.get(ts)
+        if timestamp.hour == 0 and timestamp.minute == 0 and timestamp.second == 0:
             return
-
-        # Get the timestamp for the end of the day (1 second before midnight)
-        end_of_day = d1.replace(hour=23, minute=59, second=59)
-        delete_before = end_of_day.format()
-
+        timestamp = timestamp.floor('day').shift(days=1).format('YYYY-MM-DD HH:mm:ss')
         try:
             with self.con.cursor() as cur:
                 sql = "DELETE FROM {}.candles1m WHERE timestamp < %s".format(self.schema)
-                cur.execute(sql, (delete_before,))
+                cur.execute(sql, (timestamp,))
                 self.con.commit()
         except (Exception, psycopg2.DatabaseError) as error:
             logger.info(self.error_print(error=error, method="delete_before_midnight", query=sql))
@@ -579,41 +583,42 @@ class Database:
 
         Returns:
             None
+
+        """
+        is_view = self.is_view(table='candles1m')
+        if self.is_view(table='candles1m'):
+            logger.error("Cannot save ohlcv in a view")
+            return
+
+        sql = """
+        INSERT INTO %s (timestamp, open, high, low, close, vol)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (timestamp)
+        DO UPDATE SET
+            timestamp = EXCLUDED.timestamp,
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            vol = EXCLUDED.vol;
         """
 
-        if not self.table_used(table='trades'):
-            data.pop()  # Remove the last minute as it is never fully filled.
-
-            sql = """
-            INSERT INTO %s (timestamp, open, high, low, close, vol)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (timestamp)
-            DO UPDATE SET
-                timestamp = EXCLUDED.timestamp,
-                open = EXCLUDED.open,
-                high = EXCLUDED.high,
-                low = EXCLUDED.low,
-                close = EXCLUDED.close,
-                vol = EXCLUDED.vol;
-            """
-
-            prepared_data = []
-            for line in data:
-                if isinstance(line, list):
-                    line = dbhelpers.ohlcv(t2=line)
-                else:
-                    line = dbhelpers.ohlcv(t1=line)
-
-                prepared_data.append((line.ts, line.open, line.high, line.low, line.close, line.vol))
-
-            try:
-                with self.con.cursor() as cur:
-                    cur.executemany(sql, ([AsIs(f"{self.schema}.{table}"), *row] for row in prepared_data))
-                    self.con.commit()
-                    cur.close()
-            except (Exception, psycopg2.DatabaseError) as error:
-                self.con.rollback()
-                logger.info(self.error_print(error=error, method="fill_candle_table", query=sql))
+        prepared_data = []
+        for line in data:
+            if isinstance(line, list):
+                line = dbhelpers.ohlcv(t2=line)
+            else:
+                line = dbhelpers.ohlcv(t1=line)
+            prepared_data.append((line.ts, line.open, line.high, line.low, line.close, line.vol))
+        try:
+            with self.con.cursor() as cur:
+                cur.executemany(sql, ([AsIs(f"{self.schema}.{table}"), *row] for row in prepared_data))
+                self.con.commit()
+                cur.close()
+        except (Exception, psycopg2.DatabaseError) as error:
+            raise error
+            self.con.rollback()
+            logger.info(self.error_print(error=error, method="fill_candle_table", query=sql))
 
     def vwap(self, compression: int, period: str) -> List[Tuple[str, float]]:
         """

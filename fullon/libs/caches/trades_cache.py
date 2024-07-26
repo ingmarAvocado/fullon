@@ -13,7 +13,7 @@ import redis
 from libs import log
 from libs.caches import orders_cache as cache
 from libs.structs.trade_struct import TradeStruct
-from typing import Dict, List
+from typing import Dict, List, Optional
 from os import listdir
 
 logger = log.fullon_logger(__name__)
@@ -51,6 +51,7 @@ class Cache(cache.Cache):
             int: The new length of the list after the push operation.
         """
         # Create a Redis key using the exchange and symbol
+        symbol = symbol.replace("/", "")
         redis_key = f"trades:{exchange}:{symbol}"
         return self.conn.rpush(redis_key, json.dumps(trade))
 
@@ -70,7 +71,7 @@ class Cache(cache.Cache):
         redis_key = f"user_trades:{uid}:{exchange}"
         return self.conn.rpush(redis_key, json.dumps(trade))
 
-    def pop_my_trade(self, uid: str, exchange: str) -> TradeStruct:
+    def pop_my_trade(self, uid: str, exchange: str) -> Optional[TradeStruct]:
         """
         Pop the next trade from the user's trade queue for a specific exchange.
 
@@ -104,6 +105,7 @@ class Cache(cache.Cache):
         Returns:
             List[TradeStruct]: A list of TradeStruct instances representing the user's trades for the exchange.
         """
+        symbol = symbol.replace("/", "")
         redis_key = f"trades:{exchange}:{symbol}"
         trades = self.conn.lrange(redis_key, 0, -1)
         self.conn.delete(redis_key)

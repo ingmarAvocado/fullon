@@ -136,7 +136,7 @@ class Cache(cache.Cache):
             symbols = from_database(exchange=exchange)
         return symbols
 
-    def get_exchange(self, ex_id: str) -> ExchangeStruct:
+    def get_exchange(self, ex_id: int) -> ExchangeStruct:
         """
         Retrieve exchange information from Redis cache or database.
 
@@ -149,7 +149,7 @@ class Cache(cache.Cache):
         redis_key = f'exchange_info:{ex_id}'
 
         # Define a function to retrieve data from the database
-        def from_database(ex_id: str) -> ExchangeStruct:
+        def from_database(ex_id: int) -> ExchangeStruct:
             with Database() as dbase:
                 exchange = dbase.get_exchange(ex_id=ex_id)
                 exchange_struct = ExchangeStruct()

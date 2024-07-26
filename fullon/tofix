@@ -1,0 +1,9 @@
+
+
+
+  File "/home/fullon/fullon/fullon/strategies/xgb_forest_mom_short/strategy.py", line 233, in set_features
+    data['macd'] = macd['MACD_12_26_9']
+                   ~~~~^^^^^^^^^^^^^^^^
+
+
+

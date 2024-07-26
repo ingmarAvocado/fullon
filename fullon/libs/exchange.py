@@ -51,6 +51,8 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
                     store.push_global_error(msg=exchange, component='exchange')
                 break
             if request == "StopThisRun":
+                for _, exchange in exchange_pool.items():
+                    exchange.stop()
                 break
             try:
                 exchange, uid, params, method_name, method_params, response_queue = request
@@ -59,7 +61,6 @@ def process_requests(request_queue: Queue, exchange: str, mngr: object) -> None:
 
             if uid not in exchange_pool:
                 exchange_pool[uid] = ExchangeMethods(exchange=exchange, params=params)
-                msg = f"We got a connection to exchange {exchange} with params {params}"
                 expires[uid] = arrow.utcnow().shift(minutes=60*11.75)
             try:
                 class_method = getattr(exchange_pool[uid], method_name)
@@ -126,6 +127,7 @@ def start_all():
     """
     starts all exchanges
     """
+    logger.info("Starting Exchange Queue Managers")
     global response_queue_pool
     if not response_queue_pool:
         response_queue_pool = QueuePool(procname="Exchange")
@@ -151,16 +153,18 @@ class Exchange:
         self.dry_run = dry_run
         self.exchange = exchange
         self.params = params if params else self._get_params()
-        self.uid = self.params.uid
-        self.ex_id = self.params.ex_id
+        try:
+            self.uid = self.params.uid
+            self.ex_id = self.params.ex_id
+        except AttributeError:
+            return
 
     def __del__(self):
         global NOQUEUE_POOL
         if self.exchange in NOQUEUE_POOL:
             del NOQUEUE_POOL[self.exchange]
 
-    @staticmethod
-    def _get_params():
+    def _get_params(self):
         """
         Gets exchange params from test user, normally should be for testing
         """
@@ -169,7 +173,7 @@ class Exchange:
         if UID:
             with Database() as dbase:
                 try:
-                    params = dbase.get_exchange(user_id=UID)[0]
+                    params = dbase.get_exchange(exchange_name=self.exchange, user_id=UID)[0]
                 except IndexError:
                     params = []
         else:

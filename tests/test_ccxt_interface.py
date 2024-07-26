@@ -1,5 +1,4 @@
 from fullon.exchanges.kraken.interface import Interface
-from fullon.libs.database import Database
 from fullon.run.user_manager import UserManager
 from fullon.libs import settings
 import arrow
@@ -11,40 +10,44 @@ exchange_list = ['kraken']
 
 
 @pytest.fixture(scope="module", params=exchange_list)
-def exchange_struct(request, dbase):
+def exchange_instance(request, dbase):
     exchange_name = request.param
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
-    exch = dbase.get_exchange(user_id=uid)[0]
-    iface = Interface(exchange_name, params=exch)
-    yield iface
-    iface.stop()
-    del iface
+    exchanges = dbase.get_exchange(user_id=uid)
+    for exchange in exchanges:
+        if exchange_name in exchange.cat_name:
+            iface = Interface(exchange.cat_name, params=exchange)
+            yield iface
+            iface.stop()
+            del iface
+            break
 
 
 @pytest.mark.order(1)
-def test_stop(exchange_struct):
+@pytest.mark.parametrize("exchange_instance", exchange_list, indirect=True)
+def test_stop(exchange_instance):
     return
 
 
 @pytest.mark.order(2)
-def test_get_user_key(exchange_struct):
+def test_get_user_key(exchange_instance):
     return
 
 
 @pytest.mark.order(3)
-def test_set_leverage(exchange_struct):
+def test_set_leverage(exchange_instance):
     return
 
 
 @pytest.mark.order(4)
-def test_get_market(exchange_struct):
+def test_get_market(exchange_instance):
     return
 
 
 @pytest.mark.order(5)
-def test_get_markets(exchange_struct):
-    markets = exchange_struct.get_markets()
+def test_get_markets(exchange_instance):
+    markets = exchange_instance.get_markets()
     assert isinstance(markets, dict)
     assert len(markets) > 0
     for symbol, market in markets.items():
@@ -59,41 +62,41 @@ def test_get_markets(exchange_struct):
 
 
 @pytest.mark.order(6)
-def test_execute_ws(exchange_struct):
+def test_execute_ws(exchange_instance):
     return
 
 
 @pytest.mark.order(7)
-def test_get_cash(exchange_struct):
+def test_get_cash(exchange_instance):
     return
 
 
 @pytest.mark.order(8)
-def test_fetch_orders(exchange_struct):
+def test_fetch_orders(exchange_instance):
     return
 
 
 @pytest.mark.order(9)
-def test_cancel_all_orders(exchange_struct):
+def test_cancel_all_orders(exchange_instance):
     return
 
 
 @pytest.mark.order(10)
-def test_create_order(exchange_struct):
+def test_create_order(exchange_instance):
     return
 
 @pytest.mark.order(11)
-def test_cancel_order(exchange_struct):
+def test_cancel_order(exchange_instance):
     return
 
 @pytest.mark.order(12)
-def test_get_candles(exchange_struct):
+def test_get_candles(exchange_instance):
     return
 
 @pytest.mark.order(13)
-def test_get_tickers(exchange_struct):
+def test_get_tickers(exchange_instance):
     settings.LOG_LEVEL = "logging.INFO"
-    tickers = exchange_struct.get_tickers()
+    tickers = exchange_instance.get_tickers()
     assert isinstance(tickers, dict)
     assert len(tickers) > 0
     for symbol, ticker in tickers.items():
@@ -110,8 +113,8 @@ def test_get_tickers(exchange_struct):
 
 
 @pytest.mark.order(14)
-def test_get_balances(exchange_struct):
-    balances = exchange_struct.get_balances()
+def test_get_balances(exchange_instance):
+    balances = exchange_instance.get_balances()
 
     # There must be at least one balance returned
     assert len(balances) > 0
@@ -127,20 +130,20 @@ def test_get_balances(exchange_struct):
 
 
 @pytest.mark.order(15)
-def test_get_positions(exchange_struct):
-    pos = exchange_struct.get_positions()
+def test_get_positions(exchange_instance):
+    pos = exchange_instance.get_positions()
     assert isinstance(pos, dict)
 
 
 @pytest.mark.order(16)
-def test_connect_websocket(exchange_struct):
+def test_connect_websocket(exchange_instance):
     return
 
 
 @pytest.mark.order(17)
-def test_fetch_trades(exchange_struct):
+def test_fetch_trades(exchange_instance):
     since = arrow.utcnow().shift(minutes=-5).format()
-    trades = exchange_struct.fetch_trades(symbol='BTC/USD', since=since)
+    trades = exchange_instance.fetch_trades(symbol='BTC/USD', since=since)
     assert len(trades) > 0
     for trade in trades:
         assert trade.price
@@ -151,79 +154,79 @@ def test_fetch_trades(exchange_struct):
 
 
 @pytest.mark.order(18)
-def test_fetch_my_trades(exchange_struct):
+def test_fetch_my_trades(exchange_instance):
     return
 
 
 @pytest.mark.order(19)
-def test_rearrange_tickers(exchange_struct):
+def test_rearrange_tickers(exchange_instance):
     return
 
 
 @pytest.mark.order(20)
-def test_decimal_rules(exchange_struct):
+def test_decimal_rules(exchange_instance):
     return
 
 
 @pytest.mark.order(21)
-def test_minimum_order_cost(exchange_struct):
-    minord = exchange_struct.minimum_order_cost(symbol='BTC/USD')
+def test_minimum_order_cost(exchange_instance):
+    minord = exchange_instance.minimum_order_cost(symbol='BTC/USD')
     assert minord == 0.0001
-    minord = exchange_struct.minimum_order_cost(symbol='XMR/BTC')
+    minord = exchange_instance.minimum_order_cost(symbol='XMR/BTC')
     assert minord == 0.035
 
 
 @pytest.mark.order(22)
-def test_quote_symbol(exchange_struct):
+def test_quote_symbol(exchange_instance):
     pass
 
 
 @pytest.mark.order(23)
-def test_get_decimals(exchange_struct):
+def test_get_decimals(exchange_instance):
     return
 
 
 @pytest.mark.order(24)
-def test_stop_websockets(exchange_struct):
+def test_stop_websockets(exchange_instance):
     return
 
 
 @pytest.mark.order(25)
-def test_start_ticker_socket(exchange_struct, caplog):
-    exchange_struct.start_ticker_socket(tickers=['BTC/USD', 'ETH/USD'])
+def test_start_ticker_socket(exchange_instance, caplog):
+    exchange_instance.start_ticker_socket(tickers=['BTC/USD', 'ETH/USD'])
     time.sleep(3)
-    assert "Subscribe" in caplog.text
-    exchange_struct.stop_ticker_socket()
+    assert "subscribed" in caplog.text.lower()
+    exchange_instance.stop_ticker_socket()
     time.sleep(3)
-    assert "Unsubscribed" in caplog.text
-    exchange_struct.start_ticker_socket(tickers=['BTC/USD', 'ETH/USD', 'MATIC/USD'])
+    assert "unsubscribed" in caplog.text.lower()
+    exchange_instance.start_ticker_socket(tickers=['BTC/USD', 'ETH/USD', 'MATIC/USD'])
     time.sleep(3)
-    assert "Subscribe" in caplog.text
-    exchange_struct.stop_ticker_socket()
+    assert "subscribe" in caplog.text.lower()
+    exchange_instance.stop_ticker_socket()
     time.sleep(3)
-    assert "Unsubscribed" in caplog.text
+    assert "unsubscribed" in caplog.text.lower()
 
 
 @pytest.mark.order(26)
-def test_socket_connected(exchange_struct):
+def test_socket_connected(exchange_instance):
     return
 
 
 @pytest.mark.order(27)
-def test_get_asset_pairs(exchange_struct):
+def test_get_asset_pairs(exchange_instance):
     return
 
 
 @pytest.mark.order(28)
-def test_start_my_trades_socket(exchange_struct):
+def test_start_my_trades_socket(exchange_instance):
     return
 
 
 @pytest.mark.order(29)
-def test_start_trade_socket(exchange_struct):
+def test_start_trade_socket(exchange_instance):
     return
 
 
 @pytest.mark.order(30)
-def test_my_open_orders_socket(exchange_struct):
+def test_my_open_orders_socket(exchange_instance):
     return

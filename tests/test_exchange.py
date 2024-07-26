@@ -12,7 +12,7 @@ def exchanges():
         exch = dbase.get_exchange(user_id=uid)
     yield exch
 
-
+@pytest.mark.order(1)
 def test_exchange_operations(exchanges):
     for exch in exchanges:
         exch1 = exchange.Exchange(exchange=exch.cat_name, params=exch)

@@ -1,0 +1,16 @@
+// System Architecture
+digraph {
+	rankdir=LR
+	ClientSystem [label="Client's Existing
+Loyalty System"]
+	API [label="API Layer"]
+	SaaSSystem [label="Your SaaS Web3
+Loyalty Program"]
+	WalletService [label="Web3 Wallet
+Creation Service"]
+	Blockchain [label=Blockchain]
+	ClientSystem -> API [label="Interacts with"]
+	API -> SaaSSystem [label=Manages]
+	SaaSSystem -> WalletService [label="Creates wallets"]
+	WalletService -> Blockchain [label="Interacts with"]
+}

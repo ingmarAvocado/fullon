@@ -8,6 +8,7 @@ from libs.cache import Cache
 from libs.database import Database
 from libs.structs.order_struct import OrderStruct
 from libs.structs.exchange_struct import ExchangeStruct
+from libs.structs.trade_struct import TradeStruct
 from typing import Dict, Union, List, Any, Optional
 import arrow
 
@@ -15,13 +16,14 @@ logger = log.fullon_logger(__name__)
 
 
 class Interface:
-
-    _socket: Optional[Any]
+    _socket: Optional[Any] = None
     _sleep: float = 3.0
+    _ws_subscriptions: Dict = {}
+    _markets: Dict = {}
     websocket_connected = False
     sleep = 0
-    ohlcv = False
     has_ticker: bool = True
+    subscriptions: List = []
 
     def __init__(self,
                  exchange: str,
@@ -32,10 +34,10 @@ class Interface:
         if params:
             self.params = params
         key, secret = self.get_user_key(ex_id=self.params.ex_id)
-        self.ws = getattr(ccxt, exchange)({
+        self.ws = getattr(ccxt, self.exchange)({
             'apiKey': key,
             'secret': secret,
-            'verbose': False,
+            'verbose': True,
             'enableRateLimit': False
         })
 
@@ -196,9 +198,8 @@ class Interface:
         except ccxt.ExchangeError as error:
             logger.error("Exchange Error, sleeping: %s", str(error))
             retvalue = False
-        except ccxt.base.errors.ExchangeError:
-            logger.error("Exchange Error, sleeping: %s", str(error))
-            retvalue = False
+        except:
+            raise
         return retvalue
 
     def get_cash(self, symbol):
@@ -230,6 +231,7 @@ class Interface:
         Returns:
         dict: A dictionary of order IDs and their corresponding status.
         """
+        symbol = self.replace_symbol(symbol=symbol)
         ret_orders = {}
         if limit is None:
             limit = 300
@@ -280,7 +282,7 @@ class Interface:
         # self.ws.verbose = False
         return o
 
-    def get_candles(self, symbol: str, timeframe: str, since: Union[int, float], limit: Union[int, None], params: dict = {}) -> Union[List, None]:
+    def get_candles(self, symbol: str, timeframe: str, since: Union[int, float], limit: Optional[int] = 5000, params: dict = {}) -> Union[List, None]:
         """
         Fetches candlestick data for a given trading symbol and timeframe.
 
@@ -294,19 +296,31 @@ class Interface:
         Returns:
         list or None: A list of candlestick data or None if no data is available.
         """
+        symbol = self.replace_symbol(symbol=symbol)
         if len(str(since)) != 13:  # not in milliseconds
             since = int(since * 1000)
-        if since and not limit:
-            ohlcv = self.execute_ws("fetch_ohlcv", [symbol, timeframe, since])
-        elif since and limit:
-            ohlcv = self.execute_ws("fetch_ohlcv", [symbol, timeframe, since, limit, params])
-        elif not since and not limit:
-            ohlcv = self.execute_ws("fetch_ohlcv", [symbol, timeframe])
-        else:
-            raise ValueError("Invalid arguments: either since or limit must be specified.")
-        if not ohlcv:
+        if not limit:
+            limit = 5000
+        try:
+            if since and not limit:
+                ohlcv = self.execute_ws("fetch_ohlcv", [symbol, timeframe, since])
+            elif since and limit:
+                ohlcv = self.execute_ws("fetch_ohlcv", [symbol, timeframe, since, limit])
+            elif not since and not limit:
+                ohlcv = self.execute_ws("fetch_ohlcv", [symbol, timeframe])
+            else:
+                raise ValueError("Invalid arguments: either since or limit must be specified.")
+        except Exception as e:
+            print(f"Error fetching OHLCV data: {e}")
             return None
-        return ohlcv
+        if not ohlcv:
+            print(f"No OHLCV data returned for {symbol} with timeframe {timeframe}")
+            return None
+        formatted_ohlcv = [
+           [arrow.get(sublist[0] / 1000).format('YYYY-MM-DD HH:mm:ss')] + sublist[1:]
+           for sublist in ohlcv
+        ]
+        return formatted_ohlcv
 
     def get_tickers(self, sleep: int = 1) -> Dict[str, Dict[str, Union[str, float]]]:
         """
@@ -411,11 +425,16 @@ class Interface:
                     cons_positions[pair]['total_cost'] / cons_positions[pair]['total_volume']
         return cons_positions
 
+    def replace_symbol(self, symbol):
+        """
+        """
+        return symbol
+
     def fetch_trades(self,
                      symbol: Optional[str] = None,
                      since: Optional[int] = None,
                      limit: Optional[int] = None,
-                     params: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+                     params: list[str, Any] = {}) -> List[Dict[str, Any]]:
         """
         Fetches all trades for a given symbol from the exchange.
 
@@ -428,39 +447,77 @@ class Interface:
         Returns:
             List[Dict[str, Any]]: A list of dictionaries representing the trades.
         """
-        trades = self.execute_ws(
-            "fetch_trades", [symbol, since, limit, params])
-        correctedtrades = []
+        if symbol is None:
+            raise ValueError("Symbol is required")
+        if since:
+            since = int(arrow.get(since).timestamp() * 1000)
+        try:
+            symbol = self.replace_symbol(symbol=symbol)
+            trades = self.execute_ws("fetch_trades", [symbol, since, limit])
+        except Exception as e:
+            print(f"An error occurred while fetching trades: {e}")
+            return []
+        trade_structs = []
         for t in trades:
-            if t['info']['isMaker'] == "True":
-                t['takerOrMaker'] = "Maker"
-                t['type'] = "limit"
-            else:
-                t['takerOrMaker'] = "Taker"
-                t['type'] = "market"
-            correctedtrades.append(t)
-        return correctedtrades
+            _t = t['info']
+            if t['type'] is None:
+                t['type'] = 'market'
+            trade = {
+                'price': _t['price'],
+                'volume': _t['size'],
+                'time': arrow.get(_t['timestamp']).naive,
+                'timestamp': arrow.get(t['timestamp']).timestamp(),
+                'side': t['side'],
+                'order_type': t['type'],
+                'ex_trade_id': _t['trdMatchID'],
+                'symbol': _t['symbol']}
+            trade_structs.append(TradeStruct.from_dict(trade))
+        return trade_structs
 
     def fetch_my_trades(self,
                         symbol: Optional[str] = None,
                         since: Optional[Union[int, float]] = None,
+                        last_id: Optional[Union[int, float]] = None,
                         limit: Optional[int] = None,
-                        params: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
-        """
-        Fetches the user's trades from the exchange.
+                        params: Optional[Dict[str, Any]] = None) -> List[TradeStruct]:
+        """Fetches the user's trades.
 
         Args:
-            symbol (str, optional): The symbol to filter the trades by. Defaults to None.
-            since (int, optional): The timestamp to filter trades after. Defaults to None.
-            limit (int, optional): The maximum number of trades to fetch. Defaults to None.
-            params (Dict[str, Any], optional): Additional parameters to pass to the exchange API. Defaults to {}.
+            symbol (Optional[str], optional): The trading symbol. Defaults to None.
+            since (Optional[int], optional): The start timestamp for the trades. Defaults to None.
+            limit (Optional[int], optional): The maximum number of trades to retrieve. Defaults to None.
+            params (Optional[Dict[str, Any]], optional): Additional parameters. Defaults to None.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries representing the trades.
+            Any: The user's trades.
         """
+        symbol = self.replace_symbol(symbol)
         trades = self.execute_ws(
             "fetch_my_trades", [symbol, since, limit])
-        return trades
+        if symbol is None:
+            raise ValueError("Symbol is required")
+        try:
+            symbol = self.replace_symbol(symbol=symbol)
+            trades = self.execute_ws("fetch_trades", [symbol, since, limit])
+        except Exception as e:
+            print(f"An error occurred while fetching trades: {e}")
+            return []
+        trade_structs = []
+        for t in trades:
+            _t = t['info']
+            if t['type'] is None:
+                t['type'] = 'market'
+            trade = {
+                'price': _t['price'],
+                'volume': _t['size'],
+                'time': arrow.get(_t['timestamp']).naive,
+                'timestamp': t['timestamp'],
+                'side': t['side'],
+                'order_type': t['type'],
+                'ex_trade_id': _t['trdMatchID'],
+                'symbol': _t['symbol']}
+            trade_structs.append(TradeStruct.from_dict(trade))
+        return trade_structs
 
     def rearrange_tickers(self, tickers):
         newtickers = {}
@@ -534,15 +591,17 @@ class Interface:
         """
         return int(self.ws.markets[symbol]['info']['cost_decimals'])
 
-    def stop_websockets(self) -> None:
+    def stop_websockets(self) -> bool:
         """
         Stops the WebSocket connection and sets the `websocket_connected` attribute to False.
         """
         if self._socket:
             self._socket.stop()
             self.websocket_connected = False
+            return True
         else:
             logger.warning("WebSocket is not initialized")
+        return True
 
     def start_ticker_socket(self, tickers: list) -> bool:
         """
@@ -565,20 +624,32 @@ class Interface:
         """
         return False
 
-    def socket_connected(self) -> bool:
+    def start_candle_socket(self, tickers: list) -> bool:
         """
-        Checks if the WebSocket connection is still active.
+        Subscribes to ticker updates for a list of trading pairs and saves them to Redis.
+
+        Args:
+        tickers (list): A list of trading pairs to subscribe to.
 
         Returns:
-        bool: True if the WebSocket connection is active, False otherwise.
+        bool: True if the subscription was successfully created, False otherwise.
         """
-        return False
+        return True
 
-    def connect_websocket(self):
+    def stop_candle_socket(self) -> bool:
+        """
+        UnSubscribes to ticker updates for a list of trading pairs and saves them to Redis.
+
+        Returns:
+        bool: True if the subscription was successfully stopped, False otherwise.
+        """
+        return True
+
+    def connect_websocket(self) -> bool:
         """
         Establishes a connection to the WebSocket and sets the `websocket_connected` attribute to True.
         """
-        pass
+        return False
 
     def get_sleep(self) -> float:
         """Gets the currency information for a symbol.
@@ -622,7 +693,17 @@ class Interface:
         Returns:
         bool: True if the subscription was successfully created, False otherwise.
         """
-        return False
+        return True
+
+    def stop_trade_socket(self) -> bool:
+        """
+        Subscribes to user trades
+
+
+        Returns:
+        bool: True if the subscription was successfully created, False otherwise.
+        """
+        return True
 
     def my_open_orders_socket(self) -> bool:
         """
@@ -632,3 +713,12 @@ class Interface:
         None
         """
         return False
+
+    def socket_connected(self) -> bool:
+        """
+        Checks if the WebSocket connection is still active.
+
+        Returns:
+        bool: True if the WebSocket connection is active, False otherwise.
+        """
+        return True

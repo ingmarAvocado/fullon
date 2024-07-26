@@ -6,7 +6,6 @@ from libs import log
 from libs.structs.symbol_struct import SymbolStruct
 from libs.structs.exchange_struct import ExchangeStruct
 from libs.structs.crawler_analyzer_struct import CrawlerAnalyzerStruct
-from libs.structs.crawler_struct import CrawlerStruct
 from libs.database import Database
 from typing import Optional, Tuple
 
@@ -23,7 +22,7 @@ def install():
     ex_id, cat_ex_id = install_exchanges(uid=uid)
     if not ex_id or not cat_ex_id:
         print("Could not install admin exchanges")
-    #install_secrets(uid=uid, cat_ex_id=cat_ex_id)
+    #install_secrets(uid=uid, ex_id=ex_id)
     install_bots(uid=uid, ex_id=ex_id, cat_ex_id=cat_ex_id)
     install_crawler_follows(uid=uid)
     install_crawler_analyzers()
@@ -170,17 +169,27 @@ def install_exchanges(uid: int) -> Tuple[str, str]:
         "test": "False",
         "active": "True"}
     ex_id = user.add_exchange(exch=ExchangeStruct.from_dict(exchange))
+
+    with Database() as dbase:
+        cat_ex_id = dbase.get_cat_exchanges(exchange='bitmex')[0][0]
+    exchange = {
+        "uid": 1,
+        "cat_ex_id": cat_ex_id,
+        "name": "bitmex1",
+        "test": "False",
+        "active": "True"}
+    ex_id = user.add_exchange(exch=ExchangeStruct.from_dict(exchange))
     return (ex_id, cat_ex_id)
 
 
-def install_secrets(uid: int, cat_ex_id: str):
+def install_secrets(uid: int, ex_id: str):
     """
     """
     user = user_manager.UserManager()
     key = input("Please give your exchange API key to fullon: ")
     secret = input("\nPlease give your exchange SECRET key to fullon: ")
 
-    user.set_secret_key(user_id=uid, exchange=cat_ex_id, key=key, secret=secret)
+    user.set_secret_key(user_id=uid, exchange=ex_id, key=key, secret=secret)
 
     # -------------------------------------------------------
     # New bot # 1

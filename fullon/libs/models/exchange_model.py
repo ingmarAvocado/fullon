@@ -243,11 +243,11 @@ class Database(database.Database):
 
     #gets exchange cat_id form exchange name
     def get_exchange_id(self, exchange_name, uid):
-        sql = f"SELECT ex_id from exchanges where name='{exchange_name}' and uid = '{uid}'"
+        sql = f"SELECT ex_id from exchanges where name='{exchange_name}' and uid = {uid}"
         try:
             cur = self.con.cursor()
             cur.execute(sql)
-            row =  cur.fetchone()
+            row = cur.fetchone()
             cur.close()
             return row[0]
         except (Exception, psycopg2.DatabaseError) as error:
@@ -256,12 +256,14 @@ class Database(database.Database):
 
     def get_exchange(self,
                      ex_id: Optional[str] = None,
+                     exchange_name: Optional[str] = None,
                      user_id: Optional[str] = None) -> List[ExchangeStruct]:
         """
         Retrieve exchanges based on the input parameters.
 
         Args:
             ex_id (Optional[str]): The exchange ID.
+            exchange_name (Optional[str]): The exchange cat name
             user_id (Optional[str]): User ID for filtering exchanges.
 
         Returns:
@@ -284,6 +286,9 @@ class Database(database.Database):
         if user_id:
             sql += " AND public.exchanges.uid=%s"
             params.append(user_id)
+        if exchange_name:
+            sql += " AND public.cat_exchanges.name=%s"
+            params.append(exchange_name)
         try:
             with self.con.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 rows = []

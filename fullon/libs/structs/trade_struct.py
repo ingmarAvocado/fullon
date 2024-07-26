@@ -13,6 +13,7 @@ class TradeStruct(Struct):
     ex_id: str = ''
     symbol: str = ''
     order_type: str = ''
+    order: str = ""
     side: str = ''
     volume: Optional[float] = 0
     price: Optional[float] = None

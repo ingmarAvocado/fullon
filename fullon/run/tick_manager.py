@@ -41,15 +41,14 @@ class TickManager:
         with self.thread_lock:  # Acquire the lock before accessing shared resources
             if thread in self.stop_signals:
                 try:
-                    self.stop_signals[thread].set()
                     _thread = self.threads[thread]
-                    _thread.join(timeout=2)  # Wait for the thread to finish with a timeout
                     del self.threads[thread]
+                    _thread.join(timeout=2)  # Wait for the thread to finish with a timeout
                     logger.info(f"Stopped tick {thread}")
                 except KeyError:
                     pass
                 except Exception as error:
-                    logger.error(f"Error stopping tick {thread}: {error}")
+                    logger.warning(f"Error stopping tick {thread}: {error}")
             else:
                 logger.info(f"No running ticker found for exchange {thread}")
 
@@ -210,6 +209,7 @@ class TickManager:
         Starts the tick data collection loop for the specified exchange.
         """
         # Create a new stop signal Event for the current thread and store it in the stop_signals dictionary
+        #print(exchange_name)
         stop_signal = threading.Event()
         self.stop_signals[exchange_name] = stop_signal
         tick_exchange = exchange.Exchange(exchange_name)
@@ -217,32 +217,26 @@ class TickManager:
             store.del_exchange_ticker(exchange=exchange_name)
         if tick_exchange.has_ticker():
             pairs = self.get_exchange_pairs(exchange_name=exchange_name)
+            if not pairs:
+                return self.stop(exchange_name)
             tick_exchange.start_ticker_socket(tickers=pairs)
-        del tick_exchange
-        time.sleep(1)
+
         while not stop_signal.is_set():
-            if self.check_most_recent_tick(exchange_name=exchange_name):
+            check = self.check_most_recent_tick(exchange_name=exchange_name)
+            if check:
                 with Cache() as store:
                     store.update_process(tipe="tick",
                                          key=exchange_name,
                                          message="Updated")
-                for _ in range(35):  # 35 * 0.2 seconds = 7 seconds
+                for _ in range(10):  # 5 * 0.2 seconds = 1 seconds
                     if stop_signal.is_set():
                         break
                     time.sleep(0.2)
             else:
-                # so that means restart
-                self.stop(thread=exchange_name)
-                tick_exchange = exchange.Exchange(exchange_name)
                 tick_exchange.stop_ticker_socket()
-                del tick_exchange
-                self.run_loop_one_exchange(exchange_name=exchange_name,
-                                           monitor=True)
-                return
-        try:
-            del self.stop_signals[exchange_name]
-        except KeyError:
-            pass
+                time.sleep(1)
+                if tick_exchange.has_ticker():
+                    tick_exchange.start_ticker_socket(tickers=pairs)
 
     def run_loop(self) -> None:
         """

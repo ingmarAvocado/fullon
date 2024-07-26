@@ -146,12 +146,14 @@ def exchange1(dbase):
     """
     _exchange = dbase.get_exchange(ex_id=1)
     yield _exchange[0]
+    del _exchange[0]
 
 
 @pytest.fixture(scope="module")
 def rpc_client(server):
     if server:
         yield xmlrpc.client.ServerProxy(f"http://{settings.XMLRPC_HOST}:{settings.XMLRPC_PORT}", allow_none=True)
+
 
 def get_symbol_struct():
     VIEW_NAME = "kraken_agld_usd.candles1m"
