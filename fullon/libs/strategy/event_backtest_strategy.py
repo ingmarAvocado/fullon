@@ -184,7 +184,8 @@ class Strategy(strategy.Strategy):
 
         # Set the event timeout for all data feeds to the closest event
         for num, _ in enumerate(self.str_feed):
-            self.str_feed[num].event_timeout = times[0]
+            self.str_feed[num].event_timeout = times[0].shift(minutes=self.str_feed[1].bar_size_minutes)
+            #self.str_feed[num].event_timeout = times[0]
 
     def next_event_pos(self) -> None:
         """
@@ -238,6 +239,28 @@ class Strategy(strategy.Strategy):
         """
         Find the date of the next buy or sell signal based on the current time.
         """
+        curtime = pandas.to_datetime(self.next_open.shift(minutes=-self.str_feed[1].bar_size_minutes).format('YYYY-MM-DD HH:mm:ss'))
+        try:
+            # Filter based on conditions and time
+            mask = (self.indicators_df['entry'] == True) & (self.indicators_df.index.date >= curtime.date())
+            filtered_df = self.indicators_df[mask]
+            # Check if the filtered dataframe has any rows
+            if not filtered_df.empty:
+                first_entry_date = filtered_df.index[0]
+                return arrow.get(str(first_entry_date))
+            else:
+                return None
+        except KeyError as error:
+            if 'entry' in str(error):
+                logger.error("No entry column in indicators_df")
+                self.cerebro.runstop()
+            else:
+                raise
+
+    def event_in2(self) -> Optional[arrow.Arrow]:
+        """
+        Find the date of the next buy or sell signal based on the current time.
+        """
         curtime = pandas.to_datetime(self.next_open.format('YYYY-MM-DD HH:mm:ss'))
         try:
             # Filter based on conditions and time, do not change == to is
@@ -253,7 +276,6 @@ class Strategy(strategy.Strategy):
         # Check if the filtered dataframe has any rows
         if not filtered_df.empty:
             return arrow.get(str(filtered_df.index[0]))
-        # If the function hasn't returned by this point, simply return None
 
     def event_out(self) -> Optional[arrow.Arrow]:
         """

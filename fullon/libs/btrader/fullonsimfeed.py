@@ -162,9 +162,8 @@ class FullonSimFeed(FullonFeed):
         while os.path.exists(filename) and loop_count < max_loops:
             time.sleep(sleep_time)
             loop_count += 1
-
         if loop_count >= max_loops:
-            raise Exception("Timeout waiting for flagfile to be deleted.")
+            raise Exception(f"Timeout waiting for flagfile ({filename}) to be deleted.")
 
     @staticmethod
     def _create_empty_flagfile(filename):

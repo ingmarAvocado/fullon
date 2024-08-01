@@ -22,17 +22,17 @@ class Strategy(strat.Strategy):
     """description"""
 
     params = (
-        ('trailing_stop', 11),
-        ('take_profit', 20),
+        ('trailing_stop', 11),  # 13
+        ('take_profit', 20),  # 14
         ('rsi', 14),
-        ('rsi_entry', 65),
+        ('rsi_entry', 65),  # 60
         ('cmf', 18),
-        ('cmf_entry', 11),
+        ('cmf_entry', 11),  # 9
         ('vwap_entry', 0.4),
         ('macd_entry', 2.5),
         ('mfi_entry', 60),
-        ('pre_load_bars', 200),
-        ('sma', 200),
+        ('pre_load_bars', 234),  # 200
+        ('sma', 200),  # 100
         ('prediction_steps', 1),
         ('feeds', 2),
         ('threshold', 0.48)
@@ -69,6 +69,7 @@ class Strategy(strat.Strategy):
         only works when there is a position, runs every tick
         """
         # Check for stop loss
+
         res = self.check_exit()
         if not res:
             if self.pos[0] > 0 and self.indicators.exit:
@@ -114,7 +115,7 @@ class Strategy(strat.Strategy):
         self.indicators_df['sma'] = self.indicators_df['close'].rolling(window=int(self.p.sma)).mean()
         self.indicators_df['entry'] = self.indicators_df['entry'] & (self.indicators_df['close'] > self.indicators_df['sma'])
         self.indicators_df['exit'] = self.indicators_df['score'] < (self.p.threshold/2)*len(self.regressors)
-        self.adjust_index(feed_num=1)
+        #self.adjust_index(feed_num=1)
 
     def set_indicators(self):
         """
@@ -123,7 +124,8 @@ class Strategy(strat.Strategy):
 
         printed when verbose is true in simuls
         """
-        current_time = self.curtime[1].format('YYYY-MM-DD HH:mm:ss')
+        bar_size = self.str_feed[1].bar_size_minutes
+        current_time = self.curtime[1].shift(minutes=-bar_size).format('YYYY-MM-DD HH:mm:ss')
         '''
         for indicator in ['entry', 'exit', 'score', 'adsoc',
                           'ema_long', 'rsi_entry', 'cmf_entry',
@@ -279,7 +281,7 @@ class Strategy(strat.Strategy):
         data = data.drop(columns=columns_to_drop)
         data = data.dropna()
         # Define conditions for long entry and exit signals for RSI
-        data['rsi_entry'] = (data['rsi'] > self.p.rsi_entry) & (data['rsi'] < 80)
+        data = data.assign(rsi_entry=(data['rsi'] > self.p.rsi_entry) & (data['rsi'] < 80))
         data['rsi_sma_entry'] = (data['rsi'] > data['rsi_sma'])
         # Define conditions for long entry and exit signals for CMF
         data['cmf_entry'] = data['cmf']*100 > self.p.cmf_entry
@@ -296,5 +298,7 @@ class Strategy(strat.Strategy):
         # Define conditions for entry and exit for Stoch
         columns_to_drop = ['macdsignal', 'macd_histo']
         data = data.drop(columns=columns_to_drop)
-        data = data.dropna()
+        '''
+        data = data.dropna() //mmmm interesting issue here
+        '''
         return data

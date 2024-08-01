@@ -56,7 +56,7 @@ class Strategy(bt.Strategy):
         Initialize the class.
 
         Attributes:
-            last_candle_date (dict): A dictionary to store the last candle date.
+            last_bar_date (dict): A dictionary to store the last candle date.
             dbase (Database): An instance of the Database class.
             helper (Helper): An instance of the Helper class.
             dry_run (bool): Whether to perform a dry run.
@@ -73,7 +73,7 @@ class Strategy(bt.Strategy):
         """
         self._instance_variables()
         self._set_datafeeds()
-        self.last_candle_date = {}
+        self.last_bar_date = {}
         self.dbase = Database()
         self.helper = self.p.helper
         self.dry_run = self.helper.dry_run
@@ -128,8 +128,8 @@ class Strategy(bt.Strategy):
         self.anypos = 0
         self.tick = {}
         self.curtime = {}
-        self.last_candle_date = {}
-        self.new_candle = {}
+        self.last_bar_date = {}
+        self.new_bar = {}
         self.orders = {}
         self.bot_vars = {}
         self.entry_signal: dict[Any, Any] = {}
@@ -264,7 +264,7 @@ class Strategy(bt.Strategy):
                 if curtime.microsecond > 999000:
                     curtime = curtime.ceil('minute').shift(microseconds=1)
             self.curtime[num] = curtime
-            self.new_candle[num] = self._is_new_candle(feed=num)
+            self.new_bar[num] = self._is_new_bar(feed=num)
         self.anypos = any_pos
 
     def set_indicator(self, name: str, value: Any) -> None:
@@ -327,7 +327,7 @@ class Strategy(bt.Strategy):
             print("Entry Signal: ", self.entry_signal[feed])
         except (AttributeError, KeyError) as error:
             print("Entry Signal: ", "N/A for this feed")
-        print("New Candle: ", self.new_candle[feed])
+        print("New Bar: ", self.new_bar[feed])
         if self.pos[feed]:
             try:
                 print("Profit: ", self.take_profit[feed])
@@ -437,7 +437,7 @@ class Strategy(bt.Strategy):
                 return True
         return False
 
-    def _is_new_candle(self, feed: int) -> bool:
+    def _is_new_bar(self, feed: int) -> bool:
         """
         Check if a new candle has been formed in the given data feed.
 
@@ -455,16 +455,16 @@ class Strategy(bt.Strategy):
         current_date = self.str_feed[feed].datetime[0]
 
         # Check if a new candle has been formed
-        new_candle_formed = (
-            feed not in self.last_candle_date or
-            current_date > self.last_candle_date.get(feed, 0)
+        new_bar_formed = (
+            feed not in self.last_bar_date or
+            current_date > self.last_bar_date.get(feed, 0)
         )
 
         # Update the last candle date if a new candle has been formed
-        if new_candle_formed:
-            self.last_candle_date[feed] = current_date
+        if new_bar_formed:
+            self.last_bar_date[feed] = current_date
 
-        return new_candle_formed
+        return new_bar_formed
 
     def save_log(self, order: bt.Order, num: int):
         """ description """

@@ -89,7 +89,7 @@ class Strategy(strategy.Strategy):
             num: int = feed number to test on
             side: str =  what type of side (buy/sell)
         """
-        self.new_candle[num] = False
+        self.new_bar[num] = False
         self.entry_signal[num] = ""
 
         match self.loop:
@@ -99,7 +99,7 @@ class Strategy(strategy.Strategy):
                     print("Position when i shouldn't have")
                     self.cerebro.runstop()
                 self._print_position_variables(num)
-                self.new_candle[num] = False
+                self.new_bar[num] = False
                 self.entry_signal[num] = None
                 self.p.trailing_stop = None
             case 2:

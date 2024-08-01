@@ -9,7 +9,7 @@ from run.system_manager import TickManager
 from run.system_manager import BotStatusManager
 from multiprocessing import Event
 
-settings.LOG_LEVEL = 'logging.ERROR'
+settings.LOG_LEVEL = 'logging.INFO'
 
 logger = log.fullon_logger(__name__)
 
@@ -26,7 +26,7 @@ am.run_account_loop()
 bmanager = BotStatusManager()
 bmanager.run_loop()
 '''
-bot1 = Bot(9)
+bot1 = Bot(4)
 bot1.dry_run = True
 print("starting")
 try:

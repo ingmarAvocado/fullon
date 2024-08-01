@@ -77,6 +77,7 @@ def _wait_for_flagfile(filename, max_loops=600, sleep_time=0.5):
     if loop_count >= max_loops:
         raise Exception("Timeout waiting for flagfile to be deleted.")
 
+
 def _create_empty_flagfile(filename):
     """
     Create an empty flag file with the given filename.

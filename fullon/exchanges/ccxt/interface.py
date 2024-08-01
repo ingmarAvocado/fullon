@@ -37,7 +37,7 @@ class Interface:
         self.ws = getattr(ccxt, self.exchange)({
             'apiKey': key,
             'secret': secret,
-            'verbose': True,
+            'verbose': False,
             'enableRateLimit': False
         })
 
@@ -265,7 +265,6 @@ class Interface:
         pass
 
     def create_order(self, order: OrderStruct) -> Any:
-        # self.ws.verbose = True
         # print(f"order details symbol ({symbol}) amount ({amount}) side ({side}) order_type ({order_type})")
         if amount % 1 == 0:
             amount = int(amount)
@@ -279,7 +278,6 @@ class Interface:
             o = self.execute_ws(
                 "create_order", [
                     symbol, order_type, side, amount, price, params])
-        # self.ws.verbose = False
         return o
 
     def get_candles(self, symbol: str, timeframe: str, since: Union[int, float], limit: Optional[int] = 5000, params: dict = {}) -> Union[List, None]:
@@ -364,6 +362,7 @@ class Interface:
         :return: A list containing the user's account information or
                  None if balances could not be retrieved.
         """
+        return {}
         pre_balances = self.execute_ws("fetchBalance")
         if not pre_balances:
             return {}
@@ -383,7 +382,7 @@ class Interface:
             if 'USD' not in asset:
                 pairs.append(f"{asset}/USD")
         pairs = self.replace_symbols(symbols=pairs)
-        tickers = self.get_tickers(pairs=pairs)
+        tickers = self.get_tickers()
         for symbol, balance in balances.items():
             total += self.get_usd_value(symbol=symbol,
                                         balance=balance['total'],
@@ -399,6 +398,11 @@ class Interface:
             'base': 'USD',
             'positions': positions}
         return account
+
+    def replace_symbols(self, symbols):
+        """
+        """
+        return None
 
     def get_positions(self) -> Dict:
         """

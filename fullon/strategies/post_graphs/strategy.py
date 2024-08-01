@@ -31,7 +31,7 @@ class Strategy(strat.Strategy):
     def local_next(self):
         """ description """
         self.count = 0
-        if self.new_candle[1]:
+        if self.new_bar[1]:
             self.plot_indicators()
             msg = Messenger()
             txt = 'Automated update on Bitcoin Sentiment. Any suggestions are welcome!'

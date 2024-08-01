@@ -222,7 +222,7 @@ class Strategy(Strategy):
         """
         for num, data in enumerate(self.str_feed):
             if data.timeframe != bt.TimeFrame.Ticks:
-                if self.new_candle[num]:
+                if self.new_bar[num]:
                     self.set_indicators_df()
 
     def set_indicators_df(self):
