@@ -156,6 +156,7 @@ class Exchange:
         try:
             self.uid = self.params.uid
             self.ex_id = self.params.ex_id
+            self.ex_key = self.params.name
         except AttributeError:
             return
 

@@ -35,6 +35,7 @@ class ExchangeMethods():
                 self.params = params
                 self.uid = params.uid
                 self.ex_id = params.ex_id
+                self.ex_key = params.name
             except AttributeError:
                 pass
         self.load_exchange_interface(exchange=exchange, params=params)

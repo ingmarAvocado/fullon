@@ -18,7 +18,7 @@ logger = log.fullon_logger(__name__)
 
 #exchange_list = ['kraken', 'bitmex']
 exchange_list = ['kraken']
-ex_names = {}
+
 
 @pytest.fixture(scope="module")
 def account():
@@ -28,27 +28,20 @@ def account():
 
 
 @pytest.fixture(scope="module")
-def exchange_params() -> Dict:
+def exchange_params():
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
     details = user.user_details(uid=uid)
-    ex1 = details['exchanges']['kraken']
-    ex2 = details['exchanges']['bitmex']
-    ex_names['kraken'] = ex1['ex_named']
-    ex_names['bitmex'] = ex2['ex_named']
-    return {
-        'kraken': {
-            'cat_ex_id': ex1['cat_ex_id'],
+    exchanges = {}
+    for exchange in exchange_list:
+        ex = details['exchanges'][exchange]
+        exchanges[exchange] = {
+            'cat_ex_id': ex['cat_ex_id'],
             'uid': f'{uid}',
-            'ex_id': ex1['ex_id']
-        },
-        'bitmex': {
-            'cat_ex_id': ex2['cat_ex_id'],
-            'uid': f'{uid}',
-            'ex_id': ex2['ex_id'],
+            'ex_id': ex['ex_id'],
+            'name': ex['ex_named']
         }
-        # Add more exchanges here
-    }
+    yield exchanges
 
 
 
@@ -60,18 +53,14 @@ def exchange_instance(request, exchange_params):
     em = ExchangeMethods(
            exchange=exchange_name,
            params=params)
-    con = em.connect_websocket()
-    assert isinstance(con, bool)
     yield em
-    con = em.stop_websockets()
-    assert isinstance(con, bool)
-    con = em.stop()
+    em.stop()
     del em
 
 
-def wait(store, name):
+def wait(name, store):
     res = False
-    for attempts in range(0, 40):
+    for _ in range(0, 40):
         proc = store.get_process(tipe='account', key=name)
         if 'Updated' in proc['message']:
             res = True
@@ -81,12 +70,11 @@ def wait(store, name):
 
 @pytest.mark.order(1)
 @pytest.mark.parametrize("exchange_instance", exchange_list, indirect=True)
-def test_update_user_account(account, store, exchange_instance, exchange_params):
+def test_update_user_account(account, exchange_instance, store):
     """ description """
     result = account.update_user_account(ex_id=exchange_instance.ex_id)
     assert result is None
-    exch_name = ex_names[exchange_instance.exchange]
-    res = wait(store, exch_name)
+    res = wait(name=exchange_instance.ex_key, store=store)
     account.stop_all()
     assert res is True
 

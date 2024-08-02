@@ -193,7 +193,7 @@ def get_symbol_struct():
 
 
 @pytest.fixture(scope="module")
-def symbol_test():    
+def symbol_test():
     symbol_struct = get_symbol_struct()
     install = InstallManager()
     install.remove_symbol_by_struct(symbol=symbol_struct)

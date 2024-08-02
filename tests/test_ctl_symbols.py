@@ -16,7 +16,7 @@ def mock_prompt(prompt, **kwargs):
         "(Symbols Shell Feed) Pick feed 1 period > ": "Minutes",
         "(Symbols Shell Feed) Pick feed 1 compression > ": "60",
         "(Symbols Shell Feed) Pick Exchange - press [tab] > ": "kraken",
-        "(Symbols Shell Feed) Pick Symbol - press [tab] > ": "WAVES/ETH",
+        "(Symbols Shell Feed) Pick Symbol - press [tab] > ": "XRP/EUR",
         "(Symbols Shell Feed) Pick Symbol - Backload data from (days) > ": 10,
         "(Symbols Shell Feed) are you sure you want delete type 'yes' > ": "yes"
         }
@@ -64,7 +64,7 @@ def test_add_symbol(mock_prompt_session, ctl):
     mock_prompt_session.return_value.prompt.side_effect = mock_prompt
     with create_pipe_input() as inp:
         inp.send_text("kraken\n")
-        inp.send_text("WAVES/ETH\n")
+        inp.send_text("XRP/EUR\n")
         inp.send_text("10\n")
         num = ctl.add_symbol()
         assert isinstance(num, int)

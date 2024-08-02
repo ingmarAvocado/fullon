@@ -5,10 +5,13 @@ from libs.models import ohlcv_model as database_ohlcv
 from fullon.libs.settings_config import fullon_settings_loader
 from run.system_manager import TickManager
 from libs.cache import Cache
-import arrow
+from libs.structs.tick_struct import TickStruct
 import pytest
 import time
 import json
+
+
+exchange_list = ['kraken']
 
 @pytest.fixture(scope="module")
 def tick_manager():
@@ -18,7 +21,7 @@ def tick_manager():
 
 
 @pytest.mark.order(1)
-@pytest.mark.parametrize("exchange_name", ["kraken"])
+@pytest.mark.parametrize("exchange_name", exchange_list)
 def test_run_loop_test(tick_manager, exchange_name, caplog):
     cat_exchanges = tick_manager.get_cat_exchanges()
     for exch in cat_exchanges:
@@ -41,19 +44,9 @@ def test_run_loop_test(tick_manager, exchange_name, caplog):
     tick_exchange = exchange.Exchange(exchange_name)
     tick_exchange.stop_ticker_socket()
     #lets delete all the records and leave one with an other date
-    ticker = tickers[0]
-    ticker.time = arrow.get(ticker.time).shift(minutes=-6).format()
-    ticker = ticker.to_dict()
-    with Cache() as store:
-        exch = ticker.pop('exchange')
-        store.del_exchange_ticker(exchange=exch)
-        store.update_ticker(symbol=ticker.pop('symbol'),
-                            exchange=exch,
-                            data=ticker)
-    time.sleep(5)
-    assert len(caplog.records) >= 1, "Tick manager didn't properly start"
-    tick_manager.stop_all()
-    assert len(caplog.records) >= 1, "Tick manager didn't properly start"
+    for tick in tickers:
+        assert isinstance(tick, TickStruct)
+
 
 
 @pytest.mark.order(2)

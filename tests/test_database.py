@@ -1,10 +1,9 @@
 from __future__ import unicode_literals, print_function
 import sys
 from requests.cookies import MockRequest
-from libs import log, settings, database, cache
 from libs.structs.trade_struct import TradeStruct
 from run.user_manager import UserManager
-import datetime
+import arrow
 import pytest
 
 
@@ -19,6 +18,7 @@ def params():
 
 @pytest.fixture
 def mock_trade():
+    _time = arrow.utcnow()
     return TradeStruct(
         trade_id='',
         ex_trade_id="test_ex_trade_id",
@@ -39,8 +39,8 @@ def mock_trade():
         roi=10.0,
         roi_pct=10.0,
         total_fee=0.1,
-        time="2023-06-08 00:00:00",
-        timestamp=1623105600.0,
+        time=_time.format('YYYY-MM-DD HH:mm:ss'),
+        timestamp=_time.timestamp(),
         leverage=1.0,
         limit="test_limit",
     )
@@ -63,7 +63,8 @@ def test_save_get_delete_trades(dbase, mock_trade):
     assert save_result is not None  # or any other condition based on your implementation
 
     # Retrieving the trade
-    trades = dbase.get_trades(ex_id=mock_trade.ex_id)
+    trades = dbase.get_trades(ex_id=mock_trade.ex_id, last=True)
+
     assert trades is not None
     assert len(trades) == 1
     assert mock_trade.ex_id == trades[0].ex_id

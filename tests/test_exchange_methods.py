@@ -16,25 +16,19 @@ exchange_list = ['kraken']
 
 
 @pytest.fixture(scope="module")
-def exchange_params() -> Dict:
+def exchange_params():
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
     details = user.user_details(uid=uid)
-    ex1 = details['exchanges']['kraken']
-    ex2 = details['exchanges']['bitmex']
-    return {
-        'kraken': {
-            'cat_ex_id': ex1['cat_ex_id'],
+    exchanges: Dict = {}
+    for exchange in exchange_list:
+        ex = details['exchanges'][exchange]
+        exchanges[exchange] = {
+            'cat_ex_id': ex['cat_ex_id'],
             'uid': f'{uid}',
-            'ex_id': ex1['ex_id']
-        },
-        'bitmex': {
-            'cat_ex_id': ex2['cat_ex_id'],
-            'uid': f'{uid}',
-            'ex_id': ex2['ex_id']
-        }
-        # Add more exchanges here
-    }
+            'ex_id': ex['ex_id']
+            }
+    yield exchanges
 
 
 @pytest.fixture(scope="module")

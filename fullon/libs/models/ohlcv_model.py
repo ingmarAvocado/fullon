@@ -1,5 +1,6 @@
 from typing import List, Optional, Union, Tuple, Any
 from numpy import left_shift
+from psycopg2 import sql
 import psycopg2
 from psycopg2.extensions import AsIs, ISOLATION_LEVEL_AUTOCOMMIT, ISOLATION_LEVEL_DEFAULT
 import arrow
@@ -276,7 +277,7 @@ class Database:
                 table_type = result[0]
                 return table_type in ('VIEW', 'MATERIALIZED VIEW')
             else:
-                logger.error(f"Table {table} doesn't exist")
+                #logger.error(f"Table {table} doesn't exist")
                 return False  # Table doesn't exist
 
         except (Exception, psycopg2.DatabaseError) as error:
@@ -520,24 +521,30 @@ class Database:
 
     def get_oldest_timestamp(self) -> Optional[str]:
         """Fetches the oldest timestamp from the database.
-
         The method looks for the oldest timestamp in the "trades" table if it exists,
         otherwise it checks in the "candles1m" table.
-
         Returns:
             Optional[str]: The oldest timestamp if found, None otherwise.
         """
         values = None
-        table = "trades" if self.is_view(table='candles1m') else "candles1m"
-        sql = f'SELECT MIN(timestamp) FROM {self.schema}.{table}'
+        table = "trades" if self.is_view(table='candles1m') or not self.table_exists(table="candles1m") else "candles1m"
+        # Construct the query using sql.SQL and sql.Identifier
+        query = sql.SQL("SELECT MIN(timestamp) FROM {}.{}").format(
+            sql.SQL(self.schema),
+            sql.SQL(table)
+        )
         try:
             with self.con.cursor() as cur:
-                cur.execute(sql)
+                cur.execute(query)
                 row = cur.fetchone()
                 if row:
                     values = row[0]
         except (Exception, psycopg2.DatabaseError) as error:
-            logger.info(self.error_print(error=error, method="get_oldest_timestamp", query=sql))
+            logger.info(self.error_print(
+                error=error,
+                method="get_oldest_timestamp",
+                query=query.as_string(cur)
+            ))
         finally:
             return values
 

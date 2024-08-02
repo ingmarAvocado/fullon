@@ -120,7 +120,7 @@ def strat():
     setattr(strat, "curtime", curtime)
     setattr(strat, "size", {0: 10})
     setattr(strat, "str_feed", datas)
-    setattr(strat, "last_candle_date", {0: arrow.get('2023-07-17T00:00:00+00:00')})
+    setattr(strat, "last_bar_date", {0: arrow.get('2023-07-17T00:00:00+00:00')})
     yield strat
 
 
@@ -137,15 +137,15 @@ def test_entry(strat):
 
 
 @pytest.mark.order(2)
-def test_is_new_candle(strat):
-    res = strat._is_new_candle(self=strat, feed=0)
+def test_is_new_bar(strat):
+    res = strat._is_new_bar(self=strat, feed=0)
     assert res is False
     setattr(strat.datas[1], "datetime", {0: '2023-07-17T00:00:00+00:00'})
-    res = strat._is_new_candle(self=strat, feed=1)
+    res = strat._is_new_bar(self=strat, feed=1)
     assert res is True
     setattr(strat, "last_candle_date", {1: '2023-07-17T00:00:00+00:00'})
-    res = strat._is_new_candle(self=strat, feed=1)
+    res = strat._is_new_bar(self=strat, feed=1)
     assert res is False
     setattr(strat.datas[1], "datetime", {0: '2023-07-17T00:01:00+00:00'})
-    res = strat._is_new_candle(self=strat, feed=1)
+    res = strat._is_new_bar(self=strat, feed=1)
     assert res is True

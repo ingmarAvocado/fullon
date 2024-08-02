@@ -10,9 +10,30 @@ from libs import settings
 def exchange_struct(dbase):
     user = UserManager()
     uid = user.get_user_id(mail='admin@fullon')
-    exch = dbase.get_exchange(user_id=uid)[0]
+    exchanges = dbase.get_exchange(user_id=uid)
+    exch = ""
+    for exchange in exchanges:
+        if 'kraken' in exchange.cat_name:
+            exch = exchange
+            break
     yield exch
 
+
+'''
+@pytest.fixture(scope="module")
+def exchange_instance(request, dbase):
+    exchange_name = request.param
+    user = UserManager()
+    uid = user.get_user_id(mail='admin@fullon')
+    exchanges = dbase.get_exchange(user_id=uid)
+    for exchange in exchanges:
+        if exchange_name in exchange.cat_name:
+            iface = Interface(exchange.cat_name, params=exchange)
+            yield iface
+            iface.stop()
+            del iface
+            break
+'''
 
 @pytest.fixture(scope="module")
 def websocket_instance(exchange_struct):

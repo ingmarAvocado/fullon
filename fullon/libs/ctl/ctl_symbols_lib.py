@@ -83,7 +83,7 @@ class CTL(CTL):
             exchange = session.prompt(f"(Symbols Shell Feed) Pick Exchange - press [tab] > ", completer=completer)
             if exchange in _exchanges:
                 break
-            print("Please pick a valid exchange.")
+            print(f"Please pick a valid exchange. {exchange} is not a valid one {exchanges}")
         # then query symbols from exchange to add in compeleter
         print("Downloading symbols from exchange...")
         symbols = self.RPC.symbols('list_exchange', {'exchange': exchange})
@@ -93,7 +93,7 @@ class CTL(CTL):
             symbol = session.prompt(f"(Symbols Shell Feed) Pick Symbol - press [tab] > ", completer=completer)
             if symbol in symbols:
                 break
-            print("Please pick a valid exchange.")
+            print(f"Please pick a valid symbol {symbol} no in exchange symbols")
         session = PromptSession()
         while True:
             back = session.prompt(f"(Symbols Shell Feed) Pick Symbol - Backload data from (days) > ")

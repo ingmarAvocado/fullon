@@ -36,6 +36,8 @@ class WebSocket:
         self.started: bool = False
         self.ticker_factory_key: str = ''
         self.subscribed_tickers: list = []
+        self.cache_trade_reply = 0
+        self.cache_ticker_reply = 0
 
     def __del__(self):
         self.clean_up()
@@ -165,17 +167,17 @@ class WebSocket:
             callback (Callable): The callback function to handle received data.
 
         Returns:
-            None
+            bool: True if subscription was successful, False otherwise.
         """
         try:
             res = self.client.subscribe_public(subscription=subscription, pair=pair, callback=callback)
             if 'ticker' in subscription['name']:
                 self.ticker_factory_key, _ = list(self.client.factories.items())[-1]
             logger.info("Subscribing to public channel")
-        except twisted_error as twisted_err:
-            logger.error(f"Twisted error occurred while subscribing to private data channel: {twisted_err}")
+            return True
+        except (twisted_error.ConnectionDone, twisted_error.ConnectionLost, Exception) as err:
+            logger.error(f"Failed to subscribe to public channel: {err}")
             return False
-        return True
 
     def unsubscribe_tickers(self) -> bool:
         """
@@ -256,6 +258,7 @@ class WebSocket:
                 res = store.update_ticker(symbol=symbol,
                                           exchange="kraken",
                                           data=ticker_data)
+            self.cache_ticker_reply = 1
 
     def on_trade(self, message: Dict[str, Any]) -> None:
         """
@@ -295,6 +298,7 @@ class WebSocket:
                                         symbol=symbol,
                                         exchange="kraken",
                                         trade=trade_data)
+            self.cache_trade_reply = 1
 
     def on_my_trade(self, message: Dict[str, Any]):
         """
@@ -408,6 +412,7 @@ class WebSocket:
                            "price": order_dict['avg_price'],
                            }
                 if odetail:
+                    self.cache_order_reply = 1
                     with Cache() as store:
                         store.save_order_data(ex_id=self.ex_id,
                                               oid=order_id,
