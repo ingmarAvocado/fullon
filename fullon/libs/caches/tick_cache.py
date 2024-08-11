@@ -202,6 +202,41 @@ class Cache(cache.Cache):
                     break
         return rows
 
+    def get_tick_crawlers(self) -> Dict[str, Any]:
+        """Get all tick crawlers that are supposed to be running.
+
+        Returns:
+            A dictionary of tick crawlers, where keys are crawler names
+            and values are their respective configurations.
+
+        Raises:
+            RedisError: If there's an issue connecting to or querying Redis.
+            ValueError: If there's an issue processing the Redis data.
+        """
+        try:
+            raw_data = self.conn.hgetall('tick')
+            if not raw_data:
+                return {}
+
+            result = {}
+            for key, value in raw_data.items():
+                try:
+                    crawler_name = key.decode('utf-8')
+                    crawler_data_str = value.decode('utf-8')
+                    crawler_data = json.loads(crawler_data_str)
+                    result[crawler_name] = crawler_data
+                except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                    logger.warning(
+                        "Failed to process data for %s: %s", key, str(e)
+                    )
+            return result
+        except RedisError as e:
+            logger.error("Error connecting to Redis: %s", str(e))
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error in get_tick_crawlers")
+            raise ValueError("Failed to process tick crawlers data") from e
+
     def round_down(self,
                    symbol: str,
                    exchange: str,

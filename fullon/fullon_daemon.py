@@ -233,7 +233,7 @@ def main(cli_args: argparse.Namespace) -> None:
         start_components(cli_args=cli_args)
         while_alive()
     except KeyboardInterrupt:
-        print("ACCAAAAAAAAAAA")
+        pass
         #stops_components()
 
 

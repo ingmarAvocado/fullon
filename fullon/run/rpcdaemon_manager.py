@@ -315,6 +315,17 @@ def services(cmd, subcmd):
     return result
 
 
+def restart_exchange(exchange):
+    """
+    restart services for a single exchange
+    """
+    # first tickers
+    handler['tick'].stop(thread=exchange)
+    handler['ohlcv'].stop_all(exchange=exchange)
+    handler['tick'].run_loop_one_exchange(exchange_name=exchange)
+    handler['ohlcv'].run_loop_one_exchange(exchange=exchange)
+
+
 def tickers(cmd, params: dict = {}):
     """
     Execute tickers commands with given parameters.
@@ -336,6 +347,66 @@ def tickers(cmd, params: dict = {}):
         case 'btc':
             pass
             #return handler['tick'].btc_ticker()
+        case 'start':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['tick'].run_loop_one_exchange(exchange_name=exchange)
+            else:
+                results = 'No paramater exchange received'
+        case 'restart':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['tick'].stop(thread=exchange)
+                handler['tick'].run_loop_one_exchange(exchange_name=exchange)
+            else:
+                results = 'No paramater exchange received'
+        case 'stop':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['tick'].stop(thread=exchange)
+                results = f'tick for exchange {exchange} stopped'
+            else:
+                results = 'No paramater exchange received'
+    return results
+
+
+def ohlcv(cmd, params: dict = {}):
+    """
+    Execute OHLCV commands with given parameters.
+
+    Args:
+        cmd: The command to execute, can be 'list', 'btc, 'stop' or 'start'.
+        params: The parameters to use for the command execution.
+
+    Returns:
+        The result of the command execution or an error message.
+
+    Raises:
+        KeyError: An error occurred accessing the command.
+    """
+    results = f"Error: could not execute {cmd} with params {params}"
+    match cmd:
+        case 'start':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['ohlcv'].run_loop_one_exchange(exchange=exchange)
+            else:
+                results = 'No paramater exchange received'
+        case 'restart':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['ohlcv'].stop_all(thread=exchange)
+                handler['ohlcv'].run_loop_one_exchange(exchange=exchange)
+            else:
+                results = 'No paramater exchange received'
+        case 'stop':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['ohlcv'].stop_all(exchange=exchange)
+                results = f'ohlcv for exchange {exchange} stopped'
+                print(results)
+            else:
+                results = 'No paramater exchange received'
     return results
 
 
@@ -755,11 +826,13 @@ def rpc_server(stop_event, logs=True):
         server.register_function(exchanges)
         server.register_function(services)
         server.register_function(tickers)
+        server.register_function(ohlcv)
         server.register_function(rpc_test)
         server.register_function(get_system_status)
         server.register_function(get_top)
         server.register_function(bots)
         server.register_function(crawler)
+        server.register_function(restart_exchange)
         logger.warning("Fullon Daemon Started")
         server.timeout = 0.5
         while not stop_event.is_set():

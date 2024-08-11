@@ -34,8 +34,10 @@ class WebSocket:
         self.client: Optional[kraken_wsclient_py.WssClient] = None
         self.subscriptions: List = []
         self.started: bool = False
-        self.ticker_factory_key: str = ''
+        self.ticker_factory_keys: list = []
+        self.trade_factory_keys: list = []
         self.subscribed_tickers: list = []
+        self.subscribed_trades: list = []
         self.cache_trade_reply = 0
         self.cache_ticker_reply = 0
 
@@ -170,9 +172,13 @@ class WebSocket:
             bool: True if subscription was successful, False otherwise.
         """
         try:
-            res = self.client.subscribe_public(subscription=subscription, pair=pair, callback=callback)
+            self.client.subscribe_public(subscription=subscription, pair=pair, callback=callback)
             if 'ticker' in subscription['name']:
-                self.ticker_factory_key, _ = list(self.client.factories.items())[-1]
+                key, _ = list(self.client.factories.items())[-1]
+                self.ticker_factory_keys.append(key)
+            elif 'trade' in subscription['name']:
+                key,  _ = list(self.client.factories.items())[-1]
+                self.trade_factory_keys.append(key)
             logger.info("Subscribing to public channel")
             return True
         except (twisted_error.ConnectionDone, twisted_error.ConnectionLost, Exception) as err:
@@ -190,6 +196,9 @@ class WebSocket:
         Returns:
             None
         """
+        if not self.ticker_factory_keys:
+            logger.warning("Attempting to stop a ticker, but ticker had not been started")
+            return False
 
         message = {
               "event": "unsubscribe",
@@ -200,12 +209,45 @@ class WebSocket:
             }
         payload = json.dumps(message, ensure_ascii=False).encode('utf8')
         try:
-            self.client.factories[self.ticker_factory_key].protocol_instance.sendMessage(payload, isBinary=False)
-            self.subscribed_tickers.clear()
-            self.client.stop_socket(self.ticker_factory_key)
+            for key in self.ticker_factory_keys:
+                self.client.factories[key].protocol_instance.sendMessage(payload, isBinary=False)
+                self.subscribed_tickers.clear()
+                self.client.stop_socket(key)
+                logger.info(f"Unsubscribed from ticker socket {key}")
         except Disconnected:
             logger.warning("attempting to stop a ticker socket, when apparently there is none connected")
-        logger.info("Unsubscribed from ticker socket")
+        self.ticker_factory_keys = []
+        return True
+
+    def unsubscribe_trades(self) -> bool:
+        """
+        Unsubscribe from public trade data channels.
+
+        Returns:
+            bool: True if unsubscription was successful, False otherwise.
+        """
+        if not self.trade_factory_keys:
+            logger.warning("Attempting to stop a trade websocket, but trade had not been started")
+            return False
+
+        message = {
+              "event": "unsubscribe",
+              "pair": [],
+              "subscription": {
+                "name": "trade"
+              }
+            }
+        payload = json.dumps(message, ensure_ascii=False).encode('utf8')
+        try:
+            for key in self.trade_factory_keys:
+                self.client.factories[key].protocol_instance.sendMessage(payload, isBinary=False)
+                self.subscribed_trades.clear()
+                self.client.stop_socket(key)
+                logger.warning(f"Disconnected from trade socket {key}")
+        except Disconnected:
+            logger.warning("attempting to stop a trade socket, when apparently there is none connected")
+        logger.info("Unsubscribed from trade socket")
+        self.trade_factory_keys = []
         return True
 
     def subscribe_private(self, subscription: Dict[str, str], callback: Callable) -> bool:
@@ -439,6 +481,9 @@ class WebSocket:
                 if data['subscription']['name'] == 'ticker':
                     if pair not in self.subscribed_tickers:
                         self.subscribed_tickers.append(pair)
+                if data['subscription']['name'] == 'trade':
+                    if pair not in self.subscribed_trades:
+                        self.subscribed_trades.append(pair)
             else:
                 if 'Invalid session' in data['errorMessage']:
                     with Cache() as store:

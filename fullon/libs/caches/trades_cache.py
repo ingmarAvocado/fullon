@@ -13,8 +13,9 @@ import redis
 from libs import log
 from libs.caches import orders_cache as cache
 from libs.structs.trade_struct import TradeStruct
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from os import listdir
+import arrow
 
 logger = log.fullon_logger(__name__)
 
@@ -38,7 +39,10 @@ class Cache(cache.Cache):
     Attributes:
     """
 
-    def push_trade_list(self, symbol: str, exchange: str, trade: Dict = {}) -> int:
+    def push_trade_list(self,
+                        symbol: str,
+                        exchange: str,
+                        trade: Dict = {}) -> int:
         """
         Push trade data to a Redis list.
 
@@ -53,7 +57,94 @@ class Cache(cache.Cache):
         # Create a Redis key using the exchange and symbol
         symbol = symbol.replace("/", "")
         redis_key = f"trades:{exchange}:{symbol}"
-        return self.conn.rpush(redis_key, json.dumps(trade))
+        res = self.conn.rpush(redis_key, json.dumps(trade))
+        if self.update_trade_status(key=f"{exchange}"):
+            return res
+        return 0
+
+    def update_trade_status(self, key: str) -> bool:
+        """
+        Updates status variable for trades.
+
+        Args:
+            key (str): The key to update
+
+        Returns:
+            None:
+        """
+        #try:
+        key = f"TRADE:STATUS:{key}"
+        value = arrow.utcnow().timestamp()
+        try:
+            with self.conn.pipeline() as pipe:
+                pipe.set(key, value)
+                trick = pipe.execute()
+                return trick[0]
+        except redis.RedisError as error:
+            logger.error("update_trade_status error: %s", str(error))
+        return False
+
+    def get_trade_status(self, key: str) -> Union[float, None]:
+        """
+        Retrieves status variable for trades.
+
+        Args:
+            key (str): The key to update
+
+        Returns:
+            None:
+        """
+        try:
+            key = f"TRADE:STATUS:{key}"
+            value = self.conn.get(key)
+            return float(value.decode('utf-8')) if value is not None else None
+        except redis.RedisError as error:
+            logger.error("get_trade_status error: %s", str(error))
+        return None
+
+    def get_all_trade_statuses(self, prefix: str = "TRADE:STATUS") -> dict:
+        """
+        Retrieves all trade statuses for keys with the given prefix.
+        Args:
+            prefix (str): The prefix to search for. Defaults to "TRADE:STATUS".
+        Returns:
+            dict: A dictionary of key-value pairs where key is the Redis key and value is the status timestamp.
+        """
+        try:
+            keys = self.get_trade_status_keys(prefix)
+            if not keys:
+                return {}
+            # Use pipeline for efficient bulk retrieval
+            pipe = self.conn.pipeline()
+            for key in keys:
+                pipe.get(key)
+            values = pipe.execute()
+            return {
+                key: float(value.decode('utf-8')) if value else None
+                for key, value in zip(keys, values)
+            }
+        except (redis.RedisError, ValueError, AttributeError) as error:
+            logger.error(f"get_all_trade_statuses error: {str(error)}")
+            return {}
+
+    def get_trade_status_keys(self, prefix: str = "TRADE:STATUS") -> List[str]:
+        """
+        Retrieves all keys starting with the given prefix.
+        Args:
+            prefix (str): The prefix to search for. Defaults to "TRADE:STATUS".
+        Returns:
+            List[str]: A list of keys matching the prefix.
+        """
+        try:
+            keys = []
+            cursor = '0'
+            while cursor != 0:
+                cursor, partial_keys = self.conn.scan(cursor=cursor, match=f"{prefix}*", count=100)
+                keys.extend([key.decode('utf-8') for key in partial_keys])
+            return keys
+        except redis.RedisError as error:
+            logger.error(f"get_trade_status_keys error: {str(error)}")
+            return []
 
     def push_my_trades_list(self, uid: str, exchange: str, trade: Dict = {}) -> int:
         """

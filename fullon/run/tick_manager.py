@@ -27,8 +27,6 @@ class TickManager:
         self.stop_signals = {}
         self.thread_lock = threading.Lock()
         self.threads = {}
-        self.monitor_thread: threading.Thread
-        self.monitor_thread_signal: threading.Event
 
     def __del__(self) -> None:
         self.stop_all()
@@ -45,6 +43,8 @@ class TickManager:
                     del self.threads[thread]
                     _thread.join(timeout=2)  # Wait for the thread to finish with a timeout
                     logger.info(f"Stopped tick {thread}")
+                    tick_exchange = exchange.Exchange(thread)
+                    tick_exchange.stop_ticker_socket()
                 except KeyError:
                     pass
                 except Exception as error:
@@ -57,11 +57,6 @@ class TickManager:
         Stops tick data collection loops for all exchanges.
         """
         # Create a list of keys to prevent RuntimeError due to dictionary size change during iteration
-        try:
-            self.monitor_thread_signal.set()
-            self.monitor_thread.join(timeout=1)
-        except AttributeError:
-            pass
         threads_to_stop = list(self.threads.keys())
         for thread in threads_to_stop:
             self.stop(thread=thread)
@@ -163,53 +158,15 @@ class TickManager:
             result.append(pair.symbol)
         return result
 
-    def check_most_recent_tick(self, exchange_name: str):
-        """
-        Checks if the most recent tick from a specified exchange is within the last 5 minutes.
-
-        This function retrieves all ticker data for a specified exchange and determines the timestamp
-        of the most recent tick. If the most recent tick is older than 5 minutes from the current time,
-        the function returns False. Otherwise, it returns True.
-
-        Parameters:
-        - exchange_name (str): The name of the exchange for which to check the most recent tick.
-
-        Returns:
-        - bool: True if the most recent tick is within the last 5 minutes, otherwise False.
-
-        Raises:
-        None. If no tick data is found for the exchange, the function considers the most recent tick to be 1 day old.
-
-        Notes:
-        - The function uses the `Cache` context manager to access stored tick data.
-        - Ticker timestamps are compared using the 'arrow' library.
-
-        Examples:
-        >>> check_most_recent_tick('Binance')
-        True
-        >>> check_most_recent_tick('UnknownExchange')
-        False
-        """
-        with Cache() as store:
-            tickers = store.get_tickers(exchange=exchange_name)
-            most_recent: arrow.Arrow = arrow.utcnow().shift(days=-1)
-            for tick in tickers:
-                tick_time = arrow.get(tick.time)
-                if tick_time > most_recent:
-                    most_recent = tick_time
-            cur_time = arrow.utcnow()
-            time_difference = cur_time.timestamp() - most_recent.timestamp()
-            if time_difference > 5 * 60:  # 5 minutes
-                return False
-            else:
-                return True
-
     def start(self, exchange_name: str) -> None:
         """
         Starts the tick data collection loop for the specified exchange.
         """
         # Create a new stop signal Event for the current thread and store it in the stop_signals dictionary
         #print(exchange_name)
+        if exchange_name in self.threads:
+            logger.error(f"Tick for exchange {exchange_name} already running")
+            return
         stop_signal = threading.Event()
         self.stop_signals[exchange_name] = stop_signal
         tick_exchange = exchange.Exchange(exchange_name)
@@ -222,21 +179,14 @@ class TickManager:
             tick_exchange.start_ticker_socket(tickers=pairs)
 
         while not stop_signal.is_set():
-            check = self.check_most_recent_tick(exchange_name=exchange_name)
-            if check:
-                with Cache() as store:
-                    store.update_process(tipe="tick",
-                                         key=exchange_name,
-                                         message="Updated")
-                for _ in range(10):  # 5 * 0.2 seconds = 1 seconds
-                    if stop_signal.is_set():
-                        break
-                    time.sleep(0.2)
-            else:
-                tick_exchange.stop_ticker_socket()
-                time.sleep(1)
-                if tick_exchange.has_ticker():
-                    tick_exchange.start_ticker_socket(tickers=pairs)
+            with Cache() as store:
+                store.update_process(tipe="tick",
+                                     key=exchange_name,
+                                     message="Updated")
+            for _ in range(10):  # 5 * 0.2 seconds = 1 seconds
+                if stop_signal.is_set():
+                    break
+                time.sleep(0.2)
 
     def run_loop(self) -> None:
         """
@@ -251,8 +201,6 @@ class TickManager:
             logger.info(f"Websocket loop for exchange {exch['name']} is up and running")
             self.threads[exch['name']] = thread  # Store the thread in the threads dictionary
             self.register_process(exch=exch)
-        # Start a new thread to monitor and relaunch dead threads
-        self.launch_socket_monitor()
         statuses_updated: int = 0
         while statuses_updated < len(exchanges):
             for exch in exchanges:
@@ -264,7 +212,7 @@ class TickManager:
                 time.sleep(1)
         self.started = True
 
-    def run_loop_one_exchange(self, exchange_name: str, monitor: bool = False) -> None:
+    def run_loop_one_exchange(self, exchange_name: str) -> None:
         """
         Starts tick data collection loops for a particular exchange.
         """
@@ -279,19 +227,6 @@ class TickManager:
                 time.sleep(0.5)
                 self.register_process(exch=exch)
 
-        # Start a new thread to monitor and relaunch dead threads
-        if monitor:
-            self.launch_socket_monitor()
-
-    def launch_socket_monitor(self) -> None:
-        """
-        Launches a new thread to monitor and relaunch dead threads.
-        """
-        monitor_thread = threading.Thread(target=self.relaunch_dead_threads)
-        monitor_thread.daemon = True
-        monitor_thread.start()
-        self.monitor_thread = monitor_thread
-
     def register_process(self, exch: Dict[str, Any]) -> None:
         """
         Registers a new process in the cache.
@@ -304,54 +239,3 @@ class TickManager:
                               params=params,
                               message="Started")
 
-    def thread_is_working(self, key: str, retries: int = 12) -> bool:
-        """
-        Determines if a thread, identified by its `ex_id`, is actively updating based on a cached timestamp.
-
-        The function checks a stored timestamp in a cache to determine if the thread
-        associated with the given `ex_id` has been updating recently (within the last 4 minutes).
-        If the timestamp is not recent, or if there's no timestamp available,
-        the function will sleep for a short duration and re-attempt up to the specified number of retries.
-
-        Parameters:
-        - ex_id (str): The identifier for the thread whose status needs to be checked.
-        - retries (int): The number of times the function should retry checking if the thread is working.
-                         Defaults to 12.
-
-        Returns:
-        - bool: True if the thread is working (i.e., if it has updated within the last 4 minutes),
-                otherwise False.
-
-        """
-        while retries > 0:
-            with Cache() as store:
-                status = store.get_process(tipe='tick', key=key)
-            if not status:
-                time.sleep(5)
-                retries -= 1
-                continue
-
-            last = arrow.get(status['timestamp'])
-            now = arrow.utcnow().shift(minutes=-4)
-            if last > now:
-                return True  # thread is working if it has updated in the last 4 minutes
-            time.sleep(5)
-            retries -= 1
-        return False
-
-    def relaunch_dead_threads(self) -> None:
-        """
-        Monitors and relaunches dead threads for tick data collection.
-        """
-        logger.info("Launching ticker thread monitor")
-        self.monitor_thread_signal = threading.Event()
-        while not self.monitor_thread_signal.is_set():
-            for exchange_name, thread in list(self.threads.items()):
-                if not thread.is_alive() or not self.thread_is_working(key=exchange_name):
-                    logger.error(f"Thread for tick exchange {exchange_name} has died, relaunching...")
-                    self.run_loop_one_exchange(exchange_name=exchange_name)
-                time.sleep(0.1)  # Add a small sleep to prevent high CPU usage
-            for _ in range(50):  # 50 * 0.2 seconds = 10 seconds
-                if self.monitor_thread_signal.is_set():
-                    break
-                time.sleep(0.2)

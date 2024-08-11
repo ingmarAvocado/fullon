@@ -16,6 +16,8 @@ logger = log.fullon_logger(__name__)
 CHECK_INTERVAL = 30  # Seconds
 LOGIC_RESTART_INTERVAL = 60*5  # Seconds
 # LOGIC_RESTART_INTERVAL = 1  # Seconds, equivalent to 5 minutes
+TICKER_DELAY = 120
+OHLCV_DELAY = 120
 
 
 class ProcessManager:
@@ -55,14 +57,21 @@ class ProcessManager:
             data = store.get_top()
         return [{k: v for k, v in d.items() if k != 'params'} for d in data]
 
-    def check_services(self, stop_event):
+    def check_services(self, stop_event, test: bool = False):
         """
         Initiates a separate thread to periodically check if services need to be restarted.
         """
-        def task(stop_event):
+        def task(stop_event, test):
             while not stop_event.is_set():
-                self._check_ohlcv_services()
-                self._check_global_errors()
+                logger.debug("Checking services to see if they are alive")
+                service_errors: dict = self.check_tickers()
+                service_errors.update(self.check_accounts())
+                service_errors.update(self.check_ohlcv())
+                global_errors: list = self._check_global_errors()
+                self._restart_services(service_errors=service_errors,
+                                       global_errors=global_errors)
+                if test:
+                    break
                 for _ in range(int(CHECK_INTERVAL)):
                     if stop_event.is_set():
                         break
@@ -75,8 +84,8 @@ class ProcessManager:
             try:
                 response = self.rpc.rpc_test()
                 if "fullon" in str(response):
-                    logger.warning("Connected to RPC server")
-                    task(stop_event)
+                    logger.info("Connected to RPC server")
+                    task(stop_event, test)
 
             except ConnectionRefusedError:
                 logger.warning("Can't connect to RPC server, trying again.")
@@ -85,6 +94,32 @@ class ProcessManager:
             if count == 20:
                 logger.error("Can't connect to rpc server for some reason")
                 break
+            if test:
+                break
+
+    def _restart_services(self, service_errors: dict, global_errors: list):
+        """
+        Restart services for exchanges that have encountered errors.
+        :param service_errors: Dictionary of service errors, where keys are service names and values are exchanges
+        :param global_errors: List of global errors (not used in this function)
+        :return: None
+        """
+        if service_errors:
+            # List of basic services (not used in this function, consider removing if unnecessary)
+            basic_services = ['tick_service', 'tickers', 'ohlcv']
+            # Create a set of unique exchanges that need service restart
+            restart_set = set()
+            for exchanges in service_errors.values():
+                # Check if exchanges is a list (multiple exchanges) or a single exchange
+                if isinstance(exchanges, list):
+                    restart_set.update(exchanges)
+                else:
+                    restart_set.add(exchanges)
+            # Restart services for each exchange in the set
+            for exchange in restart_set:
+                logger.warning(f"Restarting services for exchange {exchange}")
+                self.rpc.restart_exchange(exchange)
+        return None
 
     def _check_global_errors(self):
         """
@@ -98,6 +133,7 @@ class ProcessManager:
                 if not failure:
                     break
                 failures.append(failure)
+        return failures
         if failures:
             logger.info(f"Restarting all services")
             try:
@@ -107,29 +143,68 @@ class ProcessManager:
                 time.sleep(1)
             except xmlrpc.client.Fault:
                 logger.error("XMLRPC couldnt iterate response")
+        return failers
 
-    def _check_ohlcv_services(self):
+    def check_accounts(self) -> Dict:
         """
-        Checks the status of OHLCV fetching services and restarts them if necessary.
+        Checks the status  of api account fetchers
         """
+        return {}
+
+    def check_ohlcv(self) -> Dict:
+        """
+        Checks the status of api ohlcv fetchers
+        """
+        keys = []
         with cache.Cache() as store:
-            processes = store.get_top(comp='ohlcv')
-        now = arrow.utcnow().timestamp()
-        counters = defaultdict(int)
-        threads = defaultdict(int)
-        restart = False
-        exchange = None
+            statuses = store.get_all_trade_statuses()
+        for exchange, timestamp in statuses.items():
+            timestamp = arrow.get(timestamp)
+            if (arrow.utcnow() - timestamp).total_seconds() > OHLCV_DELAY:
+                key = exchange.split(":")[-1]
+                keys.append(key)
+            keys = list(set(keys))
+        return {'ohlcv': keys}
 
-        for proc in processes:
-            ts1 = arrow.get(proc['timestamp']).timestamp()
-            exchange = proc['key'].split(":")[0]
-            threads[exchange] += 1
-            if now - ts1 > LOGIC_RESTART_INTERVAL:
-                counters[exchange] += 1
+    def check_tickers(self) -> Dict:
+        """
+        Check the status of OHLCV fetching services and identify issues.
 
-        for exchange, totals in threads.items():
-            if totals == counters[exchange] and totals >= 1:
-                restart = True
-        if restart:
-            logger.info(f"Restarting all services")
-            self.rpc.services('services', 'restart')
+        Returns:
+            A dictionary of errors, where keys are error types and values
+            are dictionaries containing error details.
+        """
+        errors: Dict[str, List] = {'tick_service': [], 'ticker': []}
+        with cache.Cache() as store:
+            crawlers = store.get_tick_crawlers()
+        for exchange, params in crawlers.items():
+            errors = self._check_tick_service(exchange=exchange, params=params,  errors=errors)
+            errors = self._check_tickers(exchange=exchange, errors=errors)
+        for error in list(errors.keys()):
+            if len(errors[error]) == 0:
+                del errors[error]
+        return errors
+
+    def _check_tick_service(self, exchange: str,  params: Dict,  errors: Dict) -> Dict:
+        """Check if the tick service is running within the expected timeframe."""
+        try:
+            timestamp = arrow.get(params['timestamp']).timestamp()
+            if arrow.utcnow().timestamp() - timestamp > TICKER_DELAY:  # 5 minutes
+                errors['tick_service'].append(exchange)
+        except (KeyError, ValueError):
+            errors['tick_service'].append(exchange)
+        return errors
+
+    def _check_tickers(self, exchange: str,  errors: Dict) -> Dict:
+        """Check if tickers are being updated within the expected timeframe."""
+        with cache.Cache() as store:
+            tickers = store.get_tickers(exchange=exchange)
+        if not tickers:
+            return errors
+        most_recent = max(
+            (arrow.get(tick.time) for tick in tickers),
+            default=arrow.get(0)
+        )
+        if (arrow.utcnow() - most_recent).total_seconds() > TICKER_DELAY:  # 2 minutes
+            errors['ticker'].append(exchange)
+        return errors

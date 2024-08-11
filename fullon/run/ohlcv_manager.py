@@ -35,8 +35,6 @@ class OhlcvManager:
         self.threads = {}
         self.thread_lock = threading.Lock()
         self.clean_cache()
-        self.monitor_thread: threading.Thread
-        self.monitor_thread_signal: threading.Event
 
     def __del__(self) -> None:
         self.stop_all()
@@ -48,9 +46,10 @@ class OhlcvManager:
         """
         with self.thread_lock:  # Acquire the lock before accessing shared resources
             if thread in self.stop_signals:
-                self.stop_signals[thread].set()
                 try:
+                    self.stop_signals[thread].set()
                     self.threads[thread].join(timeout=1)  # Wait for the thread to finish with a timeout
+                    logger.debug(f'{thread}, "has been closed')
                 except KeyError:
                     try:
                         logger.error(f"Seems an ohlcv thread {thread} is not existing and cant be stopped")
@@ -62,24 +61,29 @@ class OhlcvManager:
                     logger.info(f"Stopped ohlcv {thread}")
                 try:
                     del self.threads[thread]
+                    del self.stop_signals[thread]
+                except KeyError:
+                    pass
+                try:
+                    del self.stop_signals[thread]
                 except KeyError:
                     pass
             else:
                 logger.info(f"No running ticker found for exchange {thread}")
 
-    def stop_all(self) -> None:
+    def stop_all(self, exchange="") -> None:
         """
         Stops tick data collection loops for all exchanges.
         """
         # Create a list of keys to prevent RuntimeError due to dictionary size change during iteration
-        try:
-            self.monitor_thread_signal.set()
-            self.monitor_thread.join(timeout=1)
-        except AttributeError:
-            pass
         threads_to_stop = list(self.stop_signals.keys())
-        for thread in threads_to_stop:
-            self.stop(thread=thread)
+        if exchange == "":
+            for thread in threads_to_stop:
+                self.stop(thread=thread)
+        else:
+            for thread in threads_to_stop:
+                if exchange in thread:
+                    self.stop(thread=thread)
         self.started = False
 
     def database_handler(self, symbol: SymbolStruct):
@@ -148,6 +152,7 @@ class OhlcvManager:
             since = arrow.utcnow().shift(days=-symbol.backtest).timestamp()
         trade_manager = TradeManager()
         while not stop_signal.is_set():
+            time.sleep(1)
             last = trade_manager.update_trades_since(exchange=symbol.exchange_name,
                                                      symbol=symbol.symbol,
                                                      since=since,
@@ -157,13 +162,14 @@ class OhlcvManager:
                 return None
             since = last
             now = time.time()
-            self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Started")
+            self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Syncing")
             if since:
                 time_difference = now - since
                 if time_difference < 55:
                     return
             else:
                 return
+        del trade_manager
 
     def fetch_candles(self,
                       symbol: SymbolStruct,
@@ -191,7 +197,7 @@ class OhlcvManager:
                 return None
             since = last
             now = time.time()
-            self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Updating")
+            self._update_process(exchange_name=symbol.exchange_name, symbol=symbol.symbol, message="Syncing")
             if test:
                 break
             if since:
@@ -201,7 +207,7 @@ class OhlcvManager:
             else:
                 return
 
-    def fetch_individual_trades_ws(self, symbol: SymbolStruct, test: bool = False) -> None:
+    def fetch_individual_trades_ws(self, symbol: SymbolStruct, test: bool = False) ->  bool:
         """
         Retrieve trade data for the specified symbol and timeframe.
         Returns:
@@ -214,6 +220,8 @@ class OhlcvManager:
         if trades:
             with self.database_handler(symbol=symbol) as dbase:
                 dbase.save_symbol_trades(data=trades)
+            return True
+        return False
 
     @staticmethod
     def _update_process(exchange_name: str, symbol: str, message="Synced") -> bool:
@@ -305,7 +313,7 @@ class OhlcvManager:
                         f"{exch.exchange}:{symbol_struct.symbol}"
                       )
                 logger.debug(msg)
-                self.fetch_individual_trades_ws(symbol=symbol_struct)
+                trades = self.fetch_individual_trades_ws(symbol=symbol_struct)
                 if test:
                     logger.debug("setting stop signal")
                     stop_signal.set()
@@ -313,12 +321,13 @@ class OhlcvManager:
                 now = arrow.now()
                 pause_until = now.shift(minutes=1).floor('minute')
                 pause_duration = (pause_until - now).total_seconds()
-                log_message = (
-                    f"Updating trade database for {exch.exchange}:{symbol_struct.symbol}. "
-                    f"Pausing until ({pause_until.format()})"
-                )
-                logger.info(log_message)
-                self._update_process(exchange_name=exchange, symbol=symbol)
+                if trades:
+                    log_message = (
+                        f"Updating trade database for {exch.exchange}:{symbol_struct.symbol}. "
+                        f"Pausing until ({pause_until.format()})"
+                    )
+                    logger.info(log_message)
+                    self._update_process(exchange_name=exchange, symbol=symbol)
                 check_interval = 0.3  # How often to check for the stop signal, in seconds
                 total_checks = int(pause_duration / check_interval)
                 for _ in range(total_checks):
@@ -352,66 +361,27 @@ class OhlcvManager:
                                       pid=f"thread:{getpid()}",
                                       params=[key],
                                       message="Started")
-        self.monitor_thread = threading.Thread(target=self.relaunch_dead_threads)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
         self.started = True
 
-    def thread_is_working(self, exchange: str, symbol: str, retries: int = 12) -> bool:
+    def run_loop_one_exchange(self, exchange, test=False) -> None:
         """
-        Determines if a thread, identified by its `ex_id`, is actively updating based on a cached timestamp.
-
-        The function checks a stored timestamp in a cache to determine if the thread
-        associated with the given `ex_id` has been updating recently (within the last 4 minutes).
-        If the timestamp is not recent, or if there's no timestamp available,
-        the function will sleep for a short duration and re-attempt up to the specified number of retries.
-
-        Parameters:
-        - exchange (str): The first part of identifier for the thread whose status needs to be checked.
-        - symbol (str) The second part of identifier for the thread whose status needs to be checked.
-        - retries (int): The number of times the function should retry checking if the thread is working.
-                         Defaults to 12.
-
-        Returns:
-        - bool: True if the thread is working (i.e., if it has updated within the last 4 minutes),
-                otherwise False.
-
+        Runs the OHLCV loop for one exchanges and update frames.
         """
-        while retries > 0:
-            with cache.Cache() as store:
-                status: dict = store.get_process(tipe='ohlcv', key=f"{exchange}:{symbol}")
-            if not status:
-                time.sleep(5)
-                retries -= 1
-                continue
-
-            last = arrow.get(status['timestamp'])
-            now = arrow.utcnow().shift(minutes=-4)
-            if last > now:
-                return True  # thread is working if it has updated in the last 4 minutes
-            time.sleep(5)
-            retries -= 1
-        return False
-
-    def relaunch_dead_threads(self, test=False):
-        """ comment """
-        self.monitor_thread_signal = threading.Event()
-        logger.info("Thread monitor for ohlcv started")
-        while not self.monitor_thread_signal.is_set():
-            for exchange_key, thread in list(self.threads.items()):
-                exchange, symbol = exchange_key.split(':')
-                if not thread.is_alive() or not self.thread_is_working(exchange=exchange, symbol=symbol):
-                    logger.info(f"Thread for {exchange_key} has died, relaunching...")
-                    new_thread = threading.Thread(
-                        target=self.run_ohlcv_loop, args=(symbol, exchange,))
-                    new_thread.daemon = True
-                    new_thread.start()
-                    self.threads[exchange_key] = new_thread
-                    if test:
-                        return
-                    time.sleep(0.1)
-                break
-            for _ in range(50):  # 50 * 0.2 seconds = 10 seconds
-                if self.monitor_thread_signal.is_set():
-                    break
-                time.sleep(0.2)
+        with Database() as dbase:
+            symbols = dbase.get_symbols(all=True, exchange=exchange)
+        for symbol in symbols:
+            if not symbol.only_ticker:
+                thread = threading.Thread(target=self.start,
+                                          args=(symbol.symbol,
+                                                symbol.exchange_name))
+                thread.daemon = True
+                thread.start()
+                key = f"{symbol.exchange_name}:{symbol.symbol}"
+                self.threads[key] = thread  # Store the thread in the threads dictionary
+                with cache.Cache() as store:
+                    store.new_process(tipe="ohlcv",
+                                      key=key,
+                                      pid=f"thread:{getpid()}",
+                                      params=[key],
+                                      message="Started")
+        self.started = True

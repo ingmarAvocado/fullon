@@ -276,7 +276,21 @@ class Interface(Ccxt_Interface):
                 return False
             self._ws_subscriptions['trades'].extend(tickers)
             return True
-        return True
+        return False
+
+    def stop_trade_socket(self) -> bool:
+        """
+        Subscribes to ticker updates
+
+        Args:
+        tickers (list): A list of trading pairs to subscribe to.
+
+        Returns:
+        bool: True if the subscription was successfully closed, False otherwise.
+        """
+        self._ws_pre_check()
+        print("WTF!!")
+        return self._socket.unsubscribe_trades()
 
     def start_my_trades_socket(self) -> bool:
         """
