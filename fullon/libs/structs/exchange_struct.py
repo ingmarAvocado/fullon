@@ -11,7 +11,7 @@ class ExchangeStruct(Struct):
     """Exchange struct"""
     name: str = ''
     cat_name: str = ''
-    ex_id: str = ''
+    ex_id: Optional[int] = None
     uid: str = '-'
     key: str = ''
     key2: str = ''

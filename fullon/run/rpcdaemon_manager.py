@@ -322,8 +322,10 @@ def restart_exchange(exchange):
     # first tickers
     handler['tick'].stop(thread=exchange)
     handler['ohlcv'].stop_all(exchange=exchange)
+    handler['account'].stop(exchange=exchange)
     handler['tick'].run_loop_one_exchange(exchange_name=exchange)
     handler['ohlcv'].run_loop_one_exchange(exchange=exchange)
+    handler['account'].run_loop_one_exchange(exchange=exchange)
 
 
 def tickers(cmd, params: dict = {}):
@@ -350,14 +352,14 @@ def tickers(cmd, params: dict = {}):
         case 'start':
             exchange = params.get('exchange', None)
             if exchange:
-                handler['tick'].run_loop_one_exchange(exchange_name=exchange)
+                handler['tick'].run_loop_one_exchange(exchange=exchange)
             else:
                 results = 'No paramater exchange received'
         case 'restart':
             exchange = params.get('exchange', None)
             if exchange:
                 handler['tick'].stop(thread=exchange)
-                handler['tick'].run_loop_one_exchange(exchange_name=exchange)
+                handler['tick'].run_loop_one_exchange(exchange=exchange)
             else:
                 results = 'No paramater exchange received'
         case 'stop':
@@ -370,12 +372,53 @@ def tickers(cmd, params: dict = {}):
     return results
 
 
+def accounts(cmd, params: dict = {}):
+    """
+    Execute Acount commands with given parameters.
+
+    Args:
+        cmd: The command to execute, can be 'start', 'restart', 'stop'.
+        params: The parameters to use for the command execution.
+
+    Returns:
+        The result of the command execution or an error message.
+
+    Raises:
+        KeyError: An error occurred accessing the command.
+    """
+    results = f"Error: could not execute {cmd} with params {params}"
+    match cmd:
+        case 'start':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['account'].run_loop_one_exchange(exchange=exchange)
+            else:
+                results = 'No paramater exchange received'
+        case 'restart':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['account'].stop_all(thread=exchange)
+                handler['acount'].run_loop_one_exchange(exchange=exchange)
+            else:
+                results = 'No paramater exchange received'
+        case 'stop':
+            exchange = params.get('exchange', None)
+            if exchange:
+                handler['acount'].stop_all(exchange=exchange)
+                results = f'Account for exchange {exchange} stopped'
+                print(results)
+            else:
+                results = 'No paramater exchange received'
+    return results
+
+
+
 def ohlcv(cmd, params: dict = {}):
     """
     Execute OHLCV commands with given parameters.
 
     Args:
-        cmd: The command to execute, can be 'list', 'btc, 'stop' or 'start'.
+        cmd: The command to execute, can be 'start', 'exchange, 'stop'.
         params: The parameters to use for the command execution.
 
     Returns:
@@ -827,6 +870,7 @@ def rpc_server(stop_event, logs=True):
         server.register_function(services)
         server.register_function(tickers)
         server.register_function(ohlcv)
+        server.register_function(accounts)
         server.register_function(rpc_test)
         server.register_function(get_system_status)
         server.register_function(get_top)

@@ -147,3 +147,24 @@ def test_all_positions_2(mock_store):
     result = mock_store.get_all_positions()
     # Assertions
     assert len(result) == 0  # Ensure there are positions
+
+
+@pytest.mark.order(7)
+def test_all_accounts(mock_store):
+    expected_datas = {
+        '1': json.dumps({
+            'ASYMBOL': {
+                    'cost':  1699.8,
+                    'volume': 2000.0,
+                    'fee': 2.039761,
+                    'price': 0.8499,
+                    'timestamp': 1684802146.139731
+                    }
+                }
+            )
+        }
+    mock_store.conn.hgetall.return_value = {k.encode('utf-8'): v.encode('utf-8') for k, v in expected_datas.items()}
+    # Execute the function
+    result = mock_store.get_all_accounts()
+    # Assertions
+    assert len(result) > 0  # Ensure there are positions

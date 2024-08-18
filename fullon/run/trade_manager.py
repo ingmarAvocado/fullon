@@ -32,8 +32,6 @@ class TradeManager:
         self.stop_signals = {}
         self.thread_lock = threading.Lock()
         self.threads = {}
-        self.monitor_thread: threading.Thread
-        self.monitor_thread_signal: threading.Event
 
     def __del__(self):
         self.started = False
@@ -60,16 +58,25 @@ class TradeManager:
         """
         Stops trade data collection loops for all exchanges.
         """
-        # Create a list of keys to prevent RuntimeError due to dictionary size change during iteration
-        try:
-            self.monitor_thread_signal.set()
-            self.monitor_thread.join(timeout=1)
-        except AttributeError:
-            pass
         threads_to_stop = list(self.stop_signals.keys())
         for thread in threads_to_stop:
             self.stop(thread=thread)
         self.started = False
+
+    @staticmethod
+    def _update_process(exch: exchange.Exchange) -> bool:
+        """
+        Update the usertrade status in cache.
+
+        Args:
+            exchange_id (int): The name of the exchange.
+        Returns:
+            bool: Returns True if the process is successfully updated in the cache, else False.
+        """
+        key = f"{exch.ex_id}-{exch.exchange}"
+        with Cache() as store:
+            res = store.update_user_trade_status(key=key)
+        return bool(res)
 
     def update_trades(self, ex, symbol, test=False):
         """
@@ -156,8 +163,7 @@ class TradeManager:
         latest_timestamp = float(data[-1].timestamp)+0.000001
         return latest_timestamp
 
-    @staticmethod
-    def _update_user_trades(exch: exchange.Exchange) -> arrow.Arrow:
+    def _update_user_trades(self, exch: exchange.Exchange) -> arrow.Arrow:
         """
         Updates user trades.
 
@@ -190,17 +196,18 @@ class TradeManager:
                     last_trade = dbase.get_trades(ex_id=exch.params.ex_id, last=True)
                     timestamp = arrow.get(last_trade[0].time)
                     break
-                tsleep = exch.get_sleep()
-                if not tsleep:
-                    tsleep = 1
-                time.sleep(tsleep*2)  # this is just a trottle.
             else:
                 break
+            import ipdb
+            ipdb.set_trace()
+            self._update_process(exch=exch)
+            time.sleep(1)
         return timestamp
 
     def _update_user_trades_ws(self,
                                exch: exchange.Exchange,
-                               date: arrow.Arrow) -> None:
+                               date: arrow.Arrow,
+                               test: bool = False) -> None:
         """
         Continuously updates user trades at regular intervals using a WebSocket connection.
 
@@ -209,6 +216,8 @@ class TradeManager:
             date (arrow.Arrow): The date of the last trade.
             test (bool): A flag indicating whether this is a test run.
         """
+        if not exch.ex_id:
+            logger.error("exch doesn't have ex_id set")
         exch.start_my_trades_socket()
         timestamp = date.timestamp() + date.microsecond / 1000000.0
         try:
@@ -223,16 +232,19 @@ class TradeManager:
                     except ValueError:
                         pass
                     pass
-
                 if trade:
                     if float(trade.timestamp) > timestamp:
                         with Database() as dbase:
                             dbase.save_trades(trades=[trade])
+                self._update_process(exch=exch)
+                if test:
+                    break
+                time.sleep(1)
         except KeyError:
             logger.debug(f"Seems key {exch.ex_id} is not in stopped signals anymore")
         return
 
-    def update_user_trades(self, ex_id: str):
+    def update_user_trades(self, ex_id: int):
         """
         Update a user's trades.
 
@@ -241,7 +253,7 @@ class TradeManager:
         the method returns False.
 
         Args:
-            ex_id (str): The exchange ID of the user's account.
+            ex_id (int): The exchange ID of the user's account.
             test (bool, optional): A flag to enable test mode. Defaults to False.
 
         """
@@ -256,7 +268,20 @@ class TradeManager:
         last_date = self._update_user_trades(exch=exch)
         self._update_user_trades_ws(exch=exch, date=last_date)
 
-    def run_user_trades(self) -> None:
+    def run_user_exchange_trades(self, user_ex: ExchangeStruct) -> None:
+        """
+        Run account loop to start threads for a user's exchange.
+        """
+        # Start a new thread
+        thread = threading.Thread(target=self.update_user_trades,
+                                  args=(user_ex.ex_id,))
+        thread.daemon = True
+        thread.start()
+        logger.info(f"started to listen to trades for ex_id {user_ex.ex_id}")
+        # Store the thread in the threads dictionary
+        self.threads[user_ex.ex_id] = thread
+
+    def run_users_trades(self) -> None:
         """
         Run account loop to start threads for each user's active exchanges.
 
@@ -274,28 +299,3 @@ class TradeManager:
             thread.start()
             # Store the thread in the threads dictionary
             self.threads[exch.ex_id] = thread
-        # Set the started attribute to True after starting all threads
-        self.started = True
-        monitor_thread = threading.Thread(target=self.relaunch_dead_threads)
-        monitor_thread.daemon = True
-        monitor_thread.start()
-        self.monitor_thread = monitor_thread
-
-    def relaunch_dead_threads(self):
-        """
-        relaunches dead threads
-        """
-        self.monitor_thread_signal = threading.Event()
-        while not self.monitor_thread_signal.is_set():
-            for ex_id, thread in list(self.threads.items()):
-                if not thread.is_alive():
-                    logger.info(f"Thread for trades {ex_id} has died, relaunching...")
-                    new_thread = threading.Thread(target=self.update_user_trades, args=(ex_id,))
-                    new_thread.daemon = True
-                    new_thread.start()
-                    self.threads[ex_id] = new_thread
-                    time.sleep(0.1)
-            for _ in range(50):  # 50 * 0.2 seconds = 10 seconds
-                if self.monitor_thread_signal.is_set():
-                    break
-                time.sleep(0.2)

@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import Any, Dict, Callable, Optional
 from multiprocessing import Process, Manager, Queue, Lock
 from queue import Empty
@@ -135,6 +136,7 @@ def start_all():
         exchanges = store.get_cat_exchanges()
     for exchange in exchanges:
         start(exchange['name'])
+    sleep(1)
 
 
 class Exchange:
@@ -162,8 +164,11 @@ class Exchange:
 
     def __del__(self):
         global NOQUEUE_POOL
-        if self.exchange in NOQUEUE_POOL:
-            del NOQUEUE_POOL[self.exchange]
+        try:
+            if self.exchange in NOQUEUE_POOL:
+                del NOQUEUE_POOL[self.exchange]
+        except TypeError:
+            pass
 
     def _get_params(self):
         """

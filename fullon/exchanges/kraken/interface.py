@@ -289,7 +289,6 @@ class Interface(Ccxt_Interface):
         bool: True if the subscription was successfully closed, False otherwise.
         """
         self._ws_pre_check()
-        print("WTF!!")
         return self._socket.unsubscribe_trades()
 
     def start_my_trades_socket(self) -> bool:

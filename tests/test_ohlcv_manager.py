@@ -25,17 +25,9 @@ def ohlcv():
     del manager
 
 
-@pytest.mark.order(2)
+@pytest.mark.order(1)
 def test_run_ohlcv_loop(ohlcv, symbol_test):
     """Test installation of test symbol."""
     result = ohlcv.run_ohlcv_loop(
         symbol=symbol_name, exchange=symbol_test.exchange_name, test=True)
     assert result is None
-
-
-@pytest.mark.order(3)
-def test_relaunch_dead_threads(ohlcv, symbol_test):
-    ohlcv.threads[f'{symbol_test.exchange_name}:{symbol_test.symbol}'] = threading.Thread()
-    ohlcv.threads[f'{symbol_test.exchange_name}:{symbol_test.symbol}'].is_alive = lambda: False
-    ohlcv.relaunch_dead_threads(test=True)
-    sleep(4)

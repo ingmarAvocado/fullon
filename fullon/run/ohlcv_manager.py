@@ -4,7 +4,6 @@ Manages OHLCV functions to get and to save to db
 import time
 import threading
 import arrow
-import pause
 from libs import cache, log
 from libs.database import Database
 from libs.exchange import Exchange
@@ -12,7 +11,7 @@ from libs.structs.symbol_struct import SymbolStruct
 from libs.database_ohlcv import Database as Database_Ohlcv
 from run.trade_manager import TradeManager
 from os import getpid
-from signal import SIGTERM
+
 
 logger = log.fullon_logger(__name__)
 
@@ -239,11 +238,10 @@ class OhlcvManager:
 
         key = f"{exchange_name}:{symbol}"
         with cache.Cache() as store:
-            res = store.new_process(tipe="ohlcv",
-                                    key=key,
-                                    pid=f"thread:{getpid()}",
-                                    params=[key],
-                                    message=message)
+            res = store.update_process(tipe="ohlcv",
+                                       key=key,
+                                       message=message)
+            store.update_trade_status(key=exchange_name)
         return bool(res)
 
     def delete_before_midnight(self, symbol_struct: SymbolStruct, exchange_key: str):
@@ -255,6 +253,29 @@ class OhlcvManager:
             del self.stop_signals[exchange_key]
         except KeyError:
             pass
+
+    @staticmethod
+    def wait_until_next_minute(stop_signal: threading.Event):
+        """
+        Waits until a minute passed or stop_signal is true
+
+        Args:
+            stop_signal: a threading even to stop before minute passed by
+
+        Returns:
+            Bool True if it waited
+
+
+        """
+        target_time = arrow.now().shift(minutes=1).floor('minute')
+        while arrow.now() < target_time:
+            if stop_signal.is_set():
+                return True  # Stop signal received
+            remaining = (target_time - arrow.now()).total_seconds()
+            sleep_time = min(remaining, 0.1)  # Check every 100ms, or less if less time remains
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        return False
 
     def run_ohlcv_loop(self, symbol: str, exchange: str, test: bool = False) -> None:
         """
@@ -296,8 +317,7 @@ class OhlcvManager:
                 exch.start_candle_socket(tickers=[symbol_struct.symbol])
                 while not stop_signal.is_set():
                     self._update_process(exchange_name=exchange, symbol=symbol)
-                time.sleep(9)
-                # maybe i need to check here if database is updating
+                    time.sleep(1)
         else:
             try:
                 self.fetch_individual_trades(
@@ -308,36 +328,36 @@ class OhlcvManager:
             if not stop_signal.is_set():
                 exch.start_trade_socket(tickers=[symbol_struct.symbol])
             while not stop_signal.is_set():
-                msg = (
-                        f"Getting trades from webservice for "
-                        f"{exch.exchange}:{symbol_struct.symbol}"
-                      )
+                msg = f"Getting trades from webservice for {exch.exchange}:{symbol_struct.symbol}"
                 logger.debug(msg)
                 trades = self.fetch_individual_trades_ws(symbol=symbol_struct)
                 if test:
                     logger.debug("setting stop signal")
                     stop_signal.set()
                     break
+
                 now = arrow.now()
-                pause_until = now.shift(minutes=1).floor('minute')
-                pause_duration = (pause_until - now).total_seconds()
-                if trades:
+                next_minute = now.shift(minutes=1).floor('minute')
+                log_message = (
+                    f"Updating trade database for {exch.exchange}:{symbol_struct.symbol}. "
+                    f"Pausing until ({next_minute.format()})"
+                )
+                if not trades:
+                    log_message = (
+                        f"No trades detected  for {exch.exchange}:{symbol_struct.symbol}. "
+                        f"Pausing until ({next_minute.format()})"
+                    )
+                else:
                     log_message = (
                         f"Updating trade database for {exch.exchange}:{symbol_struct.symbol}. "
-                        f"Pausing until ({pause_until.format()})"
+                        f"Pausing until ({next_minute.format()})"
                     )
-                    logger.info(log_message)
-                    self._update_process(exchange_name=exchange, symbol=symbol)
-                check_interval = 0.3  # How often to check for the stop signal, in seconds
-                total_checks = int(pause_duration / check_interval)
-                for _ in range(total_checks):
-                    if stop_signal.is_set():
-                        logger.info("Stop signal received. Exiting pause loop.")
-                        break
-                    time.sleep(check_interval)
-                # some times it escapes the loop a few milis before the minute and it creates havoc. this
-                # makes sure it doesnt happen
-                pause.until(pause_until.timestamp())
+                logger.info(log_message)
+                self._update_process(exchange_name=exchange, symbol=symbol)
+                # Wait until the next minute or until stop signal is set
+                if self.wait_until_next_minute(stop_signal):
+                    logger.info("Stop signal received. Exiting loop.")
+                    break
         del exch
 
     def run_loop(self, test=False) -> None:

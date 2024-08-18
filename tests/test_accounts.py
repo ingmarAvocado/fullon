@@ -96,4 +96,3 @@ def test_update_user_account_false(account):
             result = account.update_user_account(ex_id=value, test=True)
             assert result is None
 '''
-

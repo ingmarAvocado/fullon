@@ -255,7 +255,7 @@ class Database(database.Database):
             return None
 
     def get_exchange(self,
-                     ex_id: Optional[str] = None,
+                     ex_id: Optional[int] = None,
                      exchange_name: Optional[str] = None,
                      user_id: Optional[str] = None) -> List[ExchangeStruct]:
         """

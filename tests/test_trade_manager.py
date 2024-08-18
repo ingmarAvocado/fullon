@@ -54,3 +54,18 @@ def test_update_trades_since_1(trade_manager,
     assert len(caplog.records) > 0
 
 
+@pytest.mark.order(3)
+def test__update_process(trade_manager, store):
+    user_ex = store.get_exchange(ex_id=1)
+    exch = exchange.Exchange(exchange=user_ex.cat_name, params=user_ex)
+    res = trade_manager._update_process(exch=exch)
+    assert res is True
+
+
+@pytest.mark.order(4)
+def test_update_user_trades_ws(trade_manager, store):
+    user_ex = store.get_exchange(ex_id=1)
+    exch = exchange.Exchange(exchange=user_ex.cat_name, params=user_ex)
+    last_date = trade_manager._update_user_trades(exch=exch)
+    res = trade_manager._update_user_trades_ws(exch=exch, date=last_date)
+    assert res is None

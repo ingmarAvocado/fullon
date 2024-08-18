@@ -84,6 +84,28 @@ class Cache(cache.Cache):
             logger.error("update_trade_status error: %s", str(error))
         return False
 
+    def update_user_trade_status(self, key: str, timestamp: Optional[float] = None) -> bool:
+        """
+        Updates status variable for trades.
+
+        Args:
+            key (str): The key to update
+
+        Returns:
+            None:
+        """
+        key = f"USER_TRADE:STATUS:{key}"
+        if not timestamp:
+            timestamp = arrow.utcnow().timestamp()
+        try:
+            with self.conn.pipeline() as pipe:
+                pipe.set(key, timestamp)
+                trick = pipe.execute()
+                return trick[0]
+        except redis.RedisError as error:
+            logger.error("update_trade_status error: %s", str(error))
+        return False
+
     def get_trade_status(self, key: str) -> Union[float, None]:
         """
         Retrieves status variable for trades.
@@ -111,7 +133,7 @@ class Cache(cache.Cache):
             dict: A dictionary of key-value pairs where key is the Redis key and value is the status timestamp.
         """
         try:
-            keys = self.get_trade_status_keys(prefix)
+            keys = self.get_trade_status_keys(prefix=prefix)
             if not keys:
                 return {}
             # Use pipeline for efficient bulk retrieval
@@ -139,7 +161,7 @@ class Cache(cache.Cache):
             keys = []
             cursor = '0'
             while cursor != 0:
-                cursor, partial_keys = self.conn.scan(cursor=cursor, match=f"{prefix}*", count=100)
+                cursor, partial_keys = self.conn.scan(cursor=cursor, match=f"{prefix}*", count=1000)
                 keys.extend([key.decode('utf-8') for key in partial_keys])
             return keys
         except redis.RedisError as error:

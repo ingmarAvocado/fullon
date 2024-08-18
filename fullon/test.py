@@ -21,23 +21,23 @@ import json
 from threading import Thread, Event
 import xmlrpc
 import sys
+from run.account_manager import AccountManager
+from run.trade_manager import TradeManager
+import ipdb
 
-settings.LOG_LEVEL = "logging.INFO"
+settings.LOG_LEVEL = "logging.ERROR"
 
-since = arrow.utcnow().shift(days=-1).timestamp()
 event = Event()
-
-
-start_all()
 startohlcv()
 startdb()
+start_all()
+
 params = {'exchange': 'kraken'}
 
 with cache.Cache() as store:
     user_ex = store.get_exchange(ex_id=1)
 
 exch = Exchange(user_ex.cat_name, user_ex)
-
 
 stop_event = Event()
 server_thread = Thread(target=rpc.rpc_server, args=[stop_event,], daemon=True)
@@ -46,44 +46,20 @@ time.sleep(1)
 
 
 client = xmlrpc.client.ServerProxy(f"http://{settings.XMLRPC_HOST}:{settings.XMLRPC_PORT}", allow_none=True)
-params = {'exchange': 'kraken'}
-#rpc.tickers('start', params)
-client.ohlcv('start', params)
-
-#exch.start_trade_socket(tickers=['BTC/USD'])
-#exch.start_trade_socket(tickers=['ETH/USD'])
-#exch.start_trade_socket(tickers=['SOL/USD'])
-#exch.start_trade_socket()
-#del(exch)
-
-#tm = TickManager()n
-#tm.run_loop_one_exchange(exchange_name=user_ex.cat_name)
-time.sleep(60)
-pm = ProcessManager()
-#print(pm.check_services(stop_event=event, test=True))
-#res = pm.check_ohlcv()
-#print(res)
-#input("continue???)")
-exch.stop_trade_socket()
-print("closed")
-
-for i in range(180):
-    sys.stdout.write('.')
+client.services('services', 'start')
+# params = {'exchange': 'kraken'}
+# rpc.tickers('start', params)
+# client.ohlcv('start', params)
+#exch.stop_ticker_socket()
+for i in range(200):
+    sys.stdout.write(f"\r{i} ")
     sys.stdout.flush()
     time.sleep(1)
-print("now we check should fail and restart")
-res = pm.check_ohlcv()
-print(res)
-pm.check_services(stop_event=event, test=True)
-time.sleep(20)
-print("now should be ok")
-input("tst")
-pm.check_services(stop_event=event, test=True)
 
-#rpc.tickers('stop', params)
-rpc.ohlcv('stop', params)
-print("stopping")
-time.sleep(3)
+
+pm = ProcessManager()
+pm.check_services(stop_event=event, test=True)
+input("finish? ")
 
 #rpc.restart_exchange('kraken')
 #time.sleep(20)
@@ -101,5 +77,3 @@ stop_all()
 stopdb()
 stopohlcv()
 print("bye")
-time.sleep(2)
-

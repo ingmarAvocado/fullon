@@ -35,7 +35,7 @@ class Cache(cache.Cache):
 .
     """
 
-    def upsert_positions(self, ex_id: str, positions: Dict) -> bool:
+    def upsert_positions(self, ex_id: int, positions: Dict) -> bool:
         """
         Upserts account information by symbol.
 
@@ -62,20 +62,23 @@ class Cache(cache.Cache):
             return False
         return True
 
-    def upsert_user_account(self, ex_id: object, account: dict) -> bool:
+    def upsert_user_account(self,
+                            ex_id: int,
+                            account: dict,
+                            date: Optional[str] = None) -> bool:
         """
         Upserts user account.
 
         Args:
-            uid (str): User ID.
-            ex_id (str): Exchange ID.
+            ex_id (int): Exchange ID.
             account (dict): Account information.
             date (str): Date information.
 
         Returns:
             bool: True if successful, False otherwise.
         """
-        date = arrow.utcnow().format()
+        if not date:
+            date = arrow.utcnow().format('YYYY-MM-DD HH:mm:ss')
         try:
             key = f"{ex_id}"
             account['date'] = date
@@ -127,7 +130,7 @@ class Cache(cache.Cache):
         :return: True if all items have the same set of subkeys, False otherwise.
         """
         subkeys = {'cost', 'volume', 'fee', 'price'}
-        for _, pair_data in pos.items():
+        for pair_data in pos.values():
             if set(pair_data.keys()) != subkeys:
                 return False
         return True
@@ -193,4 +196,30 @@ class Cache(cache.Cache):
             return data[currency]
         except (TypeError, KeyError) as error:
             logger.error("We get error %s", str(error))
+            return {}
+
+    def get_all_accounts(self) -> dict:
+        """
+        Returns account crawler with all records, decoded from JSON
+        Returns:
+           Dict: Account data
+        """
+        try:
+            raw_data = self.conn.hgetall("accounts")
+            decoded_data = {}
+            for key, value in raw_data.items():
+                try:
+                    # Decode bytes to string if necessary
+                    if isinstance(key, bytes):
+                        key = key.decode('utf-8')
+                    if isinstance(value, bytes):
+                        value = value.decode('utf-8')
+                    # Parse JSON
+                    decoded_data[key] = json.loads(value)
+                except json.JSONDecodeError as json_error:
+                    logger.warning(f"Failed to decode JSON for key {key}: {str(json_error)}")
+                    decoded_data[key] = value  # Store original value if JSON parsing fails
+            return decoded_data
+        except (TypeError, KeyError, redis.RedisError) as error:
+            logger.error("Error retrieving accounts: %s", str(error))
             return {}

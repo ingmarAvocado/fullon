@@ -297,7 +297,7 @@ class WebSocket:
                 pass
 
             with Cache() as store:
-                res = store.update_ticker(symbol=symbol,
+                _ = store.update_ticker(symbol=symbol,
                                           exchange="kraken",
                                           data=ticker_data)
             self.cache_ticker_reply = 1
@@ -335,8 +335,7 @@ class WebSocket:
                     pass
                 with Cache() as store:
                     """ i want to save on redis list """
-                    store.conn  # gives me a redis connection
-                    res = store.push_trade_list(
+                    _ = store.push_trade_list(
                                         symbol=symbol,
                                         exchange="kraken",
                                         trade=trade_data)
@@ -487,7 +486,7 @@ class WebSocket:
             else:
                 if 'Invalid session' in data['errorMessage']:
                     with Cache() as store:
-                        res = store.push_ws_error(
+                        store.push_ws_error(
                             error=data['errorMessage'],
                             ex_id=self.ex_id)
                 else:

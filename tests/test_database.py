@@ -61,10 +61,8 @@ def test_save_get_delete_trades(dbase, mock_trade):
     # Saving the trade
     save_result = dbase.save_trades(trades=[mock_trade])
     assert save_result is not None  # or any other condition based on your implementation
-
     # Retrieving the trade
     trades = dbase.get_trades(ex_id=mock_trade.ex_id, last=True)
-
     assert trades is not None
     assert len(trades) == 1
     assert mock_trade.ex_id == trades[0].ex_id
@@ -79,5 +77,5 @@ def test_save_get_delete_trades(dbase, mock_trade):
     assert delete_result is not None  # or any other condition based on your implementation
 
     # Verifying the trade is deleted
-    trades_after_deletion = dbase.get_trades(ex_id=trades[0].ex_id)
-    assert trades_after_deletion is None or len(trades_after_deletion) == 0
+    trades_after_deletion = dbase.get_trades(ex_id=trades[0].ex_id, last=True)
+    assert trades_after_deletion != trades

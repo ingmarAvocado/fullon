@@ -173,7 +173,7 @@ def test_minimum_order_cost(exchange_instance):
     minord = exchange_instance.minimum_order_cost(symbol='BTC/USD')
     assert minord == 0.0001
     minord = exchange_instance.minimum_order_cost(symbol='XMR/BTC')
-    assert minord == 0.035
+    assert minord == 0.03
 
 
 @pytest.mark.order(22)

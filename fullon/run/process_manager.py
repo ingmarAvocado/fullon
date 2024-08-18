@@ -18,6 +18,8 @@ LOGIC_RESTART_INTERVAL = 60*5  # Seconds
 # LOGIC_RESTART_INTERVAL = 1  # Seconds, equivalent to 5 minutes
 TICKER_DELAY = 120
 OHLCV_DELAY = 120
+USER_TRADE_DELAY = 120
+USER_ACCOUNT_DELAY = 120
 
 
 class ProcessManager:
@@ -65,8 +67,9 @@ class ProcessManager:
             while not stop_event.is_set():
                 logger.debug("Checking services to see if they are alive")
                 service_errors: dict = self.check_tickers()
-                service_errors.update(self.check_accounts())
                 service_errors.update(self.check_ohlcv())
+                service_errors.update(self.check_user_trades())
+                service_errors.update(self.check_accounts())
                 global_errors: list = self._check_global_errors()
                 self._restart_services(service_errors=service_errors,
                                        global_errors=global_errors)
@@ -105,9 +108,7 @@ class ProcessManager:
         :return: None
         """
         if service_errors:
-            # List of basic services (not used in this function, consider removing if unnecessary)
-            basic_services = ['tick_service', 'tickers', 'ohlcv']
-            # Create a set of unique exchanges that need service restart
+            # List of basic services (not used in this function)
             restart_set = set()
             for exchanges in service_errors.values():
                 # Check if exchanges is a list (multiple exchanges) or a single exchange
@@ -149,7 +150,32 @@ class ProcessManager:
         """
         Checks the status  of api account fetchers
         """
-        return {}
+        keys = []
+        with cache.Cache() as store:
+            accounts = store.get_all_accounts()
+        for ex_id in accounts.keys():
+            timestamp = arrow.get(accounts[ex_id]['date'])
+            if (arrow.utcnow() - timestamp).total_seconds() > USER_ACCOUNT_DELAY:
+                with cache.Cache() as store:
+                    exch = store.get_exchange(ex_id=ex_id)
+                keys.append(exch.cat_name)
+            keys = list(set(keys))
+        return {'accounts': keys}
+
+    def check_user_trades(self) -> Dict:
+        """
+        Checks the status of api websocket user_trades accounts
+        """
+        keys = []
+        with cache.Cache() as store:
+            statuses = store.get_all_trade_statuses(prefix="USER_TRADE:STATUS")
+        for exchange, timestamp in statuses.items():
+            timestamp = arrow.get(timestamp)
+            if (arrow.utcnow() - timestamp).total_seconds() > USER_TRADE_DELAY:
+                key = exchange.split("-")[-1]
+                keys.append(key)
+            keys = list(set(keys))
+        return {'user_trades': keys}
 
     def check_ohlcv(self) -> Dict:
         """
