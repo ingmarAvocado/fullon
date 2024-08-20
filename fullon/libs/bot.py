@@ -311,8 +311,6 @@ class Bot:
         Returns:
             bool: `True` if the OHLCV process for the feed is 'Synced' and its timestamp is not older than 120 seconds, `False` otherwise.
         """
-        import ipdb
-        ipdb.set_trace()
         res = store.get_process(tipe='ohlcv', key=f'{feed.exchange_name}:{feed.symbol}')
         if res:
             return res and 'Synced' in res['message'] and arrow.get(res['timestamp']).shift(seconds=120) > arrow.utcnow()
@@ -353,7 +351,7 @@ class Bot:
                 return False
         except KeyError:
             logger.error("Account component not started for this account")
-            exit()
+            return False
         return True
 
     def retry_or_fail(self, retries: int, message: str, stop_signal) -> bool:

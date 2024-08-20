@@ -131,7 +131,7 @@ def test__load_live_feeds(bot, mocker):
     assert len(cerebro.datas) == len(loaded)
 '''
 
-@pytest.mark.order(10)
+
 def get_date_from_bars(bars: int, period: str, compression: int = 1) -> arrow.arrow.Arrow:
     period_map = {
         "ticks": 1,
@@ -203,4 +203,27 @@ def test_simul_strategy():
                         warm_up=450,
                         event=False)
 '''
+
+
+@pytest.mark.order(11)
+def test_check_ohlcv(store, bot, dbase):
+    bot._set_feeds(dbase=dbase)
+    feed = bot.str_feeds[2][1]
+    res = bot.check_ohlcv(store=store, feed=feed)
+    assert isinstance(res, bool)
+
+@pytest.mark.order(12)
+def test_check_ticker(store, bot, dbase):
+    bot._set_feeds(dbase=dbase)
+    feed = bot.str_feeds[2][1]
+    res = bot.check_ticker(store=store, feed=feed)
+    assert isinstance(res, bool)
+
+
+@pytest.mark.order(13)
+def test_check_account(store, bot, dbase):
+    bot._set_feeds(dbase=dbase)
+    feed = bot.str_feeds[2][1]
+    res = bot.check_account(store=store, feed=feed)
+    assert isinstance(res, bool)
 

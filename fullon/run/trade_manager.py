@@ -198,8 +198,6 @@ class TradeManager:
                     break
             else:
                 break
-            import ipdb
-            ipdb.set_trace()
             self._update_process(exch=exch)
             time.sleep(1)
         return timestamp
