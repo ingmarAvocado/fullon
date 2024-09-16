@@ -170,7 +170,7 @@ class Exchange:
         except TypeError:
             pass
 
-    def _get_params(self):
+    def _get_params(self) -> ExchangeStruct:
         """
         Gets exchange params from test user, normally should be for testing
         """
@@ -181,7 +181,7 @@ class Exchange:
                 try:
                     params = dbase.get_exchange(exchange_name=self.exchange, user_id=UID)[0]
                 except IndexError:
-                    params = []
+                    params = ExchangeStruct()
         else:
             params = ExchangeStruct()
         return params

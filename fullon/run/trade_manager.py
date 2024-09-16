@@ -90,7 +90,7 @@ class TradeManager:
         with Database_ohlcv(exchange=ex.exchange,
                             symbol=symbol.symbol) as dbase:
             now = arrow.utcnow().int_timestamp
-            then = dbase.get_latest_timestamp(table="trades")
+            then = dbase.get_latest_timestamp()
             # If the latest timestamp doesn't exist, define it.
             if not then:
                 then = now - (int(symbol.backtest) * 24 * 60 * 60)

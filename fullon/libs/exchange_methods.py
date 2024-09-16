@@ -2,12 +2,13 @@
 Class to make all exchange methods be called the same way within fullon
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import importlib.util
-from libs import log
+from libs import log, settings
 from libs.structs.order_struct import OrderStruct
 from libs.structs.exchange_struct import ExchangeStruct
-import json
+from run import user_manager
+from libs.database import Database
 
 logger = log.fullon_logger(__name__)
 
@@ -29,7 +30,7 @@ class ExchangeMethods():
         self.wbsrv = ""
         self.dry_run = dry_run
         self.exchange = exchange
-        self.params = ExchangeStruct()
+        self.params = params if params else self._get_params()
         if params:
             try:
                 self.params = params
@@ -38,7 +39,23 @@ class ExchangeMethods():
                 self.ex_key = params.name
             except AttributeError:
                 pass
-        self.load_exchange_interface(exchange=exchange, params=params)
+        self.load_exchange_interface(exchange=exchange, params=self.params)
+
+    def _get_params(self) -> ExchangeStruct:
+        """
+        Gets exchange params from test user, normally should be for testing
+        """
+        user = user_manager.UserManager()
+        UID = user.get_user_id(mail=settings.ADMIN_MAIL)
+        if UID:
+            with Database() as dbase:
+                try:
+                    params = dbase.get_exchange(exchange_name=self.exchange, user_id=UID)[0]
+                except IndexError:
+                    params = ExchangeStruct()
+        else:
+            params = ExchangeStruct()
+        return params
 
     def __del__(self):
         """

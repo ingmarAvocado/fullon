@@ -8,10 +8,11 @@ from libs.structs.trade_struct import TradeStruct
 from libs.structs.exchange_struct import ExchangeStruct
 from twisted.internet import reactor
 from twisted.internet import error as twisted_error
-from functools import partial
 import threading
 import time
 from autobahn.exception import Disconnected
+from functools import partial
+
 
 logger = log.fullon_logger(__name__)
 
@@ -113,9 +114,15 @@ class WebSocket:
         message = {
             "event": "ping",
         }
-        if self.request(message, callback=ping_response):
-            connected_event.wait(timeout=3)  # Wait for the connected_event to be set
-            return connected
+        try:
+            if self.request(message, callback=ping_response):
+                connected_event.wait(timeout=3)  # Wait for the connected_event to be set
+                return connected
+        except Disconnected:
+            logger.error("Attempt to send on a closed protocol")
+        except Exception as e:
+            logger.error(str(e))
+            raise
         return False
 
     def request(self, request: Dict[str, str], callback: Callable, **kwargs)-> bool:
@@ -216,6 +223,8 @@ class WebSocket:
                 logger.info(f"Unsubscribed from ticker socket {key}")
         except Disconnected:
             logger.warning("attempting to stop a ticker socket, when apparently there is none connected")
+            self.ticker_factory_keys = []
+            return False
         self.ticker_factory_keys = []
         return True
 
@@ -462,10 +471,8 @@ class WebSocket:
     def subscribe_message(self, data: Dict) -> None:
         """
         Handles a subscription message from the Kraken WebSocket API.
-
         Args:
             data (dict): The message data received from the WebSocket.
-
         Returns:
             None
         """
@@ -484,10 +491,11 @@ class WebSocket:
                     if pair not in self.subscribed_trades:
                         self.subscribed_trades.append(pair)
             else:
-                if 'Invalid session' in data['errorMessage']:
+                error_message = data.get('errorMessage', 'Unknown error')
+                if 'Invalid session' in error_message:
                     with Cache() as store:
                         store.push_ws_error(
-                            error=data['errorMessage'],
+                            error=error_message,
                             ex_id=self.ex_id)
                 else:
                     logger.warning(f"Failed to subscribe: {data}")

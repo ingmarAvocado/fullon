@@ -4,8 +4,9 @@
 import json
 from libs import log
 from libs.caches import base_cache as cache
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Union
 import arrow
+import redis
 
 logger = log.fullon_logger(__name__)
 

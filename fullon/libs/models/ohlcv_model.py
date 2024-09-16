@@ -504,8 +504,6 @@ class Database:
         # Check if table2 is provided and table is not, then query table2
         if table2:
             sql = f'select max(timestamp) from {table2}'
-        elif table:
-            sql = f'select max(timestamp) from {self.schema}.{table}'
         else:
             table = "trades" if self.table_exists(table='trades') else "candles1m"
             sql = f'select max(timestamp) from {self.schema}.{table}'

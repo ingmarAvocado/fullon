@@ -31,3 +31,8 @@ def test_run_ohlcv_loop(ohlcv, symbol_test):
     result = ohlcv.run_ohlcv_loop(
         symbol=symbol_name, exchange=symbol_test.exchange_name, test=True)
     assert result is None
+
+@pytest.mark.order(2)
+def test__get_since(ohlcv, symbol1):
+    res = ohlcv._get_since(symbol=symbol1)
+    assert isinstance(res, float)

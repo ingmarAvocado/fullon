@@ -207,7 +207,6 @@ def pytest_sessionfinish(session, exitstatus):
     This hook is called after all tests have been executed and just before
     finishing the session, making it a good place to perform cleanup activities,
     or logging the overall results of the tests.
-    
     Args:
         session: The pytest session object.
         exitstatus: The exit status of the testing process.
@@ -222,5 +221,4 @@ def pytest_sessionfinish(session, exitstatus):
     stopdb()
     stopohlcv()
     print(f"Test session finished. Exit status: {exitstatus}")
-
 

@@ -38,8 +38,6 @@ class CrawlerManager:
         self.stop_signals = {}
         self.thread_lock = threading.Lock()
         self.threads = {}
-        self.monitor_thread: threading.Thread
-        self.monitor_thread_signal: threading.Event
 
     def __del__(self):
         self.started = False
@@ -49,11 +47,6 @@ class CrawlerManager:
         """
         stops all threads
         """
-        try:
-            self.monitor_thread_signal.set()
-            self.monitor_thread.join(timeout=1)
-        except AttributeError:
-            pass
         threads_to_stop = list(self.stop_signals.keys())
         for thread in threads_to_stop:
             self.stop(thread=thread)
@@ -426,12 +419,13 @@ class CrawlerManager:
                 except Exception as e:
                     print(f"An error occurred: {e}")
 
-    def _process_posts(self, site, account):
+    def _process_posts(self, site: str, account: str) -> None:
         """
+        process the posts
         """
         module = self._load_module(site)
         if not module and not hasattr(module, 'get_posts'):
-            msg = f"Couldnt not load module {module}"
+            msg = f"Couldn't load module {module}"
             logger.error(msg)
             return None
         while True:
@@ -445,6 +439,35 @@ class CrawlerManager:
                 dbase.add_posts(posts=posts)
                 posts = self.normalize_and_scale_scores(posts=posts)
                 dbase.add_posts(posts=posts)
+
+    def wait_until_next_period(self, stop_signal: threading.Event, site: str) -> bool:
+        """
+        Waits until a minute passed or stop_signal is true
+
+        Args:
+            stop_signal: a threading even to stop before minute passed by
+            site: site that is being updated
+
+        Returns:
+            Bool True if it waited
+
+
+        """
+        target_time = arrow.utcnow().shift(days=1).floor('day').shift(minutes=-20)
+        counter = 0
+        while arrow.utcnow() < target_time:
+            if stop_signal.is_set():
+                return True  # Stop signal received
+            remaining = (target_time - arrow.now()).total_seconds()
+            sleep_time = min(remaining, 0.1)  # Check every 100ms, or less if less time remains
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            counter += 1
+            if counter > 200:
+                counter = 0
+                logger.info("Let the process manger know i am alive")
+                self._update_process(key=site)
+        return False
 
     def _fetch_posts(self, site: str, llm_scores: bool = True) -> None:
         """
@@ -476,30 +499,27 @@ class CrawlerManager:
 
             if llm_scores:
                 self._llm_scores()
-
-            current_time = arrow.now()
-            next_time = current_time.shift(days=1).floor('day').shift(minutes= -20)
-            sleep_time = (next_time - current_time).total_seconds()
-
+            now = arrow.now()
+            next_time = now.shift(days=1).floor('day').shift(minutes=-20)
             log_message = (
-                f"Updating crawler for site {site}. "
+                f"Updating crawler  for site {site}. "
                 f"Pausing until ({next_time.format()})"
             )
+            if not llm_scores:
+                log_message = (
+                    f"No scores detected for {site}. "
+                    f"Pausing until ({next_time.format()})"
+                )
+            else:
+                log_message = (
+                    f"Registering scores for site {site} "
+                    f"Pausing until ({next_time.format()})"
+                )
             logger.info(log_message)
             self._update_process(key=site)
-            check_interval = 0.3  # How often to check for the stop signal, in seconds
-            update_counter = 0
-            total_checks = int(sleep_time / check_interval)
-            for _ in range(total_checks):
-                if stop_signal.is_set():
-                    logger.info("Stop signal received. Exiting pause loop.")
-                    break
-                sleep(check_interval)
-                update_counter += 1
-                if update_counter > 20:
-                    self._update_process(key=site)
-                    update_counter = 0
-            pause.until(next_time.timestamp())
+            if self.wait_until_next_period(stop_signal=stop_signal, site=site):
+                logger.info("Stop signal received. Exiting loop.")
+                break
 
     def run_loop(self) -> None:
         """
@@ -526,29 +546,3 @@ class CrawlerManager:
                                       message="Started")
         # Set the started attribute to True after starting all threads
         self.started = True
-        monitor_thread = threading.Thread(target=self.relaunch_dead_threads)
-        monitor_thread.daemon = True
-        monitor_thread.start()
-        self.monitor_thread = monitor_thread
-
-    def relaunch_dead_threads(self):
-        """
-        relaunches dead threads
-        """
-        pass
-        '''
-        self.monitor_thread_signal = threading.Event()
-        while not self.monitor_thread_signal.is_set():
-            for ex_id, thread in list(self.threads.items()):
-                if not thread.is_alive():
-                    logger.info(f"Thread for trades {ex_id} has died, relaunching...")
-                    new_thread = threading.Thread(target=self.update_user_trades, args=(ex_id,))
-                    new_thread.daemon = True
-                    new_thread.start()
-                    self.threads[ex_id] = new_thread
-                    time.sleep(0.1)
-            for _ in range(50):  # 50 * 0.2 seconds = 10 seconds
-                if self.monitor_thread_signal.is_set():
-                    break
-                time.sleep(0.2)
-        '''

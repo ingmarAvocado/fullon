@@ -6,7 +6,8 @@ import threading
 import arrow
 from libs import cache, log
 from libs.database import Database
-from libs.exchange import Exchange
+#from libs.exchange import Exchange
+from libs.exchange_methods import ExchangeMethods as Exchange
 from libs.structs.symbol_struct import SymbolStruct
 from libs.database_ohlcv import Database as Database_Ohlcv
 from run.trade_manager import TradeManager
@@ -33,7 +34,6 @@ class OhlcvManager:
         self.stop_signals = {}
         self.threads = {}
         self.thread_lock = threading.Lock()
-        self.clean_cache()
 
     def __del__(self) -> None:
         self.stop_all()
@@ -90,14 +90,6 @@ class OhlcvManager:
                              symbol=symbol.symbol)
         return res
 
-    def clean_cache(self) -> None:
-        """
-        Cleans the table of process from tick processes
-        """
-        store = cache.Cache()
-        store.delete_from_top(component='ohlcv')
-        del store
-
     def start(self, symbol: str, exchange: str) -> None:
         """
         Sets the process title and starts the OHLCV loop for a specific exchange and update frame.
@@ -125,12 +117,11 @@ class OhlcvManager:
         """
         Comments
         """
-        table = "candles1m"
         now = arrow.utcnow().timestamp()
         with self.database_handler(symbol=symbol) as dbase:
-            then = dbase.get_latest_timestamp(table=table)
+            then = dbase.get_latest_timestamp()
         if not then:
-            then = now - (int(self.symbol.backtest) * 24 * 60 * 60)
+            then = now - (int(symbol.backtest) * 24 * 60 * 60)
             then = arrow.get(then).replace(minute=0, second=0, hour=0).timestamp()
         else:
             then = arrow.get(then).timestamp()
@@ -267,11 +258,11 @@ class OhlcvManager:
 
 
         """
-        target_time = arrow.now().shift(minutes=1).floor('minute')
-        while arrow.now() < target_time:
+        target_time = arrow.utcnow().shift(minutes=1).floor('minute')
+        while arrow.utcnow() < target_time:
             if stop_signal.is_set():
                 return True  # Stop signal received
-            remaining = (target_time - arrow.now()).total_seconds()
+            remaining = (target_time - arrow.utcnow()).total_seconds()
             sleep_time = min(remaining, 0.1)  # Check every 100ms, or less if less time remains
             if sleep_time > 0:
                 time.sleep(sleep_time)

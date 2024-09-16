@@ -37,8 +37,10 @@ params = {'exchange': 'kraken'}
 with cache.Cache() as store:
     user_ex = store.get_exchange(ex_id=1)
 
-exch = Exchange(user_ex.cat_name, user_ex)
+exch = Exchange2(user_ex.cat_name, user_ex)
+exch.connect_websocket()
 
+'''
 stop_event = Event()
 server_thread = Thread(target=rpc.rpc_server, args=[stop_event,], daemon=True)
 server_thread.start()
@@ -47,10 +49,12 @@ time.sleep(1)
 
 client = xmlrpc.client.ServerProxy(f"http://{settings.XMLRPC_HOST}:{settings.XMLRPC_PORT}", allow_none=True)
 client.services('services', 'start')
+'''
 # params = {'exchange': 'kraken'}
 # rpc.tickers('start', params)
 # client.ohlcv('start', params)
 #exch.stop_ticker_socket()
+'''
 for i in range(200):
     sys.stdout.write(f"\r{i} ")
     sys.stdout.flush()
@@ -60,7 +64,7 @@ for i in range(200):
 pm = ProcessManager()
 pm.check_services(stop_event=event, test=True)
 input("finish? ")
-
+'''
 #rpc.restart_exchange('kraken')
 #time.sleep(20)
 
@@ -68,8 +72,8 @@ input("finish? ")
 #since = arrow.utcnow().shift(minutes=-3).timestamp()
 #symbol = "XBTUSD"
 #trades = exch.fetch_trades(symbol=symbol, since=since)
-#crawl = CrawlerManager()
-#crawl._fetch_posts(site='twitter')
+crawl = CrawlerManager()
+crawl._fetch_posts(site='twitter')
 #crawl._llm_scores(engine='')
 
 #stop_event.set()

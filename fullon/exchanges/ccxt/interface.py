@@ -27,7 +27,7 @@ class Interface:
 
     def __init__(self,
                  exchange: str,
-                 params: Optional[ExchangeStruct] = None,
+                 params: ExchangeStruct,
                  dry_run=False):
         self.exchange = exchange
         self.params = ExchangeStruct()
